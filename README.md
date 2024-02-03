@@ -13,7 +13,7 @@ You’ll find the SQLE package useful if you’re not a fan of full-featured ORM
 - Works with any database engine(eg MySQL, Postgres, SQLite...etc) by [Go-MySQL-Driver](https://github.com/go-sql-driver/mysql/)
 - [ORM-like](row_test.go) experience using good old SQL. SQLE supports structs, maps, primitive types, and
   slices of map/structs/primitive types.
-- Fully compatible with database/sql syntax. Code is really easy to migrate from `database/sql` to `SQLE` without any change. see [examples](row_test.go)
+- 100% compatible drop-in replacement of "database/sql". Code is really easy to migrate from `database/sql` to `SQLE`. see [examples](row_test.go)
 - [Migration](migrate/migrator_test.go)
 - _Configurable and extendable sharding_
 
