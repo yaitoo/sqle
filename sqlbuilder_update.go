@@ -42,16 +42,20 @@ func (ub *UpdateBuilder) SetMap(m map[string]any, opts ...BuilderOption) *Update
 		return ub
 	}
 
-	bo := &BuilderOptions{}
+	bo := &BuilderOptions{
+		DbColumns: make(map[string]bool),
+	}
 	for _, opt := range opts {
 		opt(bo)
 	}
 
 	for n, v := range m {
-		if bo.ToSnake == nil {
+		if bo.ToSnake != nil {
+			n = bo.ToSnake(n)
+		}
+
+		if _, ok := bo.DbColumns[n]; ok {
 			ub.Set(n, v)
-		} else {
-			ub.Set(bo.ToSnake(n), v)
 		}
 	}
 	return ub
