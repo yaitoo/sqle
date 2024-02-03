@@ -16,6 +16,7 @@ type Builder struct {
 	params map[string]any
 
 	Quote string //escape column name in UPDATE and INSERT
+
 }
 
 func New(cmd ...string) *Builder {

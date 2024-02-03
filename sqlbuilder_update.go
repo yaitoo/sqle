@@ -36,14 +36,23 @@ func (ub *UpdateBuilder) SetModel(dest any) *UpdateBuilder {
 
 }
 
-func (ub *UpdateBuilder) SetMap(m map[string]any) *UpdateBuilder {
+func (ub *UpdateBuilder) SetMap(m map[string]any, opts ...BuilderOption) *UpdateBuilder {
 	if ub.shouldSkip {
 		ub.shouldSkip = false
 		return ub
 	}
 
+	bo := &BuilderOptions{}
+	for _, opt := range opts {
+		opt(bo)
+	}
+
 	for n, v := range m {
-		ub.Set(n, v)
+		if bo.ToSnake == nil {
+			ub.Set(n, v)
+		} else {
+			ub.Set(bo.ToSnake(n), v)
+		}
 	}
 	return ub
 }

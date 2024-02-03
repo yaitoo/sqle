@@ -1,6 +1,8 @@
 package sqle
 
-import "reflect"
+import (
+	"reflect"
+)
 
 type InsertBuilder struct {
 	b          *Builder
@@ -53,14 +55,24 @@ func (ib *InsertBuilder) SetModel(m any) *InsertBuilder {
 	return ib
 }
 
-func (ib *InsertBuilder) SetMap(m map[string]any) *InsertBuilder {
+func (ib *InsertBuilder) SetMap(m map[string]any, opts ...BuilderOption) *InsertBuilder {
 	if ib.shouldSkip {
 		ib.shouldSkip = false
 		return ib
 	}
 
+	bo := &BuilderOptions{}
+	for _, opt := range opts {
+		opt(bo)
+	}
+
 	for n, v := range m {
-		ib.Set(n, v)
+		if bo.ToSnake == nil {
+			ib.Set(n, v)
+		} else {
+			ib.Set(bo.ToSnake(n), v)
+		}
+
 	}
 	return ib
 }
