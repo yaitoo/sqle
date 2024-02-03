@@ -1,6 +1,12 @@
 # SQL Enhancer
 A SQL-First/ORM-like Golang SQL enhanced package.
 
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+[![Tests](https://github.com/yaitoo/sqle/actions/workflows/tests.yml/badge.svg)](https://github.com/yaitoo/sqle/actions/workflows/tests.yml)
+[![GoDoc](https://godoc.org/github.com/yaitoo/sqle?status.png)](https://godoc.org/github.com/yaitoo/sqle)
+[![Codecov](https://codecov.io/gh/yaitoo/sqle/branch/main/graph/badge.svg)](https://codecov.io/gh/yaitoo/sqle)
+[![Go Report Card](https://goreportcard.com/badge/yaitoo/sqle)](http://goreportcard.com/report/yaitoo/sqle)
+
 The SQLE package provides extensions to Go’s built-in `database/sql` package for more efficient, comprehensive interactions with databases in Go. The SQLE package is backward-compatible and extendable, so you can easily use it with the database/sql package.
 
 The SQLE package takes the sql-first approach and provides functionalities for marshaling rows into struct, map,slice and golang primitive types.
