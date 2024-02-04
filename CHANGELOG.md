@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - added `BuilderOption` on `SetMap` on `InsertBuilder` and `UpdateBuilder` (#1)
-- added `WithDbColumns` filter BuilderOption (#2)
+- added `WithAllow` BuilderOption (#2)
+
+### Fixed
+- fixed `sql.Scanner` support on `bind` (#2)
   
 ## [1.0.0] - 2024-01-31

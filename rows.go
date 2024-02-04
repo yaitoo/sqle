@@ -80,24 +80,6 @@ func (r *Rows) Bind(dest any) error {
 
 		}
 
-	case reflect.String:
-
-		for r.Rows.Next() {
-			fields := make([]string, n)
-
-			values := make([]interface{}, n)
-
-			for i := range fields {
-				values[i] = &fields[i]
-			}
-
-			err = r.Rows.Scan(values...)
-			if err != nil {
-				return err
-			}
-			ev = reflect.Append(ev, reflect.ValueOf(fields))
-		}
-
 	case reflect.Struct:
 		b = getStructBinder(iValue.Type(), iValue)
 

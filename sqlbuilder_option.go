@@ -3,8 +3,8 @@ package sqle
 type BuilderOption func(opts *BuilderOptions)
 
 type BuilderOptions struct {
-	ToSnake   func(string) string // db column name converter
-	DbColumns map[string]bool     // db column filter
+	ToSnake func(string) string // db column name converter
+	Columns []string            // db column filter
 }
 
 func WithToSnake(fn func(string) string) BuilderOption {
@@ -13,13 +13,12 @@ func WithToSnake(fn func(string) string) BuilderOption {
 	}
 }
 
-func WithDbColumns(columns []string) BuilderOption {
+// WithFiler only allowed columns can be written to db
+func WithAllow(columns []string) BuilderOption {
 	return func(opts *BuilderOptions) {
-		if opts.DbColumns == nil {
-			opts.DbColumns = map[string]bool{}
-		}
+
 		for _, c := range columns {
-			opts.DbColumns[c] = true
+			opts.Columns = append(opts.Columns, c)
 		}
 	}
 }

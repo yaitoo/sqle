@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iancoleman/strcase"
 	"github.com/stretchr/testify/require"
 )
 
@@ -241,6 +242,41 @@ func TestBuilder(t *testing.T) {
 			},
 		},
 		{
+			name: "build_update_map",
+			build: func() *Builder {
+				m := map[string]any{
+					"MemberID":     "id123",
+					"Amount":       100,
+					"Created_time": now,
+					"alias":        "alias",
+				}
+
+				b := New()
+				b.Update("orders").
+					SetMap(m, WithToSnake(strcase.ToSnake), WithAllow([]string{"member_id", "amount", "created_time"}))
+				b.Where("cancelled>={now}").
+					If(true).SQL("AND", "id={order_id}")
+
+				b.SQL(" AND created_time>={now}")
+				b.Param("order_id", "order_123456")
+				b.Param("now", now)
+
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "UPDATE orders SET `member_id`=?, `amount`=?, `created_time`=? WHERE cancelled>=? AND id=? AND created_time>=?", s)
+				require.Len(t, vars, 6)
+				require.Equal(t, "id123", vars[0])
+				require.Equal(t, 100, vars[1])
+				require.Equal(t, now, vars[2])
+				require.Equal(t, now, vars[3])
+				require.Equal(t, "order_123456", vars[4])
+				require.Equal(t, now, vars[5])
+			},
+		},
+		{
 			name: "build_update_if",
 			build: func() *Builder {
 
@@ -317,6 +353,34 @@ func TestBuilder(t *testing.T) {
 				b := New()
 				b.Insert("orders").
 					SetModel(&u).
+					End()
+
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "INSERT INTO orders (`id`, `amount`, `created_time`) VALUES (?, ?, ?);", s)
+				require.Len(t, vars, 3)
+				require.Equal(t, "id123", vars[0])
+				require.Equal(t, 100, vars[1])
+				require.Equal(t, now, vars[2])
+
+			},
+		},
+		{
+			name: "build_insert_map",
+			build: func() *Builder {
+				m := map[string]any{
+					"ID":          "id123",
+					"Amount":      100,
+					"CreatedTime": now,
+					"Alias":       "alias",
+				}
+
+				b := New()
+				b.Insert("orders").
+					SetMap(m, WithToSnake(strcase.ToSnake), WithAllow([]string{"id", "amount", "created_time"})).
 					End()
 
 				return b
