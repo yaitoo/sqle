@@ -2,12 +2,41 @@ package sqle
 
 import (
 	"database/sql"
+	"database/sql/driver"
+	"errors"
 	"testing"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
+
+type NullStr struct {
+	String string
+	Valid  bool // Valid is true if String is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullStr) Scan(value any) error {
+	if value == nil {
+		ns.String, ns.Valid = "", false
+		return nil
+	}
+
+	sv, err := driver.String.ConvertValue(value)
+	if err != nil {
+		return err
+	}
+
+	if s, ok := sv.(string); ok {
+		ns.Valid = true
+		ns.String = s
+		return nil
+	}
+
+	// otherwise, return an error
+	return errors.New("failed to scan string")
+}
 
 func TestRowBind(t *testing.T) {
 
@@ -204,7 +233,7 @@ func TestRowBind(t *testing.T) {
 			},
 		},
 		{
-			name: "bind_nullable_should_work",
+			name: "bind_scanner_should_work",
 			run: func(t *testing.T) {
 
 				row := db.QueryRow("SELECT status FROM users WHERE id=?", 4)
@@ -262,6 +291,14 @@ func TestRowBind(t *testing.T) {
 
 				require.Equal(t, "", str.String)
 				require.False(t, str.Valid)
+
+				row = db.QueryRow("SELECT status FROM users WHERE id=?", 4)
+				var ns NullStr
+				err = row.Bind(&ns)
+				require.NoError(t, err)
+
+				require.Equal(t, "", ns.String)
+				require.False(t, ns.Valid)
 
 			},
 		},

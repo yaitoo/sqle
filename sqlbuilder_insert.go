@@ -67,13 +67,22 @@ func (ib *InsertBuilder) SetMap(m map[string]any, opts ...BuilderOption) *Insert
 	}
 
 	for n, v := range m {
-		if bo.ToSnake == nil {
-			ib.Set(n, v)
-		} else {
-			ib.Set(bo.ToSnake(n), v)
+		if bo.ToSnake != nil {
+			sn := bo.ToSnake(n)
+			if sn != n {
+				delete(m, n)
+				m[sn] = v
+			}
 		}
-
 	}
+
+	for _, n := range bo.Columns {
+		v, ok := m[n]
+		if ok {
+			ib.Set(n, v)
+		}
+	}
+
 	return ib
 }
 

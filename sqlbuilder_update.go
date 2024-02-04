@@ -48,12 +48,22 @@ func (ub *UpdateBuilder) SetMap(m map[string]any, opts ...BuilderOption) *Update
 	}
 
 	for n, v := range m {
-		if bo.ToSnake == nil {
-			ub.Set(n, v)
-		} else {
-			ub.Set(bo.ToSnake(n), v)
+		if bo.ToSnake != nil {
+			sn := bo.ToSnake(n)
+			if sn != n {
+				delete(m, n)
+				m[sn] = v
+			}
 		}
 	}
+
+	for _, n := range bo.Columns {
+		v, ok := m[n]
+		if ok {
+			ub.Set(n, v)
+		}
+	}
+
 	return ub
 }
 
