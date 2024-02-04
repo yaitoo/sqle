@@ -4,7 +4,7 @@ go 1.21.6
 
 require (
 	github.com/iancoleman/strcase v0.3.0
-	github.com/mattn/go-sqlite3 v1.14.21
+	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/rs/zerolog v1.31.0
 	github.com/stretchr/testify v1.8.4
 )
