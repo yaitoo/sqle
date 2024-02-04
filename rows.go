@@ -53,11 +53,9 @@ func (r *Rows) Bind(dest any) error {
 
 		switch itemValue.(type) {
 		case *int, *int8, *int16, *int32, *int64,
-			*uint, *uint8, *uint16, *uint32, *uint64, *uintptr,
-			*float32, *float64,
-			*bool, *string, *time.Time,
-			*sql.NullInt32, *sql.NullInt64, *sql.NullFloat64,
-			*sql.NullBool, *sql.NullString, *sql.NullTime:
+			*uint, *uint8, *uint16, *uint32, *uint64,
+			*uintptr, *float32, *float64, *bool, *string, *time.Time,
+			sql.Scanner:
 
 			for r.Rows.Next() {
 				values := make([]any, 0, n)
