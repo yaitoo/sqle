@@ -13,12 +13,9 @@ func WithToSnake(fn func(string) string) BuilderOption {
 	}
 }
 
-// WithFiler only allowed columns can be written to db
+// WithAllow only allowed columns can be written to db
 func WithAllow(columns []string) BuilderOption {
 	return func(opts *BuilderOptions) {
-
-		for _, c := range columns {
-			opts.Columns = append(opts.Columns, c)
-		}
+		opts.Columns = append(opts.Columns, columns...)
 	}
 }
