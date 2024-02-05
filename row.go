@@ -82,49 +82,24 @@ func (r *Row) Bind(dest any) error {
 		return err
 	}
 
-	switch dest.(type) {
-	case *int, *int8, *int16, *int32, *int64,
-		*uint, *uint8, *uint16, *uint32, *uint64,
-		*uintptr, *float32, *float64, *bool, *string, *time.Time,
-		sql.Scanner:
-		err = r.rows.Scan(dest)
-		if err != nil {
-			return err
-		}
-
-		return r.rows.Close()
+	ok, err := scanTo(dest, v, cols, r.rows)
+	if ok {
+		return err
 	}
 
 	v = v.Elem()
 
-	var b Binder
-
 	switch v.Kind() {
 	case reflect.Struct:
-		b = getStructBinder(v.Type(), v)
-		err = r.rows.Scan(b.Bind(v, cols)...)
+		err = scanToStruct(v, cols, r.rows)
 		if err != nil {
 			return err
 		}
 
 	case reflect.Map:
-		vt := v.Type()
-		kt := vt.Key()
-		if kt.Kind() != reflect.String {
-			return ErrMustStringKey
-		}
-		b = getMapBinder(vt, kt)
-
-		fields := b.Bind(v, cols)
-
-		err = r.rows.Scan(fields...)
+		err = scanToMap(v, cols, r.rows)
 		if err != nil {
 			return err
-		}
-
-		for i, n := range cols {
-			it := fields[i]
-			v.SetMapIndex(reflect.ValueOf(n), reflect.ValueOf(it).Elem())
 		}
 
 	default:
@@ -133,4 +108,33 @@ func (r *Row) Bind(dest any) error {
 
 	// Make sure the query can be processed to completion with no errors.
 	return r.rows.Close()
+}
+
+func scanTo(dest any, destValue reflect.Value, cols []string, rows *sql.Rows) (bool, error) {
+	var err error
+	switch b := dest.(type) {
+	case *int, *int8, *int16, *int32, *int64,
+		*uint, *uint8, *uint16, *uint32, *uint64, *[]byte,
+		*uintptr, *float32, *float64, *bool, *string, *time.Time,
+		sql.Scanner:
+		err = rows.Scan(dest)
+		if err != nil {
+			return true, err
+		}
+
+		return true, rows.Close()
+	case Binder:
+		err = rows.Scan(b.Bind(destValue, cols)...)
+		if err != nil {
+			return true, err
+		}
+		return true, rows.Close()
+	}
+
+	return false, nil
+}
+
+func scanToStruct(v reflect.Value, cols []string, rows *sql.Rows) error {
+	b := getStructBinder(v.Type(), v)
+	return rows.Scan(b.Bind(v, cols)...)
 }
