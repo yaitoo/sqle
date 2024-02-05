@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -36,6 +37,31 @@ func (ns *NullStr) Scan(value any) error {
 
 	// otherwise, return an error
 	return errors.New("failed to scan string")
+}
+
+type customBinder struct {
+	UserID int
+	Status int
+	Email  string
+}
+
+func (cb *customBinder) Bind(v reflect.Value, columns []string) []any {
+	var missed any
+	values := make([]any, 0, len(columns))
+	for _, col := range columns {
+		switch col {
+		case "id":
+			values = append(values, &cb.UserID)
+		case "status":
+			values = append(values, &cb.Status)
+		case "email":
+			values = append(values, &cb.Email)
+		default:
+			values = append(values, &missed)
+		}
+	}
+
+	return values
 }
 
 func TestRowBind(t *testing.T) {
@@ -369,6 +395,21 @@ func TestRowBind(t *testing.T) {
 				require.False(t, u.NullPasswd.Valid)
 				require.False(t, u.NullSalt.Valid)
 				require.False(t, u.NullCreated.Valid)
+
+			},
+		},
+
+		{
+			name: "bind_custom_binder_should_work",
+			run: func(t *testing.T) {
+
+				row := db.QueryRow("SELECT id,status,email,salt FROM users WHERE id=?", 1)
+				var u customBinder
+				err := row.Bind(&u)
+				require.NoError(t, err)
+
+				require.Equal(t, 1, u.UserID)
+				require.Equal(t, 1, u.Status)
 
 			},
 		},

@@ -3,7 +3,6 @@ package sqle
 import (
 	"database/sql"
 	"reflect"
-	"time"
 )
 
 type Rows struct {
@@ -24,9 +23,9 @@ func (r *Rows) Bind(dest any) error {
 		return ErrMustNotNilPointer
 	}
 
-	ev := v.Elem()
+	list := v.Elem()
 
-	if ev.Kind() != reflect.Slice {
+	if list.Kind() != reflect.Slice {
 		return ErrMustSlice
 	}
 
@@ -37,83 +36,36 @@ func (r *Rows) Bind(dest any) error {
 		return err
 	}
 
-	n := len(cols)
+	listType := list.Type()       //list type
+	itemType := listType.Elem()   //item type
+	item := reflect.New(itemType) //item value
 
-	lType := ev.Type()                  //list type
-	iType := lType.Elem()               //item type
-	iValue := reflect.New(iType).Elem() //item value
-
-	var b Binder
-
-	switch iType.Kind() {
-	case reflect.Slice:
-
-		itemType := iType.Elem()
-		itemValue := reflect.New(itemType).Interface()
-
-		switch itemValue.(type) {
-		case *int, *int8, *int16, *int32, *int64,
-			*uint, *uint8, *uint16, *uint32, *uint64,
-			*uintptr, *float32, *float64, *bool, *string, *time.Time,
-			sql.Scanner:
-
-			for r.Rows.Next() {
-				values := make([]any, 0, n)
-				for i := 0; i < n; i++ {
-					values = append(values, reflect.New(itemType).Interface())
-				}
-
-				err = r.Rows.Scan(values...)
-				if err != nil {
-					return err
-				}
-
-				fields := reflect.MakeSlice(iType, 0, n)
-				for i := 0; i < n; i++ {
-					fields = reflect.Append(fields, reflect.ValueOf(values[i]).Elem())
-				}
-				ev = reflect.Append(ev, fields)
-			}
-
-		default:
-			return ErrTypeNotBindable
-
+	switch itemType.Kind() {
+	case reflect.Slice: //[][]T
+		list, err = scanToList(v, itemType, list, cols, r.Rows)
+		if err != nil {
+			return err
 		}
 
-	case reflect.Struct:
-		b = getStructBinder(iValue.Type(), iValue)
-
-		for r.Rows.Next() {
-			it := reflect.New(iType)
-			err = r.Rows.Scan(b.Bind(it.Elem(), cols)...)
+	case reflect.Struct: //[]T
+		_, ok := item.Interface().(Binder)
+		if ok {
+			list, err = scanToBinderList(item.Elem(), itemType, list, cols, r.Rows)
 			if err != nil {
 				return err
 			}
 
-			ev = reflect.Append(ev, it.Elem())
-		}
-
-	case reflect.Map:
-		vt := iValue.Type()
-		kt := vt.Key()
-		if kt.Kind() != reflect.String {
-			return ErrMustStringKey
-		}
-		b = getMapBinder(vt, kt)
-
-		fields := b.Bind(ev, cols)
-
-		for r.Rows.Next() {
-			err = r.Rows.Scan(fields...)
+		} else {
+			list, err = scanToStructList(item.Elem(), itemType, list, cols, r.Rows)
 			if err != nil {
 				return err
 			}
+		}
 
-			it := reflect.MakeMap(iType)
-			for i, n := range cols {
-				it.SetMapIndex(reflect.ValueOf(n), reflect.ValueOf(fields[i]).Elem())
-			}
-			ev = reflect.Append(ev, it)
+	case reflect.Map: //[]map[string]T
+		list, err = scanToMapList(item.Elem(), itemType, list, cols, r.Rows)
+		if err != nil {
+			return err
 		}
 
 	default:
@@ -125,9 +77,8 @@ func (r *Rows) Bind(dest any) error {
 		return err
 	}
 
-	v.Elem().Set(ev)
+	v.Elem().Set(list)
 
 	// Make sure the query can be processed to completion with no errors.
 	return r.Rows.Close()
-
 }
