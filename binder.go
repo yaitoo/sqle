@@ -13,8 +13,6 @@ var (
 
 	columns   = make(map[string][]string)
 	columnsMu sync.RWMutex
-
-	binderType = reflect.TypeOf((*Binder)(nil)).Elem()
 )
 
 type Binder interface {
