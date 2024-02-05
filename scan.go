@@ -79,6 +79,23 @@ func scanToList(item reflect.Value, itemType reflect.Type, list reflect.Value, c
 	return list, nil
 }
 
+func scanToBinderList(item reflect.Value, itemType reflect.Type, list reflect.Value, cols []string, rows *sql.Rows) (reflect.Value, error) {
+
+	var err error
+
+	for rows.Next() {
+		it := reflect.New(itemType)
+		b, _ := it.Interface().(Binder)
+		err = rows.Scan(b.Bind(it.Elem(), cols)...)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+
+		list = reflect.Append(list, it.Elem())
+	}
+	return list, nil
+}
+
 func scanToStructList(item reflect.Value, itemType reflect.Type, list reflect.Value, cols []string, rows *sql.Rows) (reflect.Value, error) {
 
 	var err error

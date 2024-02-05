@@ -127,12 +127,26 @@ func TestRowsBind(t *testing.T) {
 			},
 		},
 		{
-			name: "bind_slice_of_nullable_should_work",
+			name: "bind_slice_of_scanner_should_work",
 			run: func(t *testing.T) {
 
 				rows, err := db.Query("SELECT id,null as status, email FROM rows WHERE id<4")
 				require.NoError(t, err)
 
+				var ns [][]NullStr
+				err = rows.Bind(&ns)
+				require.NoError(t, err)
+				require.Len(t, ns, 3)
+				require.EqualValues(t, "1", ns[0][0].String)
+				require.EqualValues(t, "2", ns[1][0].String)
+				require.EqualValues(t, "3", ns[2][0].String)
+
+				require.False(t, ns[0][1].Valid)
+				require.False(t, ns[1][1].Valid)
+				require.False(t, ns[2][1].Valid)
+
+				rows, err = db.Query("SELECT id,null as status, email FROM rows WHERE id<4")
+				require.NoError(t, err)
 				var users [][]sql.NullString
 				err = rows.Bind(&users)
 				require.NoError(t, err)
@@ -144,6 +158,32 @@ func TestRowsBind(t *testing.T) {
 				require.False(t, users[0][1].Valid)
 				require.False(t, users[1][1].Valid)
 				require.False(t, users[2][1].Valid)
+
+			},
+		},
+
+		{
+			name: "bind_slice_of_custom_binder_should_work",
+			run: func(t *testing.T) {
+
+				rows, err := db.Query("SELECT * FROM rows WHERE id<4")
+				require.NoError(t, err)
+
+				var users []customBinder
+				err = rows.Bind(&users)
+				require.NoError(t, err)
+				require.Len(t, users, 3)
+				require.EqualValues(t, 1, users[0].UserID)
+				require.EqualValues(t, 2, users[1].UserID)
+				require.EqualValues(t, 3, users[2].UserID)
+
+				require.EqualValues(t, 1, users[0].Status)
+				require.EqualValues(t, 2, users[1].Status)
+				require.EqualValues(t, 3, users[2].Status)
+
+				require.EqualValues(t, "test1@mail.com", users[0].Email)
+				require.EqualValues(t, "test2@mail.com", users[1].Email)
+				require.EqualValues(t, "test3@mail.com", users[2].Email)
 
 			},
 		},

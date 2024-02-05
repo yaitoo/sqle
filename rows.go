@@ -36,9 +36,9 @@ func (r *Rows) Bind(dest any) error {
 		return err
 	}
 
-	listType := list.Type()              //list type
-	itemType := listType.Elem()          //item type
-	item := reflect.New(itemType).Elem() //item value
+	listType := list.Type()       //list type
+	itemType := listType.Elem()   //item type
+	item := reflect.New(itemType) //item value
 
 	switch itemType.Kind() {
 	case reflect.Slice: //[][]T
@@ -48,13 +48,22 @@ func (r *Rows) Bind(dest any) error {
 		}
 
 	case reflect.Struct: //[]T
-		list, err = scanToStructList(item, itemType, list, cols, r.Rows)
-		if err != nil {
-			return err
+		_, ok := item.Interface().(Binder)
+		if ok {
+			list, err = scanToBinderList(item.Elem(), itemType, list, cols, r.Rows)
+			if err != nil {
+				return err
+			}
+
+		} else {
+			list, err = scanToStructList(item.Elem(), itemType, list, cols, r.Rows)
+			if err != nil {
+				return err
+			}
 		}
 
 	case reflect.Map: //[]map[string]T
-		list, err = scanToMapList(item, itemType, list, cols, r.Rows)
+		list, err = scanToMapList(item.Elem(), itemType, list, cols, r.Rows)
 		if err != nil {
 			return err
 		}
