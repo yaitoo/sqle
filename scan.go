@@ -6,6 +6,35 @@ import (
 	"time"
 )
 
+func scanTo(dest any, destValue reflect.Value, cols []string, rows *sql.Rows) (bool, error) {
+	var err error
+	switch b := dest.(type) {
+	case *int, *int8, *int16, *int32, *int64,
+		*uint, *uint8, *uint16, *uint32, *uint64, *[]byte,
+		*uintptr, *float32, *float64, *bool, *string, *time.Time,
+		sql.Scanner:
+		err = rows.Scan(dest)
+		if err != nil {
+			return true, err
+		}
+
+		return true, rows.Close()
+	case Binder:
+		err = rows.Scan(b.Bind(destValue, cols)...)
+		if err != nil {
+			return true, err
+		}
+		return true, rows.Close()
+	}
+
+	return false, nil
+}
+
+func scanToStruct(v reflect.Value, cols []string, rows *sql.Rows) error {
+	b := getStructBinder(v.Type(), v)
+	return rows.Scan(b.Bind(v, cols)...)
+}
+
 func scanToMap(dest reflect.Value, cols []string, rows *sql.Rows) error {
 	vt := dest.Type()
 	kt := vt.Key()
