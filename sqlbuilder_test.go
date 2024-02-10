@@ -92,7 +92,7 @@ func TestBuilder(t *testing.T) {
 		{
 			name: "build_where",
 			build: func() *Builder {
-				b := New("SELECT * FROM orders")
+				b := New().Select("orders")
 				b.Where("cancelled>={now}").
 					If(true).SQL("AND", "id={order_id}")
 				b.SQL(" AND created>={now}")
@@ -103,7 +103,7 @@ func TestBuilder(t *testing.T) {
 			assert: func(t *testing.T, b *Builder) {
 				s, vars, err := b.Build()
 				require.NoError(t, err)
-				require.Equal(t, "SELECT * FROM orders WHERE cancelled>=? AND id=? AND created>=?", s)
+				require.Equal(t, "SELECT * FROM `orders` WHERE cancelled>=? AND id=? AND created>=?", s)
 				require.Len(t, vars, 3)
 				require.Equal(t, now, vars[0])
 				require.Equal(t, 123456, vars[1])
@@ -117,7 +117,7 @@ func TestBuilder(t *testing.T) {
 				var cancelledTime *time.Time
 				orderID := 123456
 
-				b := New("SELECT * FROM orders")
+				b := New().Select("orders")
 				b.Where().
 					If(orderID > -1).SQL("AND", "id={order_id}").
 					If(cancelledTime != nil).SQL("AND", "cancelled>={cancelled_time}").
@@ -131,7 +131,7 @@ func TestBuilder(t *testing.T) {
 			assert: func(t *testing.T, b *Builder) {
 				s, vars, err := b.Build()
 				require.NoError(t, err)
-				require.Equal(t, "SELECT * FROM orders WHERE id=? AND created>=?", s)
+				require.Equal(t, "SELECT * FROM `orders` WHERE id=? AND created>=?", s)
 				require.Len(t, vars, 2)
 
 				require.Equal(t, 123456, vars[0])
@@ -159,7 +159,7 @@ func TestBuilder(t *testing.T) {
 			assert: func(t *testing.T, b *Builder) {
 				s, vars, err := b.Build()
 				require.NoError(t, err)
-				require.Equal(t, "UPDATE orders SET `member_id`=?, `amount`=?, `created_time`=? WHERE cancelled>=? AND id=? AND created>=?", s)
+				require.Equal(t, "UPDATE `orders` SET `member_id`=?, `amount`=?, `created_time`=? WHERE cancelled>=? AND id=? AND created>=?", s)
 				require.Len(t, vars, 6)
 				require.Equal(t, 1234, vars[0])
 				require.Equal(t, 100, vars[1])
@@ -190,7 +190,7 @@ func TestBuilder(t *testing.T) {
 			assert: func(t *testing.T, b *Builder) {
 				s, vars, err := b.Build()
 				require.NoError(t, err)
-				require.Equal(t, "UPDATE orders SET `member_id`=?, `amount`=amount+1, `created_time`=? WHERE cancelled>=? AND id=? AND created>=?", s)
+				require.Equal(t, "UPDATE `orders` SET `member_id`=?, `amount`=amount+1, `created_time`=? WHERE cancelled>=? AND id=? AND created>=?", s)
 				require.Len(t, vars, 5)
 				require.Equal(t, 1234, vars[0])
 				require.Equal(t, now, vars[1])
@@ -231,7 +231,7 @@ func TestBuilder(t *testing.T) {
 			assert: func(t *testing.T, b *Builder) {
 				s, vars, err := b.Build()
 				require.NoError(t, err)
-				require.Equal(t, "UPDATE orders SET `member_id`=?, `amount`=?, `created_time`=? WHERE cancelled>=? AND id=? AND created_time>=?", s)
+				require.Equal(t, "UPDATE `orders` SET `member_id`=?, `amount`=?, `created_time`=? WHERE cancelled>=? AND id=? AND created_time>=?", s)
 				require.Len(t, vars, 6)
 				require.Equal(t, "id123", vars[0])
 				require.Equal(t, 100, vars[1])
@@ -266,7 +266,7 @@ func TestBuilder(t *testing.T) {
 			assert: func(t *testing.T, b *Builder) {
 				s, vars, err := b.Build()
 				require.NoError(t, err)
-				require.Equal(t, "UPDATE orders SET `member_id`=?, `amount`=?, `created_time`=? WHERE cancelled>=? AND id=? AND created_time>=?", s)
+				require.Equal(t, "UPDATE `orders` SET `member_id`=?, `amount`=?, `created_time`=? WHERE cancelled>=? AND id=? AND created_time>=?", s)
 				require.Len(t, vars, 6)
 				require.Equal(t, "id123", vars[0])
 				require.Equal(t, 100, vars[1])
@@ -298,7 +298,7 @@ func TestBuilder(t *testing.T) {
 			assert: func(t *testing.T, b *Builder) {
 				s, vars, err := b.Build()
 				require.NoError(t, err)
-				require.Equal(t, "UPDATE orders SET `amount`=?, `created_time`=? WHERE cancelled>=? AND id=? AND created>=?", s)
+				require.Equal(t, "UPDATE `orders` SET `amount`=?, `created_time`=? WHERE cancelled>=? AND id=? AND created>=?", s)
 				require.Len(t, vars, 5)
 
 				require.Equal(t, 100, vars[0])
@@ -324,7 +324,7 @@ func TestBuilder(t *testing.T) {
 			assert: func(t *testing.T, b *Builder) {
 				s, vars, err := b.Build()
 				require.NoError(t, err)
-				require.Equal(t, "INSERT INTO orders (`order_id`, `member_id`, `amount`, `created_time`) VALUES (?, ?, ?, ?);", s)
+				require.Equal(t, "INSERT INTO `orders` (`order_id`, `member_id`, `amount`, `created_time`) VALUES (?, ?, ?, ?)", s)
 				require.Len(t, vars, 4)
 				require.Equal(t, "order_123456", vars[0])
 				require.Equal(t, 1234, vars[1])
@@ -360,7 +360,7 @@ func TestBuilder(t *testing.T) {
 			assert: func(t *testing.T, b *Builder) {
 				s, vars, err := b.Build()
 				require.NoError(t, err)
-				require.Equal(t, "INSERT INTO orders (`id`, `amount`, `created_time`) VALUES (?, ?, ?);", s)
+				require.Equal(t, "INSERT INTO `orders` (`id`, `amount`, `created_time`) VALUES (?, ?, ?)", s)
 				require.Len(t, vars, 3)
 				require.Equal(t, "id123", vars[0])
 				require.Equal(t, 100, vars[1])
@@ -388,7 +388,7 @@ func TestBuilder(t *testing.T) {
 			assert: func(t *testing.T, b *Builder) {
 				s, vars, err := b.Build()
 				require.NoError(t, err)
-				require.Equal(t, "INSERT INTO orders (`id`, `amount`, `created_time`) VALUES (?, ?, ?);", s)
+				require.Equal(t, "INSERT INTO `orders` (`id`, `amount`, `created_time`) VALUES (?, ?, ?)", s)
 				require.Len(t, vars, 3)
 				require.Equal(t, "id123", vars[0])
 				require.Equal(t, 100, vars[1])
@@ -412,11 +412,31 @@ func TestBuilder(t *testing.T) {
 			assert: func(t *testing.T, b *Builder) {
 				s, vars, err := b.Build()
 				require.NoError(t, err)
-				require.Equal(t, "INSERT INTO orders (`order_id`, `amount`, `created_time`) VALUES (?, ?, ?);", s)
+				require.Equal(t, "INSERT INTO `orders` (`order_id`, `amount`, `created_time`) VALUES (?, ?, ?)", s)
 				require.Len(t, vars, 3)
 				require.Equal(t, "order_123456", vars[0])
 				require.Equal(t, 100, vars[1])
 				require.Equal(t, now, vars[2])
+
+			},
+		},
+		{
+			name: "build_delete",
+			build: func() *Builder {
+				b := New()
+				b.Delete("orders").Where().
+					If(true).And("order_id = {order_id}").
+					If(false).And("member_id").
+					Param("order_id", "order_123456")
+
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "DELETE FROM `orders` WHERE order_id = ?", s)
+				require.Len(t, vars, 1)
+				require.Equal(t, "order_123456", vars[0])
 
 			},
 		},
