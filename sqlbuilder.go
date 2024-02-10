@@ -126,7 +126,7 @@ func (b *Builder) Where(cmd ...string) *WhereBuilder {
 }
 
 func (b *Builder) Update(table string) *UpdateBuilder {
-	b.SQL("UPDATE ").SQL(table).SQL(" SET ")
+	b.SQL("UPDATE ").SQL(b.Quote).SQL(table).SQL(b.Quote).SQL(" SET ")
 	return &UpdateBuilder{
 		Builder: b,
 	}
@@ -138,4 +138,30 @@ func (b *Builder) Insert(table string) *InsertBuilder {
 		table:  table,
 		values: make(map[string]any),
 	}
+}
+
+func (b *Builder) Select(table string, columns ...string) *Builder {
+	b.SQL("SELECT")
+
+	if columns == nil {
+		b.SQL(" *")
+	} else {
+		for i, col := range columns {
+			if i == 0 {
+				b.SQL(" ").SQL(b.Quote).SQL(col).SQL(b.Quote)
+			} else {
+				b.SQL(" ,").SQL(b.Quote).SQL(col).SQL(b.Quote)
+			}
+		}
+	}
+
+	b.SQL(" FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
+
+	return b
+}
+
+func (b *Builder) Delete(table string) *Builder {
+	b.SQL("DELETE FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
+
+	return b
 }

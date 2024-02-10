@@ -1,7 +1,7 @@
-# SQL Enhancer
+# SQLE
 A SQL-First/ORM-like Golang SQL enhanced package.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 [![Tests](https://github.com/yaitoo/sqle/actions/workflows/tests.yml/badge.svg)](https://github.com/yaitoo/sqle/actions/workflows/tests.yml)
 [![GoDoc](https://godoc.org/github.com/yaitoo/sqle?status.png)](https://godoc.org/github.com/yaitoo/sqle)
 [![Codecov](https://codecov.io/gh/yaitoo/sqle/branch/main/graph/badge.svg)](https://codecov.io/gh/yaitoo/sqle)
@@ -24,7 +24,7 @@ You’ll find the SQLE package useful if you’re not a fan of full-featured ORM
 - _Configurable and extendable sharding_
 
 ## Tutorials
-> All examples on https://go.dev/doc/tutorial/database-access can work with `sqle.DB` instance without any change. 
+> All examples on https://go.dev/doc/tutorial/database-access can directly work with `sqle.DB` instance. 
 ### Connecting to a Database
 SQLE directly connects to a database by `sql.DB` instance. 
 ```
