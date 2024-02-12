@@ -18,7 +18,7 @@ type cachedStmt struct {
 	lastUsed time.Time
 }
 
-func getStmt(ctx context.Context, db *sql.DB, query string) (*sql.Stmt, error) {
+func prepareStmt(ctx context.Context, db *sql.DB, query string) (*sql.Stmt, error) {
 	stmtsMutex.RLock()
 	s, ok := stmts[query]
 	stmtsMutex.RUnlock()
@@ -51,26 +51,15 @@ func init() {
 func releaseCachedStmt() {
 	for {
 		<-time.After(1 * time.Minute)
-		var queries []string
-		var todo []*sql.Stmt
-		stmtsMutex.RLock()
-		lastUsed := time.Now().Add(-1 * time.Minute)
+
+		stmtsMutex.Lock()
+		lastActive := time.Now().Add(-1 * time.Minute)
 		for k, v := range stmts {
-			if v.lastUsed.Before(lastUsed) {
-				queries = append(queries, k)
-				todo = append(todo, v.stmt)
+			if v.lastUsed.Before(lastActive) {
+				delete(stmts, k)
+				go v.stmt.Close() //nolint: errcheck
 			}
 		}
 		stmtsMutex.Unlock()
-
-		stmtsMutex.Lock()
-		for _, q := range queries {
-			delete(stmts, q)
-		}
-		stmtsMutex.Unlock()
-
-		for _, s := range todo {
-			s.Close()
-		}
 	}
 }
