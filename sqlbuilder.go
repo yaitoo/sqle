@@ -2,11 +2,12 @@ package sqle
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 )
 
 var (
-	ErrInvalidTextVariable  = errors.New("sqle: invalid text variable")
+	ErrInvalidInputVariable = errors.New("sqle: invalid input variable")
 	ErrInvalidParamVariable = errors.New("sqle: invalid param variable")
 )
 
@@ -15,8 +16,8 @@ type Builder struct {
 	inputs map[string]string
 	params map[string]any
 
-	Quote string //escape column name in UPDATE and INSERT
-
+	Quote        string //escape column name in UPDATE and INSERT
+	Parameterize func(name string, index int) string
 }
 
 func New(cmd ...string) *Builder {
@@ -24,9 +25,10 @@ func New(cmd ...string) *Builder {
 	b := &Builder{
 		inputs: make(map[string]string),
 		params: make(map[string]any),
-
-		Quote: "`",
 	}
+
+	UseMySQL(b)
+
 	for i, it := range cmd {
 		if i > 0 {
 			b.stmt.WriteString(" ")
@@ -80,6 +82,7 @@ func (b *Builder) Build() (string, []any, error) {
 
 	var params []any
 	var sb strings.Builder
+	i := 1
 
 	for _, t := range tz.Tokens {
 		switch t.Type() {
@@ -89,7 +92,7 @@ func (b *Builder) Build() (string, []any, error) {
 			n := t.String()
 			v, ok := b.inputs[n]
 			if !ok {
-				return "", nil, ErrInvalidTextVariable
+				return "", nil, ErrInvalidInputVariable
 			}
 			sb.WriteString(v)
 
@@ -100,7 +103,8 @@ func (b *Builder) Build() (string, []any, error) {
 				return "", nil, ErrInvalidParamVariable
 			}
 
-			sb.WriteString("?")
+			sb.WriteString(b.Parameterize(n, i))
+			i++
 			params = append(params, v)
 		}
 
@@ -164,4 +168,25 @@ func (b *Builder) Delete(table string) *Builder {
 	b.SQL("DELETE FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
 
 	return b
+}
+
+func UsePostgres(b *Builder) {
+	b.Quote = "`"
+	b.Parameterize = func(name string, index int) string {
+		return "?" + strconv.Itoa(index)
+	}
+}
+
+func UseMySQL(b *Builder) {
+	b.Quote = "`"
+	b.Parameterize = func(name string, index int) string {
+		return "?"
+	}
+}
+
+func UseOracle(b *Builder) {
+	b.Quote = "`"
+	b.Parameterize = func(name string, index int) string {
+		return ":" + name
+	}
 }

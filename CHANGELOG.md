@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - added `BuilderOption` on `SetMap` on `InsertBuilder` and `UpdateBuilder` (#1)
 - added `WithAllow` BuilderOption (#2)
 - added custom `Binder` support on `Bind` (#4)
+- added `Select` and `Delete` on `SQLBuilder` (#6)
 ### Fixed
 - fixed `sql.Scanner` support on `Bind` (#2)
   

@@ -253,7 +253,7 @@ func TestBuilder(t *testing.T) {
 
 				b := New()
 				b.Update("orders").
-					SetMap(m, WithToSnake(strcase.ToSnake), WithAllow([]string{"member_id", "amount", "created_time"}))
+					SetMap(m, WithToName(strcase.ToSnake), WithAllow([]string{"member_id", "amount", "created_time"}))
 				b.Where("cancelled>={now}").
 					If(true).SQL("AND", "id={order_id}")
 
@@ -380,7 +380,7 @@ func TestBuilder(t *testing.T) {
 
 				b := New()
 				b.Insert("orders").
-					SetMap(m, WithToSnake(strcase.ToSnake), WithAllow([]string{"id", "amount", "created_time"})).
+					SetMap(m, WithToName(strcase.ToSnake), WithAllow([]string{"id", "amount", "created_time"})).
 					End()
 
 				return b
