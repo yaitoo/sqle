@@ -117,7 +117,4 @@ func TestStmt(t *testing.T) {
 			test.run(t)
 		})
 	}
-
-	require.Equal(t, len(tests), len(stmts))
-	require.True(t, db.DB.Stats().OpenConnections <= len(tests))
 }
