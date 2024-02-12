@@ -48,8 +48,8 @@ func (ub *UpdateBuilder) SetMap(m map[string]any, opts ...BuilderOption) *Update
 	}
 
 	for n, v := range m {
-		if bo.ToSnake != nil {
-			sn := bo.ToSnake(n)
+		if bo.ToName != nil {
+			sn := bo.ToName(n)
 			if sn != n {
 				delete(m, n)
 				m[sn] = v

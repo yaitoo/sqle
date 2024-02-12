@@ -32,9 +32,23 @@ func (db *DB) QueryBuilder(ctx context.Context, b *Builder) (*Rows, error) {
 }
 
 func (db *DB) QueryContext(ctx context.Context, query string, args ...any) (*Rows, error) {
-	rows, err := db.DB.QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, err
+	var rows *sql.Rows
+	var stmt *sql.Stmt
+	var err error
+	if len(args) > 0 {
+		stmt, err = prepareStmt(ctx, db.DB, query)
+		if err == nil {
+			rows, err = stmt.QueryContext(ctx, args...)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+	} else {
+		rows, err = db.DB.QueryContext(ctx, query, args...)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &Rows{Rows: rows, query: query}, nil
@@ -48,7 +62,8 @@ func (db *DB) QueryRowBuilder(ctx context.Context, b *Builder) *Row {
 	query, args, err := b.Build()
 	if err != nil {
 		return &Row{
-			err: err,
+			err:   err,
+			query: query,
 		}
 	}
 
@@ -56,7 +71,19 @@ func (db *DB) QueryRowBuilder(ctx context.Context, b *Builder) *Row {
 }
 
 func (db *DB) QueryRowContext(ctx context.Context, query string, args ...any) *Row {
-	rows, err := db.DB.QueryContext(ctx, query, args...)
+	var rows *sql.Rows
+	var stmt *sql.Stmt
+	var err error
+
+	if len(args) > 0 {
+		stmt, err = prepareStmt(ctx, db.DB, query)
+		if err == nil {
+			rows, err = stmt.QueryContext(ctx, args...)
+		}
+
+	} else {
+		rows, err = db.DB.QueryContext(ctx, query, args...)
+	}
 
 	return &Row{
 		rows:  rows,
@@ -66,7 +93,7 @@ func (db *DB) QueryRowContext(ctx context.Context, query string, args ...any) *R
 }
 
 func (db *DB) Exec(query string, args ...any) (sql.Result, error) {
-	return db.DB.ExecContext(context.Background(), query, args...)
+	return db.ExecContext(context.Background(), query, args...)
 }
 
 func (db *DB) ExecBuilder(ctx context.Context, b *Builder) (sql.Result, error) {
@@ -74,10 +101,19 @@ func (db *DB) ExecBuilder(ctx context.Context, b *Builder) (sql.Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	return db.DB.ExecContext(ctx, query, args...)
+
+	return db.ExecContext(ctx, query, args...)
 }
 
 func (db *DB) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	if len(args) > 0 {
+		stmt, err := prepareStmt(ctx, db.DB, query)
+		if err != nil {
+			return nil, err
+		}
+
+		return stmt.ExecContext(ctx, args...)
+	}
 	return db.DB.ExecContext(context.Background(), query, args...)
 }
 
