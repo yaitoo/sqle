@@ -7,21 +7,16 @@ import (
 	"time"
 )
 
-var (
-	stmts      = make(map[string]*cachedStmt)
-	stmtsMutex sync.RWMutex
-)
-
 type cachedStmt struct {
 	sync.Mutex
 	stmt     *sql.Stmt
 	lastUsed time.Time
 }
 
-func prepareStmt(ctx context.Context, db *sql.DB, query string) (*sql.Stmt, error) {
-	stmtsMutex.RLock()
-	s, ok := stmts[query]
-	stmtsMutex.RUnlock()
+func (db *DB) prepareStmt(ctx context.Context, query string) (*sql.Stmt, error) {
+	db.stmtsMutex.RLock()
+	s, ok := db.stmts[query]
+	db.stmtsMutex.RUnlock()
 	if ok {
 		s.Lock()
 		s.lastUsed = time.Now()
@@ -29,37 +24,33 @@ func prepareStmt(ctx context.Context, db *sql.DB, query string) (*sql.Stmt, erro
 		return s.stmt, nil
 	}
 
-	stmt, err := db.PrepareContext(ctx, query)
+	stmt, err := db.DB.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 
-	stmtsMutex.Lock()
-	stmts[query] = &cachedStmt{
+	db.stmtsMutex.Lock()
+	db.stmts[query] = &cachedStmt{
 		stmt:     stmt,
 		lastUsed: time.Now(),
 	}
-	stmtsMutex.Unlock()
+	db.stmtsMutex.Unlock()
 
 	return stmt, nil
 }
 
-func init() {
-	go releaseCachedStmt()
-}
-
-func releaseCachedStmt() {
+func (db *DB) closeIdleStmt() {
 	for {
 		<-time.After(1 * time.Minute)
 
-		stmtsMutex.Lock()
+		db.stmtsMutex.Lock()
 		lastActive := time.Now().Add(-1 * time.Minute)
-		for k, v := range stmts {
+		for k, v := range db.stmts {
 			if v.lastUsed.Before(lastActive) {
-				delete(stmts, k)
+				delete(db.stmts, k)
 				go v.stmt.Close() //nolint: errcheck
 			}
 		}
-		stmtsMutex.Unlock()
+		db.stmtsMutex.Unlock()
 	}
 }

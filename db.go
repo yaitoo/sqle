@@ -3,6 +3,7 @@ package sqle
 import (
 	"context"
 	"database/sql"
+	"sync"
 
 	"github.com/rs/zerolog/log"
 )
@@ -10,12 +11,21 @@ import (
 type DB struct {
 	noCopy
 	*sql.DB
+
+	sync.Mutex
+	stmts      map[string]*cachedStmt
+	stmtsMutex sync.RWMutex
 }
 
 func Open(db *sql.DB) *DB {
-	return &DB{
-		DB: db,
+	d := &DB{
+		DB:    db,
+		stmts: make(map[string]*cachedStmt),
 	}
+
+	go d.closeIdleStmt()
+
+	return d
 }
 
 func (db *DB) Query(query string, args ...any) (*Rows, error) {
@@ -36,7 +46,7 @@ func (db *DB) QueryContext(ctx context.Context, query string, args ...any) (*Row
 	var stmt *sql.Stmt
 	var err error
 	if len(args) > 0 {
-		stmt, err = prepareStmt(ctx, db.DB, query)
+		stmt, err = db.prepareStmt(ctx, query)
 		if err == nil {
 			rows, err = stmt.QueryContext(ctx, args...)
 			if err != nil {
@@ -76,15 +86,22 @@ func (db *DB) QueryRowContext(ctx context.Context, query string, args ...any) *R
 	var err error
 
 	if len(args) > 0 {
-		stmt, err = prepareStmt(ctx, db.DB, query)
-		if err == nil {
-			rows, err = stmt.QueryContext(ctx, args...)
+		stmt, err = db.prepareStmt(ctx, query)
+		if err != nil {
+			return &Row{
+				err:   err,
+				query: query,
+			}
 		}
-
-	} else {
-		rows, err = db.DB.QueryContext(ctx, query, args...)
+		rows, err = stmt.QueryContext(ctx, args...)
+		return &Row{
+			rows:  rows,
+			err:   err,
+			query: query,
+		}
 	}
 
+	rows, err = db.DB.QueryContext(ctx, query, args...)
 	return &Row{
 		rows:  rows,
 		err:   err,
@@ -107,7 +124,7 @@ func (db *DB) ExecBuilder(ctx context.Context, b *Builder) (sql.Result, error) {
 
 func (db *DB) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	if len(args) > 0 {
-		stmt, err := prepareStmt(ctx, db.DB, query)
+		stmt, err := db.prepareStmt(ctx, query)
 		if err != nil {
 			return nil, err
 		}
@@ -118,12 +135,8 @@ func (db *DB) ExecContext(ctx context.Context, query string, args ...any) (sql.R
 }
 
 func (db *DB) Begin(opts *sql.TxOptions) (*Tx, error) {
-	tx, err := db.DB.BeginTx(context.Background(), opts)
-	if err != nil {
-		return nil, err
-	}
+	return db.BeginTx(context.TODO(), opts)
 
-	return &Tx{Tx: tx}, nil
 }
 
 func (db *DB) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
@@ -132,16 +145,16 @@ func (db *DB) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
 		return nil, err
 	}
 
-	return &Tx{Tx: tx}, nil
+	return &Tx{Tx: tx, cachedStmts: make(map[string]*sql.Stmt)}, nil
 }
 
-func (db *DB) Transaction(ctx context.Context, opts *sql.TxOptions, fn func(tx *Tx) error) error {
+func (db *DB) Transaction(ctx context.Context, opts *sql.TxOptions, fn func(ctx context.Context, tx *Tx) error) error {
 	tx, err := db.BeginTx(ctx, opts)
 	if err != nil {
 		return err
 	}
 
-	err = fn(tx)
+	err = fn(ctx, tx)
 	if err != nil {
 		if e := tx.Rollback(); e != nil {
 			log.Error().Str("pkg", "sqle").Str("tag", "tx").Err(e)

@@ -188,7 +188,7 @@ func (m *Migrator) Init(ctx context.Context) error {
 func (m *Migrator) Migrate(ctx context.Context) error {
 	var err error
 	for _, v := range m.Versions {
-		err = m.db.Transaction(ctx, nil, func(tx *sqle.Tx) error {
+		err = m.db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.Tx) error {
 
 			var checksum string
 
