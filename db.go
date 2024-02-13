@@ -9,8 +9,8 @@ import (
 )
 
 type DB struct {
-	noCopy
 	*sql.DB
+	noCopy //nolint
 
 	sync.Mutex
 	stmts      map[string]*cachedStmt

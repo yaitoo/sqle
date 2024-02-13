@@ -7,7 +7,7 @@ import (
 
 type Tx struct {
 	*sql.Tx
-	noCopy
+	noCopy      //nolint
 	cachedStmts map[string]*sql.Stmt
 }
 

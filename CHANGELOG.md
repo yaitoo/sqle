@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - added custom `Binder` support on `Bind` (#4)
 - added `Select` and `Delete` on `SQLBuilder` (#6)
 - added `PreparedStmt` support on `Query` and `Exec` (#7)
+- added `PreparedStmt` support on `Tx` (#8)
 ### Fixed
 - fixed `sql.Scanner` support on `Bind` (#2)
   
