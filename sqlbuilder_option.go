@@ -14,7 +14,7 @@ func WithToName(fn func(string) string) BuilderOption {
 }
 
 // WithAllow only allowed columns can be written to db
-func WithAllow(columns []string) BuilderOption {
+func WithAllow(columns ...string) BuilderOption {
 	return func(opts *BuilderOptions) {
 		opts.Columns = append(opts.Columns, columns...)
 	}
