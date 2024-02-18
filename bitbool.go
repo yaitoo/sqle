@@ -9,7 +9,7 @@ import (
 type BitBool bool
 
 // Value implements the driver.Valuer interface,
-// and turns the BitBool into a bitfield (BIT(1)) for MySQL storage.
+// and turns the BitBool into a bit field (BIT(1)) for MySQL storage.
 func (b BitBool) Value() (driver.Value, error) {
 	if b {
 		return []byte{1}, nil
@@ -19,7 +19,7 @@ func (b BitBool) Value() (driver.Value, error) {
 }
 
 // Scan implements the sql.Scanner interface,
-// and turns the bitfield incoming from MySQL into a BitBool
+// and turns the bit field incoming from MySQL into a BitBool
 func (b *BitBool) Scan(src interface{}) error {
 	if src == nil {
 		return nil
