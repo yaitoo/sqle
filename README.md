@@ -25,6 +25,19 @@ You’ll find the SQLE package useful if you’re not a fan of full-featured ORM
 
 ## Tutorials
 > All examples on https://go.dev/doc/tutorial/database-access can directly work with `sqle.DB` instance. 
+>
+
+### Install SQLE
+- install latest commit from `main` branch
+```
+go get github.com/yaitoo/sqle@main
+```
+
+- install latest release
+```
+go get github.com/yaitoo/sqle@latest
+```
+
 ### Connecting to a Database
 SQLE directly connects to a database by `sql.DB` instance. 
 ```
