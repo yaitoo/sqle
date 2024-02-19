@@ -31,7 +31,7 @@ func New(options ...Option) *Generator {
 	return g
 }
 
-func (g *Generator) Next() uint64 {
+func (g *Generator) Next() int64 {
 	g.Lock()
 
 	defer func() {
@@ -54,11 +54,11 @@ func (g *Generator) Next() uint64 {
 		}
 	}
 
-	return Build(uint64(timeNow.UnixMilli()), g.workerID, g.getDatabaseID(), g.table, g.nextSequence)
+	return Build(timeNow.UnixMilli(), g.workerID, g.getDatabaseID(), g.table, g.nextSequence)
 
 }
 
-func (g *Generator) getDatabaseID() uint16 {
+func (g *Generator) getDatabaseID() int16 {
 	if g.databaseNum < 2 {
 		return 0
 	}
