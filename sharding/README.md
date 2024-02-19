@@ -1,12 +1,12 @@
-# shardid
+# sharding
 
 ## sid-64-bit
 // +----------+------------------+------------+----------------+----------------------+---------------+
-// | signed 1 | timestamp(ms)39  |  worker(2) | db-sharding(10) |   table-sharding(2)  | sequence(10)  |
+// | signed 1 | timestamp(ms)39  |  worker(2) | db-sharding(10)|   table-sharding(2)  | sequence(10)  |
 // +----------+------------------+------------+----------------+----------------------+---------------+
                 39 = 17 years       2 = 4      10=1024          0: no sharding:table         10=1024
                                                                 1: by month    :table-[yyyyMM]
-                                                                2: by week     :table-[yyyyXX]
+                                                                2: by week     :table-[yyyy0XX]
                                                                 3: by day      :table-[yyyyMMDD]
 - signed(1): sid is always positive number
 - timestamp(39): 2^39 (17years) microseconds since 2023-01-01 00:00:00
