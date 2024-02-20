@@ -2,15 +2,12 @@ package sqle
 
 type WhereBuilder struct {
 	*Builder
-	written   bool
-	skipTimes int
+	written    bool
+	shouldSkip bool
 }
 
 func (wb *WhereBuilder) If(predicate bool) *WhereBuilder {
-	if !predicate {
-		wb.skipTimes++
-	}
-
+	wb.shouldSkip = !predicate
 	return wb
 }
 
@@ -28,8 +25,8 @@ func (wb *WhereBuilder) SQL(op string, cmd string) *WhereBuilder {
 		return wb
 	}
 
-	if wb.skipTimes > 0 {
-		wb.skipTimes--
+	if wb.shouldSkip {
+		wb.shouldSkip = false
 		return wb
 	}
 
