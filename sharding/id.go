@@ -64,7 +64,7 @@ func (i *ID) RotateName() string {
 		_, week := i.Time.ISOWeek() //1-53 week
 		return i.Time.Format("2006") + "0" + strconv.Itoa(week)
 	case Monthly:
-		return i.Time.Format("20060102")
+		return i.Time.Format("200601")
 	default:
 		return ""
 	}

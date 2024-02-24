@@ -33,7 +33,7 @@ func TestID(t *testing.T) {
 			timeNow:     time.UnixMilli(TimeEnd),
 			workerID:    3,
 			databaseID:  1023,
-			tableRotate: Monthly,
+			tableRotate: Daily,
 			sequence:    1023,
 		},
 		{
