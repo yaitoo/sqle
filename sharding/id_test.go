@@ -30,7 +30,7 @@ func TestID(t *testing.T) {
 		},
 		{
 			name:        "build_max_values_should_work",
-			timeNow:     time.UnixMilli(TimeEpoch).AddDate(17, 0, 0),
+			timeNow:     time.UnixMilli(TimeEnd),
 			workerID:    3,
 			databaseID:  1023,
 			tableRotate: Monthly,
