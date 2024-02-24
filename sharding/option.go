@@ -6,7 +6,7 @@ type Option func(g *Generator)
 
 func WithWorker(i int8) Option {
 	return func(g *Generator) {
-		if i > 0 && i < 4 {
+		if i >= 0 && i <= MaxWorkerID {
 			g.workerID = i
 		}
 	}
@@ -14,7 +14,7 @@ func WithWorker(i int8) Option {
 
 func WithDatabase(num int16) Option {
 	return func(g *Generator) {
-		if num > 0 && num < 1024 {
+		if num >= 0 && num <= MaxDatabaseID {
 			g.databaseNum = num
 		}
 	}

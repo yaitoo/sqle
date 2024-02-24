@@ -31,10 +31,10 @@ func TestID(t *testing.T) {
 		{
 			name:        "build_max_values_should_work",
 			timeNow:     time.UnixMilli(TimeEnd),
-			workerID:    3,
-			databaseID:  1023,
+			workerID:    MaxWorkerID,
+			databaseID:  MaxDatabaseID,
 			tableRotate: Daily,
-			sequence:    1023,
+			sequence:    MaxSequence,
 		},
 		{
 			name:        "build_should_work",
