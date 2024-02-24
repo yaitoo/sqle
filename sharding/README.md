@@ -2,17 +2,17 @@
 
 ## sid-64-bit
 // +----------+------------------+------------+----------------+----------------------+---------------+
-// | signed 1 | timestamp(ms)39  |  worker(2) | db-sharding(10)|   table-sharding(2)  | sequence(10)  |
+// | signed 1 | timestamp(ms)39  |  worker(2) | db-sharding(10)|   table-rotate(2)    | sequence(10)  |
 // +----------+------------------+------------+----------------+----------------------+---------------+
-                39 = 17 years       2 = 4      10=1024          0: no sharding:table         10=1024
-                                                                1: by month    :table-[yyyyMM]
-                                                                2: by week     :table-[yyyy0XX]
-                                                                3: by day      :table-[yyyyMMDD]
+                39 = 17 years       2 = 4      10=1024          0: none    :table       10=1024
+                                                                1: monthly :table-[YYYYMM]
+                                                                2: weekly  :table-[YYYY0XX]
+                                                                3: daily   :table-[YYYYMMDD]
 - signed(1): sid is always positive number
 - timestamp(39): 2^39 (17years) microseconds since 2023-01-01 00:00:00
 - workers(4): 2^4(16) workers
 - db-sharding(10): 2^10 (1024) MySQL instances
-- table-sharding(2): 2^2(4) table shardings: no/by year/by month/by day
+- table-rotate(2): 2^2(4) table rotate: none/by year/by month/by day
 - sequence(10): 2^10(1024) per microsecond
   
 ## TPS:
