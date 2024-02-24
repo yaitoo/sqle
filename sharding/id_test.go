@@ -33,7 +33,7 @@ func TestID(t *testing.T) {
 			timeNow:     time.UnixMilli(TimeEpoch).AddDate(17, 0, 0),
 			workerID:    3,
 			databaseID:  1023,
-			tableRotate: Daily,
+			tableRotate: Monthly,
 			sequence:    1023,
 		},
 		{
@@ -41,7 +41,7 @@ func TestID(t *testing.T) {
 			timeNow:     time.Now(),
 			workerID:    int8(rand.Intn(4)),
 			databaseID:  int16(rand.Intn(1024)),
-			tableRotate: None,
+			tableRotate: Weekly,
 			sequence:    int16(rand.Intn(1024)),
 		},
 		{
@@ -49,7 +49,7 @@ func TestID(t *testing.T) {
 			timeNow:     time.Now(),
 			workerID:    0,
 			databaseID:  0,
-			tableRotate: None,
+			tableRotate: Daily,
 			sequence:    0,
 			orderby:     true,
 		},
