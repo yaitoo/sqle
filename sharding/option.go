@@ -20,9 +20,9 @@ func WithDatabase(num int16) Option {
 	}
 }
 
-func WithShardTable(ts TableShard) Option {
+func WithShardTable(ts TableRotate) Option {
 	return func(g *Generator) {
-		if ts >= TableShardNone && ts <= TableShardDay {
+		if ts >= None && ts <= Daily {
 			g.table = ts
 		}
 	}

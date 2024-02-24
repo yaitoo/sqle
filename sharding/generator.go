@@ -11,7 +11,7 @@ type Generator struct {
 
 	workerID    int8
 	databaseNum int16
-	table       TableShard
+	table       TableRotate
 	now         func() time.Time
 
 	lastTime       time.Time
@@ -23,7 +23,7 @@ func New(options ...Option) *Generator {
 	g := &Generator{
 		now:         time.Now,
 		databaseNum: 1,
-		table:       TableShardNone,
+		table:       None,
 	}
 	for _, option := range options {
 		option(g)
@@ -41,7 +41,7 @@ func (g *Generator) Next() int64 {
 
 	timeNow := g.now()
 	// sequence overflow capacity
-	if g.nextSequence > 2047 {
+	if g.nextSequence > 1023 {
 		// time move backwards, waiting system clock to move forward
 		if !timeNow.After(g.lastTime) {
 			g.nextSequence = 0

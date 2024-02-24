@@ -27,6 +27,7 @@ func New(cmd ...string) *Builder {
 		params: make(map[string]any),
 	}
 
+	// MySQL as default
 	UseMySQL(b)
 
 	for i, it := range cmd {
