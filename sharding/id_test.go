@@ -49,7 +49,7 @@ func TestID(t *testing.T) {
 			timeNow:     time.Now(),
 			workerID:    0,
 			databaseID:  0,
-			tableRotate: Daily,
+			tableRotate: Monthly,
 			sequence:    0,
 			orderby:     true,
 		},
