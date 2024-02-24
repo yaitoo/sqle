@@ -64,8 +64,8 @@ func From(id int64) ID {
 		TableShard: TableShard(int8(id>>TableShift) & MaxTableShard),
 		DatabaseID: int16(id>>DatabaseShift) & MaxDatabaseID,
 		WorkerID:   int8(id>>WorkerShift) & MaxWorkerID,
-		TimeNow:    int64(id>>TimeNowShift) & MaxTimeNow,
+		TimeNow:    int64(id>>TimeNowShift)&MaxTimeNow + TimeEpoch,
 	}
-	s.Time = time.UnixMilli(int64(s.TimeNow + TimeEpoch)).UTC()
+	s.Time = time.UnixMilli(s.TimeNow).UTC()
 	return s
 }

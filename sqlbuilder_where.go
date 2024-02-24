@@ -20,7 +20,6 @@ func (wb *WhereBuilder) Or(cmd string) *WhereBuilder {
 }
 
 func (wb *WhereBuilder) SQL(op string, cmd string) *WhereBuilder {
-
 	if cmd == "" {
 		return wb
 	}
