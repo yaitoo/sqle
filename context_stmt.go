@@ -13,7 +13,7 @@ type cachedStmt struct {
 	lastUsed time.Time
 }
 
-func (db *DB) prepareStmt(ctx context.Context, query string) (*sql.Stmt, error) {
+func (db *Context) prepareStmt(ctx context.Context, query string) (*sql.Stmt, error) {
 	db.stmtsMutex.RLock()
 	s, ok := db.stmts[query]
 	db.stmtsMutex.RUnlock()
@@ -39,7 +39,7 @@ func (db *DB) prepareStmt(ctx context.Context, query string) (*sql.Stmt, error) 
 	return stmt, nil
 }
 
-func (db *DB) closeIdleStmt() {
+func (db *Context) closeIdleStmt() {
 	for {
 		<-time.After(1 * time.Minute)
 

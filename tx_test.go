@@ -10,11 +10,9 @@ import (
 )
 
 func TestTx(t *testing.T) {
-	d, teardown, err := createSQLite3()
-	defer teardown()
-	require.NoError(t, err)
+	d := createSQLite3()
 
-	_, err = d.Exec("CREATE TABLE `users` (`id` int , `status` tinyint,`email` varchar(50),`passwd` varchar(120), `salt` varchar(45), `created` DATETIME, PRIMARY KEY (`id`))")
+	_, err := d.Exec("CREATE TABLE `users` (`id` int , `status` tinyint,`email` varchar(50),`passwd` varchar(120), `salt` varchar(45), `created` DATETIME, PRIMARY KEY (`id`))")
 	require.NoError(t, err)
 
 	now := time.Now()

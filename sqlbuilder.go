@@ -2,8 +2,9 @@ package sqle
 
 import (
 	"errors"
-	"strconv"
 	"strings"
+
+	"github.com/yaitoo/sqle/sharding"
 )
 
 var (
@@ -171,23 +172,11 @@ func (b *Builder) Delete(table string) *Builder {
 	return b
 }
 
-func UsePostgres(b *Builder) {
-	b.Quote = "`"
-	b.Parameterize = func(name string, index int) string {
-		return "$" + strconv.Itoa(index)
+func (b *Builder) On(id sharding.ID) *Builder {
+	rn := id.RotateName()
+	if rn != "" {
+		rn = "_" + rn
 	}
-}
 
-func UseMySQL(b *Builder) {
-	b.Quote = "`"
-	b.Parameterize = func(name string, index int) string {
-		return "?"
-	}
-}
-
-func UseOracle(b *Builder) {
-	b.Quote = "`"
-	b.Parameterize = func(name string, index int) string {
-		return ":" + name
-	}
+	return b.Input("rotate", rn)
 }
