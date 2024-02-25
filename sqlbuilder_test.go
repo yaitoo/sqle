@@ -34,7 +34,7 @@ func TestBuilder(t *testing.T) {
 		{
 			name: "build_with_input_tokens",
 			build: func() *Builder {
-				b := New("SELECT * FROM", " orders_<yyyyMM> as orders")
+				b := New("SELECT * FROM", "orders_<yyyyMM> as orders")
 				b.SQL(" WHERE orders.created>=now()")
 				b.Input("yyyyMM", "202401")
 				return b
