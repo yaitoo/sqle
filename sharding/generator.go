@@ -9,21 +9,21 @@ type Generator struct {
 	sync.Mutex
 	_ noCopy // nolint: unused
 
-	workerID    int8
-	databaseNum int16
-	table       TableRotate
-	now         func() time.Time
+	workerID      int8
+	databaseTotal int16
+	tableRotate   TableRotate
+	now           func() time.Time
 
-	lastTime       time.Time
+	lastMillis     int64
 	nextSequence   int16
 	nextDatabaseID int16
 }
 
 func New(options ...Option) *Generator {
 	g := &Generator{
-		now:         time.Now,
-		databaseNum: 1,
-		table:       None,
+		now:           time.Now,
+		databaseTotal: 1,
+		tableRotate:   None,
 	}
 	for _, option := range options {
 		option(g)
@@ -39,27 +39,27 @@ func (g *Generator) Next() int64 {
 		g.Unlock()
 	}()
 
-	timeNow := g.now()
-	// sequence overflow capacity
-	if g.nextSequence > 1023 {
-		// time move backwards, waiting system clock to move forward
-		if !timeNow.After(g.lastTime) {
+	nowMillis := g.now().UnixMilli()
+
+	if g.nextSequence > MaxSequence {
+		// time move backwards,and sequence overflows capacity, waiting system clock to move forward
+		if nowMillis < g.lastMillis {
 			g.nextSequence = 0
-			timeNow = g.waitNextMillis()
+			nowMillis = g.tillNextMillis()
 		}
 	} else {
-		// time move backwards, use Built-in clock to move forward
-		if !timeNow.After(g.lastTime) {
-			timeNow = g.moveNextMillis()
+		// time move backwards,but sequence doesn't overflow capacity, use Built-in clock to move forward
+		if nowMillis < g.lastMillis {
+			nowMillis = g.moveNextMillis()
 		}
 	}
 
-	return Build(timeNow.UnixMilli(), g.workerID, g.getDatabaseID(), g.table, g.nextSequence)
+	return Build(nowMillis, g.workerID, g.getNextDatabaseID(), g.tableRotate, g.nextSequence)
 
 }
 
-func (g *Generator) getDatabaseID() int16 {
-	if g.databaseNum < 2 {
+func (g *Generator) getNextDatabaseID() int16 {
+	if g.databaseTotal <= 1 {
 		return 0
 	}
 
@@ -67,7 +67,7 @@ func (g *Generator) getDatabaseID() int16 {
 		g.nextDatabaseID++
 	}()
 
-	if g.nextDatabaseID < g.databaseNum {
+	if g.nextDatabaseID < g.databaseTotal {
 		return g.nextDatabaseID
 	}
 
@@ -75,22 +75,22 @@ func (g *Generator) getDatabaseID() int16 {
 	return 0
 }
 
-func (g *Generator) waitNextMillis() time.Time {
-	last := g.now()
+func (g *Generator) tillNextMillis() int64 {
+	lastMillis := g.now().UnixMilli()
 	for {
-		if last.After(g.lastTime) {
+		if lastMillis > g.lastMillis {
 			break
 		}
 
-		last = g.now()
+		lastMillis = g.now().UnixMilli()
 	}
 
-	g.lastTime = last
+	g.lastMillis = lastMillis
 
-	return last
+	return lastMillis
 }
-func (g *Generator) moveNextMillis() time.Time {
-	g.lastTime = g.lastTime.Add(1 * time.Millisecond)
+func (g *Generator) moveNextMillis() int64 {
+	g.lastMillis = g.lastMillis + 1
 
-	return g.lastTime
+	return g.lastMillis
 }
