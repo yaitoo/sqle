@@ -46,12 +46,12 @@ func TestSharding(t *testing.T) {
 	}
 
 	db := Open(dbs...)
-	idgen := sharding.New(sharding.WithDatabase(10))
+	gen := sharding.New(sharding.WithDatabase(10))
 
 	ids := make([]sharding.ID, 10)
 
 	for i := 0; i < 10; i++ {
-		id := idgen.Next()
+		id := gen.Next()
 		b := New().On(id).
 			Insert("users").
 			Set("id", id.Value).
