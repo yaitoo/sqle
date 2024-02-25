@@ -40,19 +40,27 @@ func (g *Generator) Next() int64 {
 	}()
 
 	nowMillis := g.now().UnixMilli()
-
-	if g.nextSequence > MaxSequence {
-		// time move backwards,and sequence overflows capacity, waiting system clock to move forward
-		if nowMillis < g.lastMillis {
+	if nowMillis < g.lastMillis {
+		if g.nextSequence > MaxSequence {
+			// time move backwards,and sequence overflows capacity, waiting system clock to move forward
 			g.nextSequence = 0
 			nowMillis = g.tillNextMillis()
-		}
-	} else {
-		// time move backwards,but sequence doesn't overflow capacity, use Built-in clock to move forward
-		if nowMillis < g.lastMillis {
+		} else {
+			// time move backwards,but sequence doesn't overflow capacity, use Built-in clock to move forward
 			nowMillis = g.moveNextMillis()
 		}
 	}
+
+	// sequence overflows capacity
+	if g.nextSequence > MaxSequence {
+		if nowMillis == g.lastMillis {
+			nowMillis = g.tillNextMillis()
+		}
+
+		g.nextSequence = 0
+	}
+
+	g.lastMillis = nowMillis
 
 	return Build(nowMillis, g.workerID, g.getNextDatabaseID(), g.tableRotate, g.nextSequence)
 
@@ -85,12 +93,8 @@ func (g *Generator) tillNextMillis() int64 {
 		lastMillis = g.now().UnixMilli()
 	}
 
-	g.lastMillis = lastMillis
-
 	return lastMillis
 }
 func (g *Generator) moveNextMillis() int64 {
-	g.lastMillis = g.lastMillis + 1
-
-	return g.lastMillis
+	return g.lastMillis + 1
 }

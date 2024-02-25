@@ -40,7 +40,8 @@
 
 - System Clock Dependency
   You should use NTP to keep your system clock accurate.
-
+1708387200000
+1708300800000
 - Time move backwards   
   + if sequence doesn't overflow, let's use last timestamp and next sequence. system clock might moves forward and greater than last timestamp on next id generation 
   + if sequence overflows, and has to be reset. let's built-in clock to get timestamp till system clock moves forward and greater than built-in clock
