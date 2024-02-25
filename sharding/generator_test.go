@@ -127,7 +127,7 @@ func TestGenerator(t *testing.T) {
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, Monthly, 0)
 				require.Equal(t, want, id)
 
-				md := From(id)
+				md := Parse(id)
 				require.Equal(t, "202402", md.RotateName())
 			},
 		},
@@ -145,7 +145,7 @@ func TestGenerator(t *testing.T) {
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, Weekly, 0)
 				require.Equal(t, want, id)
 
-				md := From(id)
+				md := Parse(id)
 				require.Equal(t, "2024008", md.RotateName())
 			},
 		},
@@ -163,7 +163,7 @@ func TestGenerator(t *testing.T) {
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, Daily, 0)
 				require.Equal(t, want, id)
 
-				md := From(id)
+				md := Parse(id)
 				require.Equal(t, "20240220", md.RotateName())
 			},
 		},
@@ -188,14 +188,14 @@ func TestGenerator(t *testing.T) {
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, Daily, MaxSequence)
 				require.Equal(t, want, id)
 
-				md := From(id)
+				md := Parse(id)
 				require.Equal(t, "20240220", md.RotateName())
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(1*time.Millisecond).UnixMilli(), 1, 0, Daily, 0)
 				require.Equal(t, want, id)
 
-				md = From(id)
+				md = Parse(id)
 				require.Equal(t, "20240220", md.RotateName())
 			},
 		},
@@ -223,14 +223,14 @@ func TestGenerator(t *testing.T) {
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, Daily, 0)
 				require.Equal(t, want, id)
 
-				md := From(id)
+				md := Parse(id)
 				require.Equal(t, "20240220", md.RotateName())
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(1*time.Millisecond).UnixMilli(), 1, 0, Daily, 1)
 				require.Equal(t, want, id)
 
-				md = From(id)
+				md = Parse(id)
 				require.Equal(t, "20240220", md.RotateName())
 
 			},
@@ -260,14 +260,14 @@ func TestGenerator(t *testing.T) {
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, Daily, MaxSequence)
 				require.Equal(t, want, id)
 
-				md := From(id)
+				md := Parse(id)
 				require.Equal(t, "20240220", md.RotateName())
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(2*time.Millisecond).UnixMilli(), 1, 0, Daily, 0)
 				require.Equal(t, want, id)
 
-				md = From(id)
+				md = Parse(id)
 				require.Equal(t, "20240220", md.RotateName())
 
 			},

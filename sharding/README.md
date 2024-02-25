@@ -2,16 +2,16 @@
 
 ## sid-64-bit
 // +----------+-------------------+------------+----------------+----------------------+---------------+
-// | signed 1 | time millis (39)  |  worker(2) | db-sharding(10)|   table-rotate(2)    | sequence(10)  |
+// | signed 1 |      millis (39)  |  worker(2) | db-sharding(10)|   table-rotate(2)    | sequence(10)  |
 // +----------+-------------------+------------+----------------+----------------------+---------------+
-                39 = 17 years        2 = 4      10=1024          0: none    :table       10=1024
+                39 = 17 years        2 = 4      10=1024         0: none    :table         10=1024
                                                                 1: monthly :table-[YYYYMM]
                                                                 2: weekly  :table-[YYYY0XX]
                                                                 3: daily   :table-[YYYYMMDD]
 - signed(1): sid is always positive number
-- time millis(39): 2^39 (17years) unix milliseconds since 2024-02-19 00:00:00
+- millis(39): 2^39 (17years) unix milliseconds since 2024-02-19 00:00:00
 - workers(4): 2^4(16) workers
-- db-sharding(10): 2^10 (1024) MySQL instances
+- db-sharding(10): 2^10 (1024) db instances
 - table-rotate(2): 2^2(4) table rotate: none/by year/by month/by day
 - sequence(10): 2^10(1024) per milliseconds
   
@@ -40,8 +40,7 @@
 
 - System Clock Dependency
   You should use NTP to keep your system clock accurate.
-1708387200000
-1708300800000
+
 - Time move backwards   
   + if sequence doesn't overflow, let's use last timestamp and next sequence. system clock might moves forward and greater than last timestamp on next id generation 
   + if sequence overflows, and has to be reset. let's built-in clock to get timestamp till system clock moves forward and greater than built-in clock

@@ -24,6 +24,7 @@ func New(options ...Option) *Generator {
 		now:           time.Now,
 		databaseTotal: 1,
 		tableRotate:   None,
+		workerID:      acquireWorkerID(),
 	}
 	for _, option := range options {
 		option(g)

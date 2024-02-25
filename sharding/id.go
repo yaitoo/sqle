@@ -74,7 +74,7 @@ func Build(timeNow int64, workerID int8, databaseID int16, tr TableRotate, seque
 	return int64(timeNow-TimeEpoch)<<TimeNowShift | int64(workerID)<<WorkerShift | int64(databaseID)<<DatabaseShift | int64(tr)<<TableShift | int64(sequence)
 }
 
-func From(id int64) ID {
+func Parse(id int64) ID {
 	s := ID{
 		ID:          id,
 		Sequence:    int16(id) & MaxSequence,

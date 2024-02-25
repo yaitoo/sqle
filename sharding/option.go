@@ -1,6 +1,8 @@
 package sharding
 
-import "time"
+import (
+	"time"
+)
 
 type Option func(g *Generator)
 

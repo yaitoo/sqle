@@ -59,7 +59,7 @@ func TestID(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			id := Build(test.timeNow.UnixMilli(), test.workerID, test.databaseID, test.tableRotate, test.sequence)
 
-			result := From(id)
+			result := Parse(id)
 
 			require.Equal(t, test.timeNow.UnixMilli(), result.Time.UnixMilli())
 			require.Equal(t, test.workerID, result.WorkerID)
