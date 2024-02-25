@@ -27,6 +27,7 @@ func New(cmd ...string) *Builder {
 		params: make(map[string]any),
 	}
 
+	// MySQL as default
 	UseMySQL(b)
 
 	for i, it := range cmd {
@@ -173,7 +174,7 @@ func (b *Builder) Delete(table string) *Builder {
 func UsePostgres(b *Builder) {
 	b.Quote = "`"
 	b.Parameterize = func(name string, index int) string {
-		return "?" + strconv.Itoa(index)
+		return "$" + strconv.Itoa(index)
 	}
 }
 

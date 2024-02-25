@@ -25,6 +25,19 @@ You’ll find the SQLE package useful if you’re not a fan of full-featured ORM
 
 ## Tutorials
 > All examples on https://go.dev/doc/tutorial/database-access can directly work with `sqle.DB` instance. 
+>
+
+### Install SQLE
+- install latest commit from `main` branch
+```
+go get github.com/yaitoo/sqle@main
+```
+
+- install latest release
+```
+go get github.com/yaitoo/sqle@latest
+```
+
 ### Connecting to a Database
 SQLE directly connects to a database by `sql.DB` instance. 
 ```
@@ -235,7 +248,7 @@ func albumsByArtist(name string) ([]Album, error) {
     // An albums slice to hold data from returned rows.
     var albums []Album
 
-    cmd := sql.New("SELECT * FROM album").Where().
+    cmd := sql.New().Select("album").Where().
         If(name != "").And("artist = {artist}").
         Param("artist",name)
 
@@ -291,7 +304,7 @@ func albumByID(id int64) (Album, error) {
 func albumByID(id int64) (Album, error) {
     // An album to hold data from the returned row.
     var alb Album
-    cmd := sqle.New("SELECT * FROM album").
+    cmd := sqle.New().Select("album").
         Where("id = {id}").
         Param("id",id)
 
@@ -383,7 +396,7 @@ func deleteAlbumByID(id int64) error {
 - delete album by named sql statement
 ```
 func deleteAlbumByID(id int64) error {
-    _, err := db.ExecBuilder(context.TODO(), sqle.New("DELETE FROM album WHERE id = {id}").
+    _, err := db.ExecBuilder(context.TODO(), sqle.New().Delete("album").Where("id = {id}").
         Param("id",id))
 
     return err 
@@ -395,7 +408,7 @@ perform a set of operations within a transaction
 ```
 func deleteAlbums(ids []int64) error {
 
-    return db.Transaction(ctx, &sql.TxOptions{}, func(tx *sqle.Tx) error {
+    return db.Transaction(ctx, &sql.TxOptions{}, func(ctx context.Context,tx *sqle.Tx) error {
         var err error
         for _, id := range ids {
             _, err = tx.Exec("DELETE FROM album WHERE id=?",id)
