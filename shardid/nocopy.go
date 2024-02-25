@@ -1,4 +1,4 @@
-package sharding
+package shardid
 
 // nolint: unused
 type noCopy struct{}

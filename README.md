@@ -423,10 +423,10 @@ func deleteAlbums(ids []int64) error {
 
 
 ### Table Rotation
-use `sharding.ID` to enable rotate feature for a table based on option (None/Monthly/Weekly/Daily)
+use `shardid.ID` to enable rotate feature for a table based on option (NoRotate/MonthlyRotate/WeeklyRotate/DailyRotate)
 
 ```
-gen := sharding.New(WithTableRotate(sharing.Daily))
+gen := shardid.New(WithTableRotate(shardid.Daily))
 id := gen.Next()
 
 b := New().On(id) //call `On` to enable rotate feature, and setup a input variable <rotate>
@@ -442,9 +442,9 @@ see more [examples](sqlbuilder_test.go#L490)
 
 
 ### Database Sharding
-use `sharding.ID` to enable auto-sharding for any sql
+use `shardid.ID` to enable sharding feature for any sql
 ```
-gen := sharding.New(WithDatabase(10))
+gen := shardid.New(WithDatabase(10))
 id := gen.Next()
 
 b := New().On(id) //call `On` to setup an input variable named `rotate`, and enable rotation feature

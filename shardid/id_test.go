@@ -1,4 +1,4 @@
-package sharding
+package shardid
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ func TestID(t *testing.T) {
 			timeNow:     time.UnixMilli(TimeEpoch),
 			workerID:    0,
 			databaseID:  0,
-			tableRotate: None,
+			tableRotate: NoRotate,
 			sequence:    0,
 		},
 		{
@@ -33,7 +33,7 @@ func TestID(t *testing.T) {
 			timeNow:     time.UnixMilli(TimeEnd),
 			workerID:    MaxWorkerID,
 			databaseID:  MaxDatabaseID,
-			tableRotate: Daily,
+			tableRotate: DailyRotate,
 			sequence:    MaxSequence,
 		},
 		{
@@ -41,7 +41,7 @@ func TestID(t *testing.T) {
 			timeNow:     time.Now(),
 			workerID:    int8(rand.Intn(4)),
 			databaseID:  int16(rand.Intn(1024)),
-			tableRotate: Weekly,
+			tableRotate: WeeklyRotate,
 			sequence:    int16(rand.Intn(1024)),
 		},
 		{
@@ -49,7 +49,7 @@ func TestID(t *testing.T) {
 			timeNow:     time.Now(),
 			workerID:    0,
 			databaseID:  0,
-			tableRotate: Monthly,
+			tableRotate: MonthlyRotate,
 			sequence:    0,
 			orderby:     true,
 		},
@@ -66,14 +66,14 @@ func TestID(t *testing.T) {
 			require.Equal(t, test.sequence, id.Sequence)
 
 			switch test.tableRotate {
-			case None:
+			case NoRotate:
 				require.Equal(t, "", id.RotateName())
-			case Monthly:
+			case MonthlyRotate:
 				require.Equal(t, test.timeNow.UTC().Format("200601"), id.RotateName())
-			case Weekly:
+			case WeeklyRotate:
 				_, week := test.timeNow.UTC().ISOWeek()
 				require.Equal(t, test.timeNow.UTC().Format("2006")+fmt.Sprintf("%03d", week), id.RotateName())
-			case Daily:
+			case DailyRotate:
 				require.Equal(t, test.timeNow.UTC().Format("20060102"), id.RotateName())
 			default:
 				require.Equal(t, "", id.RotateName())

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/yaitoo/sqle/sharding"
+	"github.com/yaitoo/sqle/shardid"
 )
 
 var (
@@ -172,7 +172,7 @@ func (b *Builder) Delete(table string) *Builder {
 	return b
 }
 
-func (b *Builder) On(id sharding.ID) *Builder {
+func (b *Builder) On(id shardid.ID) *Builder {
 	rn := id.RotateName()
 	if rn != "" {
 		rn = "_" + rn

@@ -8,7 +8,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
-	"github.com/yaitoo/sqle/sharding"
+	"github.com/yaitoo/sqle/shardid"
 )
 
 func createSQLite3() *sql.DB {
@@ -46,9 +46,9 @@ func TestSharding(t *testing.T) {
 	}
 
 	db := Open(dbs...)
-	gen := sharding.New(sharding.WithDatabase(10))
+	gen := shardid.New(shardid.WithDatabase(10))
 
-	ids := make([]sharding.ID, 10)
+	ids := make([]shardid.ID, 10)
 
 	for i := 0; i < 10; i++ {
 		id := gen.Next()

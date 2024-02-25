@@ -1,4 +1,4 @@
-package sharding
+package shardid
 
 import (
 	"sync"
@@ -23,7 +23,7 @@ func New(options ...Option) *Generator {
 	g := &Generator{
 		now:           time.Now,
 		databaseTotal: 1,
-		tableRotate:   None,
+		tableRotate:   NoRotate,
 		workerID:      acquireWorkerID(),
 	}
 	for _, option := range options {

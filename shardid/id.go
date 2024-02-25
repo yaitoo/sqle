@@ -1,4 +1,4 @@
-package sharding
+package shardid
 
 import (
 	"fmt"
@@ -38,10 +38,10 @@ const (
 type TableRotate int8
 
 var (
-	None    TableRotate = 0
-	Monthly TableRotate = 1
-	Weekly  TableRotate = 2
-	Daily   TableRotate = 3
+	NoRotate      TableRotate = 0
+	MonthlyRotate TableRotate = 1
+	WeeklyRotate  TableRotate = 2
+	DailyRotate   TableRotate = 3
 )
 
 type ID struct {
@@ -58,12 +58,12 @@ type ID struct {
 
 func (i *ID) RotateName() string {
 	switch i.TableRotate {
-	case Daily:
+	case DailyRotate:
 		return i.Time.Format("20060102")
-	case Weekly:
+	case WeeklyRotate:
 		_, week := i.Time.ISOWeek() //1-53 week
 		return i.Time.Format("2006") + fmt.Sprintf("%03d", week)
-	case Monthly:
+	case MonthlyRotate:
 		return i.Time.Format("200601")
 	default:
 		return ""

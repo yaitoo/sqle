@@ -3,7 +3,7 @@ package sqle
 import (
 	"database/sql"
 
-	"github.com/yaitoo/sqle/sharding"
+	"github.com/yaitoo/sqle/shardid"
 )
 
 type DB struct {
@@ -34,6 +34,6 @@ func Open(dbs ...*sql.DB) *DB {
 	return d
 }
 
-func (db *DB) On(id sharding.ID) *Context {
+func (db *DB) On(id shardid.ID) *Context {
 	return db.dbs[int(id.DatabaseID)]
 }

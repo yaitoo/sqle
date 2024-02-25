@@ -6,7 +6,7 @@ import (
 
 	"github.com/iancoleman/strcase"
 	"github.com/stretchr/testify/require"
-	"github.com/yaitoo/sqle/sharding"
+	"github.com/yaitoo/sqle/shardid"
 )
 
 func TestBuilder(t *testing.T) {
@@ -447,7 +447,7 @@ func TestBuilder(t *testing.T) {
 		{
 			name: "build_none_rotate_should_work",
 			build: func() *Builder {
-				id := sharding.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, sharding.None, 0)
+				id := shardid.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, shardid.NoRotate, 0)
 				b := New().On(id)
 				b.Delete("orders<rotate>").Where().
 					If(true).And("order_id = {order_id}").
@@ -468,7 +468,7 @@ func TestBuilder(t *testing.T) {
 		{
 			name: "build_monthly_rotate_should_work",
 			build: func() *Builder {
-				id := sharding.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, sharding.Monthly, 0)
+				id := shardid.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, shardid.MonthlyRotate, 0)
 				b := New().On(id)
 				b.Delete("orders<rotate>").Where().
 					If(true).And("order_id = {order_id}").
@@ -489,7 +489,7 @@ func TestBuilder(t *testing.T) {
 		{
 			name: "build_weekly_rotate_should_work",
 			build: func() *Builder {
-				id := sharding.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, sharding.Weekly, 0)
+				id := shardid.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, shardid.WeeklyRotate, 0)
 				b := New().On(id)
 				b.Delete("orders<rotate>").Where().
 					If(true).And("order_id = {order_id}").
@@ -510,7 +510,7 @@ func TestBuilder(t *testing.T) {
 		{
 			name: "build_daily_rotate_should_work",
 			build: func() *Builder {
-				id := sharding.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, sharding.Daily, 0)
+				id := shardid.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, shardid.DailyRotate, 0)
 				b := New().On(id)
 				b.Delete("orders<rotate>").Where().
 					If(true).And("order_id = {order_id}").

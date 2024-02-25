@@ -1,4 +1,4 @@
-package sharding
+package shardid
 
 import (
 	"testing"
@@ -24,15 +24,15 @@ func TestGenerator(t *testing.T) {
 			},
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
-				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, None, 0)
+				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, NoRotate, 0)
 				require.Equal(t, want.Value, id.Value)
 
 				id = gen.Next()
-				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, None, 1)
+				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, NoRotate, 1)
 				require.Equal(t, want.Value, id.Value)
 
 				id = gen.Next()
-				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, None, 2)
+				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, NoRotate, 2)
 				require.Equal(t, want.Value, id.Value)
 
 			},
@@ -48,15 +48,15 @@ func TestGenerator(t *testing.T) {
 			},
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
-				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, None, 0)
+				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, NoRotate, 0)
 				require.Equal(t, want.Value, id.Value)
 
 				id = gen.Next()
-				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, None, 1)
+				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, NoRotate, 1)
 				require.Equal(t, want.Value, id.Value)
 
 				id = gen.Next()
-				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, None, 2)
+				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, NoRotate, 2)
 				require.Equal(t, want.Value, id.Value)
 
 			},
@@ -72,15 +72,15 @@ func TestGenerator(t *testing.T) {
 			},
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
-				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, None, 0)
+				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, NoRotate, 0)
 				require.Equal(t, want.Value, id.Value)
 
 				id = gen.Next()
-				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 1, None, 1)
+				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 1, NoRotate, 1)
 				require.Equal(t, want.Value, id.Value)
 
 				id = gen.Next()
-				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 2, None, 2)
+				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 2, NoRotate, 2)
 				require.Equal(t, want.Value, id.Value)
 
 			},
@@ -96,19 +96,19 @@ func TestGenerator(t *testing.T) {
 			},
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
-				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, None, 0)
+				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, NoRotate, 0)
 				require.Equal(t, want.Value, id.Value)
 
 				id = gen.Next()
-				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 1, None, 1)
+				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 1, NoRotate, 1)
 				require.Equal(t, want.Value, id.Value)
 
 				id = gen.Next()
-				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, None, 2)
+				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, NoRotate, 2)
 				require.Equal(t, want.Value, id.Value)
 
 				id = gen.Next()
-				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 1, None, 3)
+				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 1, NoRotate, 3)
 				require.Equal(t, want.Value, id.Value)
 
 			},
@@ -118,13 +118,13 @@ func TestGenerator(t *testing.T) {
 			new: func() *Generator {
 				g := New(WithTimeNow(func() time.Time {
 					return time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC)
-				}), WithWorkerID(1), WithDatabase(3), WithTableRotate(Monthly))
+				}), WithWorkerID(1), WithDatabase(3), WithTableRotate(MonthlyRotate))
 
 				return g
 			},
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
-				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, Monthly, 0)
+				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, MonthlyRotate, 0)
 				require.Equal(t, want.Value, id.Value)
 				require.Equal(t, "202402", id.RotateName())
 			},
@@ -134,13 +134,13 @@ func TestGenerator(t *testing.T) {
 			new: func() *Generator {
 				g := New(WithTimeNow(func() time.Time {
 					return time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC)
-				}), WithWorkerID(1), WithDatabase(3), WithTableRotate(Weekly))
+				}), WithWorkerID(1), WithDatabase(3), WithTableRotate(WeeklyRotate))
 
 				return g
 			},
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
-				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, Weekly, 0)
+				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, WeeklyRotate, 0)
 				require.Equal(t, want.Value, id.Value)
 
 				require.Equal(t, "2024008", id.RotateName())
@@ -151,13 +151,13 @@ func TestGenerator(t *testing.T) {
 			new: func() *Generator {
 				g := New(WithTimeNow(func() time.Time {
 					return time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC)
-				}), WithWorkerID(1), WithDatabase(3), WithTableRotate(Daily))
+				}), WithWorkerID(1), WithDatabase(3), WithTableRotate(DailyRotate))
 
 				return g
 			},
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
-				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, Daily, 0)
+				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, DailyRotate, 0)
 				require.Equal(t, want.Value, id.Value)
 
 				require.Equal(t, "20240220", id.RotateName())
@@ -174,20 +174,20 @@ func TestGenerator(t *testing.T) {
 
 					return time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(time.Duration(i) * time.Millisecond)
 
-				}), WithWorkerID(1), WithTableRotate(Daily))
+				}), WithWorkerID(1), WithTableRotate(DailyRotate))
 
 				return g
 			},
 			assert: func(t *testing.T, gen *Generator) {
 				gen.nextSequence = MaxSequence
 				id := gen.Next()
-				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, Daily, MaxSequence)
+				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, DailyRotate, MaxSequence)
 				require.Equal(t, want.Value, id.Value)
 
 				require.Equal(t, "20240220", id.RotateName())
 
 				id = gen.Next()
-				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(1*time.Millisecond).UnixMilli(), 1, 0, Daily, 0)
+				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(1*time.Millisecond).UnixMilli(), 1, 0, DailyRotate, 0)
 				require.Equal(t, want.Value, id.Value)
 
 				require.Equal(t, "20240220", id.RotateName())
@@ -208,18 +208,18 @@ func TestGenerator(t *testing.T) {
 
 					return time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(time.Duration(i) * time.Millisecond)
 
-				}), WithWorkerID(1), WithTableRotate(Daily))
+				}), WithWorkerID(1), WithTableRotate(DailyRotate))
 
 				return g
 			},
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
-				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, Daily, 0)
+				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, DailyRotate, 0)
 				require.Equal(t, want.Value, id.Value)
 				require.Equal(t, "20240220", id.RotateName())
 
 				id = gen.Next()
-				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(1*time.Millisecond).UnixMilli(), 1, 0, Daily, 1)
+				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(1*time.Millisecond).UnixMilli(), 1, 0, DailyRotate, 1)
 				require.Equal(t, want.Value, id.Value)
 				require.Equal(t, "20240220", id.RotateName())
 
@@ -240,20 +240,20 @@ func TestGenerator(t *testing.T) {
 
 					return time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(time.Duration(i) * time.Millisecond)
 
-				}), WithWorkerID(1), WithTableRotate(Daily))
+				}), WithWorkerID(1), WithTableRotate(DailyRotate))
 
 				return g
 			},
 			assert: func(t *testing.T, gen *Generator) {
 				gen.nextSequence = MaxSequence
 				id := gen.Next()
-				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, Daily, MaxSequence)
+				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, DailyRotate, MaxSequence)
 				require.Equal(t, want.Value, id.Value)
 
 				require.Equal(t, "20240220", id.RotateName())
 
 				id = gen.Next()
-				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(2*time.Millisecond).UnixMilli(), 1, 0, Daily, 0)
+				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(2*time.Millisecond).UnixMilli(), 1, 0, DailyRotate, 0)
 				require.Equal(t, want.Value, id.Value)
 
 				require.Equal(t, "20240220", id.RotateName())
