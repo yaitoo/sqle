@@ -1,4 +1,4 @@
-package sharding
+package shardid
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ func TestID(t *testing.T) {
 			timeNow:     time.UnixMilli(TimeEpoch),
 			workerID:    0,
 			databaseID:  0,
-			tableRotate: None,
+			tableRotate: NoRotate,
 			sequence:    0,
 		},
 		{
@@ -33,7 +33,7 @@ func TestID(t *testing.T) {
 			timeNow:     time.UnixMilli(TimeEnd),
 			workerID:    MaxWorkerID,
 			databaseID:  MaxDatabaseID,
-			tableRotate: Daily,
+			tableRotate: DailyRotate,
 			sequence:    MaxSequence,
 		},
 		{
@@ -41,7 +41,7 @@ func TestID(t *testing.T) {
 			timeNow:     time.Now(),
 			workerID:    int8(rand.Intn(4)),
 			databaseID:  int16(rand.Intn(1024)),
-			tableRotate: Weekly,
+			tableRotate: WeeklyRotate,
 			sequence:    int16(rand.Intn(1024)),
 		},
 		{
@@ -49,7 +49,7 @@ func TestID(t *testing.T) {
 			timeNow:     time.Now(),
 			workerID:    0,
 			databaseID:  0,
-			tableRotate: Monthly,
+			tableRotate: MonthlyRotate,
 			sequence:    0,
 			orderby:     true,
 		},
@@ -59,26 +59,24 @@ func TestID(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			id := Build(test.timeNow.UnixMilli(), test.workerID, test.databaseID, test.tableRotate, test.sequence)
 
-			result := Parse(id)
-
-			require.Equal(t, test.timeNow.UnixMilli(), result.Time.UnixMilli())
-			require.Equal(t, test.workerID, result.WorkerID)
-			require.Equal(t, test.databaseID, result.DatabaseID)
-			require.Equal(t, test.tableRotate, result.TableRotate)
-			require.Equal(t, test.sequence, result.Sequence)
+			require.Equal(t, test.timeNow.UnixMilli(), id.Time.UnixMilli())
+			require.Equal(t, test.workerID, id.WorkerID)
+			require.Equal(t, test.databaseID, id.DatabaseID)
+			require.Equal(t, test.tableRotate, id.TableRotate)
+			require.Equal(t, test.sequence, id.Sequence)
 
 			switch test.tableRotate {
-			case None:
-				require.Equal(t, "", result.RotateName())
-			case Monthly:
-				require.Equal(t, test.timeNow.UTC().Format("200601"), result.RotateName())
-			case Weekly:
+			case NoRotate:
+				require.Equal(t, "", id.RotateName())
+			case MonthlyRotate:
+				require.Equal(t, test.timeNow.UTC().Format("200601"), id.RotateName())
+			case WeeklyRotate:
 				_, week := test.timeNow.UTC().ISOWeek()
-				require.Equal(t, test.timeNow.UTC().Format("2006")+fmt.Sprintf("%03d", week), result.RotateName())
-			case Daily:
-				require.Equal(t, test.timeNow.UTC().Format("20060102"), result.RotateName())
+				require.Equal(t, test.timeNow.UTC().Format("2006")+fmt.Sprintf("%03d", week), id.RotateName())
+			case DailyRotate:
+				require.Equal(t, test.timeNow.UTC().Format("20060102"), id.RotateName())
 			default:
-				require.Equal(t, "", result.RotateName())
+				require.Equal(t, "", id.RotateName())
 			}
 
 			if test.orderby {
@@ -88,9 +86,9 @@ func TestID(t *testing.T) {
 
 				id4 := Build(test.timeNow.Add(1*time.Millisecond).UnixMilli(), test.workerID, test.databaseID, test.tableRotate, test.sequence+3)
 
-				require.Greater(t, id2, id)
-				require.Greater(t, id3, id2)
-				require.Greater(t, id4, id3)
+				require.Greater(t, id2.Value, id.Value)
+				require.Greater(t, id3.Value, id2.Value)
+				require.Greater(t, id4.Value, id3.Value)
 			}
 
 		})

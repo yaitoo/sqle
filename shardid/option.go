@@ -1,4 +1,4 @@
-package sharding
+package shardid
 
 import (
 	"time"
@@ -24,7 +24,7 @@ func WithDatabase(total int16) Option {
 
 func WithTableRotate(ts TableRotate) Option {
 	return func(g *Generator) {
-		if ts >= None && ts <= Daily {
+		if ts >= NoRotate && ts <= DailyRotate {
 			g.tableRotate = ts
 		}
 	}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/iancoleman/strcase"
 	"github.com/stretchr/testify/require"
+	"github.com/yaitoo/sqle/shardid"
 )
 
 func TestBuilder(t *testing.T) {
@@ -438,6 +439,90 @@ func TestBuilder(t *testing.T) {
 				s, vars, err := b.Build()
 				require.NoError(t, err)
 				require.Equal(t, "DELETE FROM `orders` WHERE order_id = ?", s)
+				require.Len(t, vars, 1)
+				require.Equal(t, "order_123456", vars[0])
+
+			},
+		},
+		{
+			name: "build_none_rotate_should_work",
+			build: func() *Builder {
+				id := shardid.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, shardid.NoRotate, 0)
+				b := New().On(id)
+				b.Delete("orders<rotate>").Where().
+					If(true).And("order_id = {order_id}").
+					If(false).And("member_id").
+					Param("order_id", "order_123456")
+
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "DELETE FROM `orders` WHERE order_id = ?", s)
+				require.Len(t, vars, 1)
+				require.Equal(t, "order_123456", vars[0])
+
+			},
+		},
+		{
+			name: "build_monthly_rotate_should_work",
+			build: func() *Builder {
+				id := shardid.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, shardid.MonthlyRotate, 0)
+				b := New().On(id)
+				b.Delete("orders<rotate>").Where().
+					If(true).And("order_id = {order_id}").
+					If(false).And("member_id").
+					Param("order_id", "order_123456")
+
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "DELETE FROM `orders_202402` WHERE order_id = ?", s)
+				require.Len(t, vars, 1)
+				require.Equal(t, "order_123456", vars[0])
+
+			},
+		},
+		{
+			name: "build_weekly_rotate_should_work",
+			build: func() *Builder {
+				id := shardid.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, shardid.WeeklyRotate, 0)
+				b := New().On(id)
+				b.Delete("orders<rotate>").Where().
+					If(true).And("order_id = {order_id}").
+					If(false).And("member_id").
+					Param("order_id", "order_123456")
+
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "DELETE FROM `orders_2024008` WHERE order_id = ?", s)
+				require.Len(t, vars, 1)
+				require.Equal(t, "order_123456", vars[0])
+
+			},
+		},
+		{
+			name: "build_daily_rotate_should_work",
+			build: func() *Builder {
+				id := shardid.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, shardid.DailyRotate, 0)
+				b := New().On(id)
+				b.Delete("orders<rotate>").Where().
+					If(true).And("order_id = {order_id}").
+					If(false).And("member_id").
+					Param("order_id", "order_123456")
+
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "DELETE FROM `orders_20240220` WHERE order_id = ?", s)
 				require.Len(t, vars, 1)
 				require.Equal(t, "order_123456", vars[0])
 

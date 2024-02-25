@@ -2,13 +2,21 @@ package sqle
 
 import (
 	"errors"
-	"strconv"
 	"strings"
+
+	"github.com/yaitoo/sqle/shardid"
 )
 
 var (
 	ErrInvalidInputVariable = errors.New("sqle: invalid input variable")
 	ErrInvalidParamVariable = errors.New("sqle: invalid param variable")
+)
+
+var (
+	DefaultSQLQuote        = "`"
+	DefaultSQLParameterize = func(name string, index int) string {
+		return "?"
+	}
 )
 
 type Builder struct {
@@ -23,12 +31,11 @@ type Builder struct {
 func New(cmd ...string) *Builder {
 
 	b := &Builder{
-		inputs: make(map[string]string),
-		params: make(map[string]any),
+		inputs:       make(map[string]string),
+		params:       make(map[string]any),
+		Quote:        DefaultSQLQuote,
+		Parameterize: DefaultSQLParameterize,
 	}
-
-	// MySQL as default
-	UseMySQL(b)
 
 	for i, it := range cmd {
 		if i > 0 {
@@ -171,23 +178,11 @@ func (b *Builder) Delete(table string) *Builder {
 	return b
 }
 
-func UsePostgres(b *Builder) {
-	b.Quote = "`"
-	b.Parameterize = func(name string, index int) string {
-		return "$" + strconv.Itoa(index)
+func (b *Builder) On(id shardid.ID) *Builder {
+	rn := id.RotateName()
+	if rn != "" {
+		rn = "_" + rn
 	}
-}
 
-func UseMySQL(b *Builder) {
-	b.Quote = "`"
-	b.Parameterize = func(name string, index int) string {
-		return "?"
-	}
-}
-
-func UseOracle(b *Builder) {
-	b.Quote = "`"
-	b.Parameterize = func(name string, index int) string {
-		return ":" + name
-	}
+	return b.Input("rotate", rn)
 }

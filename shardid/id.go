@@ -1,4 +1,4 @@
-package sharding
+package shardid
 
 import (
 	"fmt"
@@ -38,15 +38,15 @@ const (
 type TableRotate int8
 
 var (
-	None    TableRotate = 0
-	Monthly TableRotate = 1
-	Weekly  TableRotate = 2
-	Daily   TableRotate = 3
+	NoRotate      TableRotate = 0
+	MonthlyRotate TableRotate = 1
+	WeeklyRotate  TableRotate = 2
+	DailyRotate   TableRotate = 3
 )
 
 type ID struct {
 	Time       time.Time
-	ID         int64
+	Value      int64
 	TimeMillis int64
 
 	Sequence   int16
@@ -58,25 +58,27 @@ type ID struct {
 
 func (i *ID) RotateName() string {
 	switch i.TableRotate {
-	case Daily:
+	case DailyRotate:
 		return i.Time.Format("20060102")
-	case Weekly:
+	case WeeklyRotate:
 		_, week := i.Time.ISOWeek() //1-53 week
 		return i.Time.Format("2006") + fmt.Sprintf("%03d", week)
-	case Monthly:
+	case MonthlyRotate:
 		return i.Time.Format("200601")
 	default:
 		return ""
 	}
 }
 
-func Build(timeNow int64, workerID int8, databaseID int16, tr TableRotate, sequence int16) int64 {
-	return int64(timeNow-TimeEpoch)<<TimeNowShift | int64(workerID)<<WorkerShift | int64(databaseID)<<DatabaseShift | int64(tr)<<TableShift | int64(sequence)
+func Build(timeNow int64, workerID int8, databaseID int16, tr TableRotate, sequence int16) ID {
+	id := int64(timeNow-TimeEpoch)<<TimeNowShift | int64(workerID)<<WorkerShift | int64(databaseID)<<DatabaseShift | int64(tr)<<TableShift | int64(sequence)
+
+	return Parse(id)
 }
 
 func Parse(id int64) ID {
 	s := ID{
-		ID:          id,
+		Value:       id,
 		Sequence:    int16(id) & MaxSequence,
 		TableRotate: TableRotate(int8(id>>TableShift) & MaxTableShard),
 		DatabaseID:  int16(id>>DatabaseShift) & MaxDatabaseID,
