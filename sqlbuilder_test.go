@@ -71,8 +71,11 @@ func TestBuilder(t *testing.T) {
 				b := New("SELECT * FROM orders_<yyyy> as orders LEFT JOIN users_<dbid>")
 				b.SQL(" ON users_<dbid>.id=orders.user_id")
 				b.SQL(" WHERE users_<dbid>.id={user_id} and orders.user_id={user_id} and orders.status={order_status} and orders.created>={now}")
-				b.Input("dbid", "db2")
-				b.Input("yyyy", "2024")
+				b.Inputs(map[string]string{
+					"dbid": "db2",
+					"yyyy": "2024",
+				})
+
 				b.Param("order_status", 1)
 				b.Param("now", now)
 				b.Param("user_id", "u123456")
