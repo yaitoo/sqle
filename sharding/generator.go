@@ -32,7 +32,7 @@ func New(options ...Option) *Generator {
 	return g
 }
 
-func (g *Generator) Next() int64 {
+func (g *Generator) Next() ID {
 	g.Lock()
 
 	defer func() {

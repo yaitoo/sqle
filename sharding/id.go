@@ -46,7 +46,7 @@ var (
 
 type ID struct {
 	Time       time.Time
-	ID         int64
+	Value      int64
 	TimeMillis int64
 
 	Sequence   int16
@@ -70,13 +70,15 @@ func (i *ID) RotateName() string {
 	}
 }
 
-func Build(timeNow int64, workerID int8, databaseID int16, tr TableRotate, sequence int16) int64 {
-	return int64(timeNow-TimeEpoch)<<TimeNowShift | int64(workerID)<<WorkerShift | int64(databaseID)<<DatabaseShift | int64(tr)<<TableShift | int64(sequence)
+func Build(timeNow int64, workerID int8, databaseID int16, tr TableRotate, sequence int16) ID {
+	id := int64(timeNow-TimeEpoch)<<TimeNowShift | int64(workerID)<<WorkerShift | int64(databaseID)<<DatabaseShift | int64(tr)<<TableShift | int64(sequence)
+
+	return Parse(id)
 }
 
 func Parse(id int64) ID {
 	s := ID{
-		ID:          id,
+		Value:       id,
 		Sequence:    int16(id) & MaxSequence,
 		TableRotate: TableRotate(int8(id>>TableShift) & MaxTableShard),
 		DatabaseID:  int16(id>>DatabaseShift) & MaxDatabaseID,

@@ -10,17 +10,21 @@ import (
 
 type DB struct {
 	*sql.DB
-	noCopy //nolint
-
+	_ noCopy //nolint: unused
 	sync.Mutex
+
 	stmts      map[string]*cachedStmt
 	stmtsMutex sync.RWMutex
 }
 
-func Open(db *sql.DB) *DB {
+func Open(db *sql.DB, options ...Option) *DB {
 	d := &DB{
 		DB:    db,
 		stmts: make(map[string]*cachedStmt),
+	}
+
+	for _, option := range options {
+		option(d)
 	}
 
 	go d.closeIdleStmt()
