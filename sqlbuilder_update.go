@@ -1,6 +1,8 @@
 package sqle
 
-import "reflect"
+import (
+	"reflect"
+)
 
 type UpdateBuilder struct {
 	*Builder
@@ -42,22 +44,9 @@ func (ub *UpdateBuilder) SetMap(m map[string]any, opts ...BuilderOption) *Update
 		return ub
 	}
 
-	bo := &BuilderOptions{}
-	for _, opt := range opts {
-		opt(bo)
-	}
+	columns := ub.sortColumns(m, opts...)
 
-	for n, v := range m {
-		if bo.ToName != nil {
-			sn := bo.ToName(n)
-			if sn != n {
-				delete(m, n)
-				m[sn] = v
-			}
-		}
-	}
-
-	for _, n := range bo.Columns {
+	for _, n := range columns {
 		v, ok := m[n]
 		if ok {
 			ub.Set(n, v)

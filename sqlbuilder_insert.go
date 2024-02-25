@@ -61,22 +61,9 @@ func (ib *InsertBuilder) SetMap(m map[string]any, opts ...BuilderOption) *Insert
 		return ib
 	}
 
-	bo := &BuilderOptions{}
-	for _, opt := range opts {
-		opt(bo)
-	}
+	columns := ib.b.sortColumns(m, opts...)
 
-	for n, v := range m {
-		if bo.ToName != nil {
-			sn := bo.ToName(n)
-			if sn != n {
-				delete(m, n)
-				m[sn] = v
-			}
-		}
-	}
-
-	for _, n := range bo.Columns {
+	for _, n := range columns {
 		v, ok := m[n]
 		if ok {
 			ib.Set(n, v)

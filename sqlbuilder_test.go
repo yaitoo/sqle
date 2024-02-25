@@ -528,6 +528,50 @@ func TestBuilder(t *testing.T) {
 
 			},
 		},
+		{
+			name: "build_with_map_should_be_sorted",
+			build: func() *Builder {
+				m := make(map[string]any)
+
+				m["user_id"] = "x1234"
+				m["id"] = 1
+
+				b := New().Insert("users").SetMap(m).End()
+
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "INSERT INTO `users` (`id`, `user_id`) VALUES (?, ?)", s)
+				require.Len(t, vars, 2)
+				require.Equal(t, 1, vars[0])
+				require.Equal(t, "x1234", vars[1])
+
+			},
+		},
+		{
+			name: "build_with_map_and_allow_should_not_be_sorted",
+			build: func() *Builder {
+				m := make(map[string]any)
+
+				m["user_id"] = "x1234"
+				m["id"] = 1
+
+				b := New().Insert("users").SetMap(m, WithAllow("user_id", "id")).End()
+
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "INSERT INTO `users` (`user_id`, `id`) VALUES (?, ?)", s)
+				require.Len(t, vars, 2)
+				require.Equal(t, "x1234", vars[0])
+				require.Equal(t, 1, vars[1])
+
+			},
+		},
 	}
 
 	for _, test := range tests {
