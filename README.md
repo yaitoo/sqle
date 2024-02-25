@@ -424,7 +424,7 @@ func deleteAlbums(ids []int64) error {
 ```
 
 
-### Table Rotation
+## Table Rotation
 use `shardid.ID` to enable rotate feature for a table based on option (NoRotate/MonthlyRotate/WeeklyRotate/DailyRotate)
 
 ```
@@ -443,7 +443,7 @@ db.ExecBuilder(context.TODO(),b) //DELETE FROM `orders_20240220` WHERE order_id 
 see more [examples](sqlbuilder_test.go#L490)
 
 
-### Database Sharding
+## Database Sharding
 use `shardid.ID` to enable sharding feature for any sql
 ```
 gen := shardid.New(WithDatabase(10)) // 10 database instances
@@ -464,7 +464,7 @@ db.On(id). //automatically select database based on `id.DatabaseID`
 see more [examples](db_test.go#L49)
 
 
-## SQL Injection
+## Security: SQL Injection
 SQLE uses the database/sql‘s argument placeholders to build parameterized SQL statement, which will automatically escape arguments to avoid SQL injection. eg if postgresql is used in your app, please call [UsePostgres](use.go#L5) on SQLBuilder or change [DefaultSQLQuote](sqlbuilder.go?L16) and [DefaultSQLParameterize](sqlbuilder.go?L17) to update parameterization options.
 
 ```

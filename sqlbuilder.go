@@ -2,6 +2,7 @@ package sqle
 
 import (
 	"errors"
+	"sort"
 	"strings"
 
 	"github.com/yaitoo/sqle/shardid"
@@ -176,6 +177,40 @@ func (b *Builder) Delete(table string) *Builder {
 	b.SQL("DELETE FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
 
 	return b
+}
+
+func (b *Builder) sortColumns(m map[string]any, opts ...BuilderOption) []string {
+
+	bo := &BuilderOptions{}
+	for _, opt := range opts {
+		opt(bo)
+	}
+
+	hasCustomizedColumns := len(bo.Columns) > 0
+
+	for n, v := range m {
+
+		name := n
+
+		if bo.ToName != nil {
+			name = bo.ToName(name)
+			if name != n {
+				m[name] = v
+			}
+
+		}
+
+		if !hasCustomizedColumns {
+			bo.Columns = append(bo.Columns, name)
+		}
+	}
+
+	if !hasCustomizedColumns {
+		sort.Strings(bo.Columns)
+	}
+
+	return bo.Columns
+
 }
 
 func (b *Builder) On(id shardid.ID) *Builder {
