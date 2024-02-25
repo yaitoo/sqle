@@ -12,6 +12,13 @@ var (
 	ErrInvalidParamVariable = errors.New("sqle: invalid param variable")
 )
 
+var (
+	DefaultSQLQuote        = "`"
+	DefaultSQLParameterize = func(name string, index int) string {
+		return "?"
+	}
+)
+
 type Builder struct {
 	stmt   strings.Builder
 	inputs map[string]string
@@ -24,12 +31,11 @@ type Builder struct {
 func New(cmd ...string) *Builder {
 
 	b := &Builder{
-		inputs: make(map[string]string),
-		params: make(map[string]any),
+		inputs:       make(map[string]string),
+		params:       make(map[string]any),
+		Quote:        DefaultSQLQuote,
+		Parameterize: DefaultSQLParameterize,
 	}
-
-	// MySQL as default
-	UseMySQL(b)
 
 	for i, it := range cmd {
 		if i > 0 {

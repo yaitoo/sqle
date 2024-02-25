@@ -21,6 +21,7 @@ You’ll find the SQLE package useful if you’re not a fan of full-featured ORM
   slices of map/structs/primitive types.
 - 100% compatible drop-in replacement of "database/sql". Code is really easy to migrate from `database/sql` to `SQLE`. see [examples](row_test.go)
 - [Migration](migrate/migrator_test.go)
+- [ShardID](shardid/README.md) is a `snowflake-like` distributed sequence unique identifier with extended features for table rotation and database sharding.
 - Table AutoRotation 
 - Database AutoSharding
 
@@ -48,28 +49,29 @@ SQLE directly connects to a database by `sql.DB` instance.
     var db *sqle.DB
 
     switch driver {
-    case "sqlite":
-        sqldb, err := sql.Open("sqlite3", "file:"+dsn+"?cache=shared")
-        if err != nil {
-            panic(fmt.Sprintf("db: failed to open sqlite database %s", dsn))
-        }
+        case "sqlite":
+            sqldb, err := sql.Open("sqlite3", "file:"+dsn+"?cache=shared")
+            if err != nil {
+                panic(fmt.Sprintf("db: failed to open sqlite database %s", dsn))
+            }
 
-    db = sqle.Open(sqldb)
+            db = sqle.Open(sqldb)
 
-    case "mysql":
-        sqldb, err := sql.Open("mysql", dsn)
-        if err != nil {
-            panic(fmt.Sprintf("db: failed to open mysql database %s", dsn))
-        }
 
-        db = sqle.Open(sqldb)
+        case "mysql":
+            sqldb, err := sql.Open("mysql", dsn)
+            if err != nil {
+                panic(fmt.Sprintf("db: failed to open mysql database %s", dsn))
+            }
 
-    default:
-        panic(fmt.Sprintf("db: driver %s is not supported yet", driver))
+            db = sqle.Open(sqldb)
+        
+        default:
+            panic(fmt.Sprintf("db: driver %s is not supported yet", driver))
     }
     
     if  err := db.Ping(); err == nil {
-    panic("db: database is unreachable")
+        panic("db: database is unreachable")
     }
 ```
 
@@ -426,7 +428,7 @@ func deleteAlbums(ids []int64) error {
 use `shardid.ID` to enable rotate feature for a table based on option (NoRotate/MonthlyRotate/WeeklyRotate/DailyRotate)
 
 ```
-gen := shardid.New(WithTableRotate(shardid.Daily))
+gen := shardid.New(WithTableRotate(shardid.DailyRotate))
 id := gen.Next()
 
 b := New().On(id) //call `On` to enable rotate feature, and setup a input variable <rotate>
@@ -444,7 +446,7 @@ see more [examples](sqlbuilder_test.go#L490)
 ### Database Sharding
 use `shardid.ID` to enable sharding feature for any sql
 ```
-gen := shardid.New(WithDatabase(10))
+gen := shardid.New(WithDatabase(10)) // 10 database instances
 id := gen.Next()
 
 b := New().On(id) //call `On` to setup an input variable named `rotate`, and enable rotation feature
@@ -460,3 +462,16 @@ db.On(id). //automatically select database based on `id.DatabaseID`
 ```
 
 see more [examples](db_test.go#L49)
+
+
+## SQL Injection
+SQLE uses the database/sql‘s argument placeholders to build parameterized SQL statement, which will automatically escape arguments to avoid SQL injection. eg if postgresql is used in your app, please call [UsePostgres](use.go#L5) on SQLBuilder or change [DefaultSQLQuote](sqlbuilder.go?L16) and [DefaultSQLParameterize](sqlbuilder.go?L17) to update parameterization options.
+
+```
+func UsePostgres(b *Builder) {
+	b.Quote = "`"
+	b.Parameterize = func(name string, index int) string {
+		return "$" + strconv.Itoa(index)
+	}
+}
+```
