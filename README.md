@@ -21,8 +21,8 @@ You’ll find the SQLE package useful if you’re not a fan of full-featured ORM
   slices of map/structs/primitive types.
 - 100% compatible drop-in replacement of "database/sql". Code is really easy to migrate from `database/sql` to `SQLE`. see [examples](row_test.go)
 - [Migration](migrate/migrator_test.go)
-- Table auto-rotate 
-- Database auto-sharding
+- Table AutoRotation 
+- Database AutoSharding
 
 ## Tutorials
 > All examples on https://go.dev/doc/tutorial/database-access can directly work with `sqle.DB` instance. 
