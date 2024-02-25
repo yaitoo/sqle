@@ -21,7 +21,8 @@ You’ll find the SQLE package useful if you’re not a fan of full-featured ORM
   slices of map/structs/primitive types.
 - 100% compatible drop-in replacement of "database/sql". Code is really easy to migrate from `database/sql` to `SQLE`. see [examples](row_test.go)
 - [Migration](migrate/migrator_test.go)
-- _Configurable and extendable sharding_
+- Table auto-rotate 
+- Database auto-sharding
 
 ## Tutorials
 > All examples on https://go.dev/doc/tutorial/database-access can directly work with `sqle.DB` instance. 
@@ -419,3 +420,43 @@ func deleteAlbums(ids []int64) error {
     })
 }
 ```
+
+
+### Table Rotate
+use `sharding.ID` to enable rotate feature for a table based on option (None/Monthly/Weekly/Daily)
+
+```
+gen := sharding.New(WithTableRotate(sharing.Daily))
+id := gen.Next()
+
+b := New().On(id) //call `On` to enable rotate feature, and setup a input variable <rotate>
+b.Delete("orders<rotate>").Where().
+    If(true).And("order_id = {order_id}").
+    If(false).And("member_id").
+    Param("order_id", "order_123456")
+
+
+db.ExecBuilder(context.TODO(),b) //DELETE FROM `orders_20240220` WHERE order_id = ?
+```
+see more [examples](sqlbuilder_test.go#L490)
+
+
+### Database sharding
+use `sharding.ID` to enable auto-sharding for any sql
+```
+gen := sharding.New(WithDatabase(10))
+id := gen.Next()
+
+b := New().On(id) //call `On` to enable rotate feature, and setup a input variable <rotate>
+b.Delete("orders<rotate>").Where().
+    If(true).And("order_id = {order_id}").
+    If(false).And("member_id").
+    Param("order_id", "order_123456")
+
+
+db.On(id). //automatically select database based on `id.DatabaseID`
+ ExecBuilder(context.TODO(),b) //DELETE FROM `orders` WHERE order_id = ?
+
+```
+
+see more [examples](db_test.go#L49)

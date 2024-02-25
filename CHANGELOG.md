@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - added `BitBool` for mysql bit type (#11)
 - added `sharding` feature (#12)
+- added `On` on `DB` to enable sharding feature(#13)
 
 ### Fixed
 - fixed parameterized placeholder for postgresql(#12)
