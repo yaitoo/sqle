@@ -1,8 +1,8 @@
 package sharding
 
 import (
+	"fmt"
 	"math/rand"
-	"strconv"
 	"testing"
 	"time"
 
@@ -74,7 +74,7 @@ func TestID(t *testing.T) {
 				require.Equal(t, test.timeNow.UTC().Format("200601"), result.RotateName())
 			case Weekly:
 				_, week := test.timeNow.UTC().ISOWeek()
-				require.Equal(t, test.timeNow.UTC().Format("2006")+"0"+strconv.Itoa(week), result.RotateName())
+				require.Equal(t, test.timeNow.UTC().Format("2006")+fmt.Sprintf("%03d", week), result.RotateName())
 			case Daily:
 				require.Equal(t, test.timeNow.UTC().Format("20060102"), result.RotateName())
 			default:
