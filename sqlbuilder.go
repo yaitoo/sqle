@@ -9,7 +9,6 @@ import (
 )
 
 var (
-	ErrInvalidInputVariable = errors.New("sqle: invalid input variable")
 	ErrInvalidParamVariable = errors.New("sqle: invalid param variable")
 )
 
@@ -100,10 +99,9 @@ func (b *Builder) Build() (string, []any, error) {
 		case InputToken:
 			n := t.String()
 			v, ok := b.inputs[n]
-			if !ok {
-				return "", nil, ErrInvalidInputVariable
+			if ok {
+				sb.WriteString(v)
 			}
-			sb.WriteString(v)
 
 		case ParamToken:
 			n := t.String()
