@@ -21,7 +21,7 @@ You’ll find the SQLE package useful if you’re not a fan of full-featured ORM
   slices of map/structs/primitive types.
 - 100% compatible drop-in replacement of "database/sql". Code is really easy to migrate from `database/sql` to `SQLE`. see [examples](row_test.go)
 - [Migration](migrate/migrator_test.go)
-- [ShardID](shardid/README.md) is a `snowflake-like` distributed sequence unique identifier with extended features for table rotation and database sharding.
+- [ShardID](shardid/README.md) is a `snowflakes-like` distributed unique sequence identifier with extended metadata : worker, table rotation and database sharding.
 - Table AutoRotation 
 - Database AutoSharding
 
@@ -465,7 +465,7 @@ see more [examples](db_test.go#L49)
 
 
 ## Security: SQL Injection
-SQLE uses the database/sql‘s argument placeholders to build parameterized SQL statement, which will automatically escape arguments to avoid SQL injection. eg if postgresql is used in your app, please call [UsePostgres](use.go#L5) on SQLBuilder or change [DefaultSQLQuote](sqlbuilder.go?L16) and [DefaultSQLParameterize](sqlbuilder.go?L17) to update parameterization options.
+SQLE uses the database/sql‘s argument placeholders to build parameterized SQL statement, which will automatically escape arguments to avoid SQL injection. eg if it is PostgreSQL, please apply [UsePostgres](use.go#L5) on SQLBuilder or change [DefaultSQLQuote](sqlbuilder.go?L16) and [DefaultSQLParameterize](sqlbuilder.go?L17) to update parameterization options.
 
 ```
 func UsePostgres(b *Builder) {
