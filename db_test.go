@@ -54,7 +54,7 @@ func TestSharding(t *testing.T) {
 		id := gen.Next()
 		b := New().On(id).
 			Insert("users").
-			Set("id", id.Value).
+			Set("id", id.Int64).
 			Set("status", 1).
 			Set("created", time.Now()).
 			End()
@@ -78,7 +78,7 @@ func TestSharding(t *testing.T) {
 		var userID int64
 		err := ctx.QueryRowBuilder(context.TODO(), b).Scan(&userID)
 		require.NoError(t, err)
-		require.Equal(t, id.Value, userID)
+		require.Equal(t, id.Int64, userID)
 	}
 
 }

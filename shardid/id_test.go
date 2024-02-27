@@ -1,11 +1,13 @@
 package shardid
 
 import (
+	"database/sql"
 	"fmt"
 	"math/rand"
 	"testing"
 	"time"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -86,11 +88,42 @@ func TestID(t *testing.T) {
 
 				id4 := Build(test.timeNow.Add(1*time.Millisecond).UnixMilli(), test.workerID, test.databaseID, test.tableRotate, test.sequence+3)
 
-				require.Greater(t, id2.Value, id.Value)
-				require.Greater(t, id3.Value, id2.Value)
-				require.Greater(t, id4.Value, id3.Value)
+				require.Greater(t, id2.Int64, id.Int64)
+				require.Greater(t, id3.Int64, id2.Int64)
+				require.Greater(t, id4.Int64, id3.Int64)
 			}
 
 		})
 	}
+}
+
+func TestSQLDriver(t *testing.T) {
+	d, err := sql.Open("sqlite3", "file::memory:")
+	require.NoError(t, err)
+
+	_, err = d.Exec("CREATE TABLE `users` (`id` BIGINT NOT NULL,`created` DATETIME, PRIMARY KEY (`id`))")
+	require.NoError(t, err)
+
+	now := time.Now()
+	id := Build(now.UnixMilli(), 1, 2, MonthlyRotate, 3)
+
+	result, err := d.Exec("INSERT INTO `users`(`id`, `created`) VALUES(?, ?)", id, now)
+	require.NoError(t, err)
+
+	rows, err := result.RowsAffected()
+	require.NoError(t, err)
+	require.Equal(t, int64(1), rows)
+
+	var i ID
+	err = d.QueryRow("SELECT `id` FROM `users`").Scan(&i)
+	require.NoError(t, err)
+
+	require.Equal(t, id.DatabaseID, i.DatabaseID)
+	require.Equal(t, id.Int64, i.Int64)
+	require.Equal(t, id.Sequence, i.Sequence)
+	require.Equal(t, id.TableRotate, i.TableRotate)
+	require.Equal(t, id.Time, i.Time)
+	require.Equal(t, id.TimeMillis, i.TimeMillis)
+	require.Equal(t, id.WorkerID, i.WorkerID)
+
 }

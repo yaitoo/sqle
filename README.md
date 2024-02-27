@@ -21,7 +21,7 @@ You’ll find the SQLE package useful if you’re not a fan of full-featured ORM
   slices of map/structs/primitive types.
 - 100% compatible drop-in replacement of "database/sql". Code is really easy to migrate from `database/sql` to `SQLE`. see [examples](row_test.go)
 - [Migration](migrate/migrator_test.go)
-- [ShardID](shardid/README.md) is a `snowflakes-like` distributed unique sequence identifier with extended metadata : worker, table rotation and database sharding.
+- [ShardID](shardid/README.md) is a `snowflakes-like` distributed unique identifier with extended metadata : worker, table rotation and database sharding, and sortable by time
 - Table AutoRotation 
 - Database AutoSharding
 

@@ -1,6 +1,8 @@
 package shardid
 
 import (
+	"database/sql/driver"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -46,7 +48,7 @@ var (
 
 type ID struct {
 	Time       time.Time
-	Value      int64
+	Int64      int64
 	TimeMillis int64
 
 	Sequence   int16
@@ -70,22 +72,28 @@ func (i *ID) RotateName() string {
 	}
 }
 
-func Build(timeNow int64, workerID int8, databaseID int16, tr TableRotate, sequence int16) ID {
-	id := int64(timeNow-TimeEpoch)<<TimeNowShift | int64(workerID)<<WorkerShift | int64(databaseID)<<DatabaseShift | int64(tr)<<TableShift | int64(sequence)
-
-	return Parse(id)
+// Value implements the driver.Valuer interface
+func (b ID) Value() (driver.Value, error) {
+	return b.Int64, nil
 }
 
-func Parse(id int64) ID {
-	s := ID{
-		Value:       id,
-		Sequence:    int16(id) & MaxSequence,
-		TableRotate: TableRotate(int8(id>>TableShift) & MaxTableShard),
-		DatabaseID:  int16(id>>DatabaseShift) & MaxDatabaseID,
-		WorkerID:    int8(id>>WorkerShift) & MaxWorkerID,
-		TimeMillis:  int64(id>>TimeNowShift)&MaxTimeMillis + TimeEpoch,
+// Scan implements the sql.Scanner interface,
+func (b *ID) Scan(src interface{}) error {
+	if src == nil {
+		return nil
 	}
-	s.Time = time.UnixMilli(s.TimeMillis).UTC()
+	v, ok := src.(int64)
+	if !ok {
+		return errors.New("bad int64 type assertion")
+	}
+	id := Parse(v)
 
-	return s
+	b.DatabaseID = id.DatabaseID
+	b.Int64 = v
+	b.Sequence = id.Sequence
+	b.TableRotate = id.TableRotate
+	b.Time = id.Time
+	b.TimeMillis = id.TimeMillis
+	b.WorkerID = id.WorkerID
+	return nil
 }

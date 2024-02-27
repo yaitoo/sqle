@@ -25,15 +25,15 @@ func TestGenerator(t *testing.T) {
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, NoRotate, 0)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, NoRotate, 1)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, NoRotate, 2)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 			},
 		},
@@ -49,15 +49,15 @@ func TestGenerator(t *testing.T) {
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, NoRotate, 0)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, NoRotate, 1)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, NoRotate, 2)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 			},
 		},
@@ -73,15 +73,15 @@ func TestGenerator(t *testing.T) {
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, NoRotate, 0)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 1, NoRotate, 1)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 2, NoRotate, 2)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 			},
 		},
@@ -97,19 +97,19 @@ func TestGenerator(t *testing.T) {
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, NoRotate, 0)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 1, NoRotate, 1)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, NoRotate, 2)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 1, NoRotate, 3)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 			},
 		},
@@ -125,7 +125,7 @@ func TestGenerator(t *testing.T) {
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, MonthlyRotate, 0)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 				require.Equal(t, "202402", id.RotateName())
 			},
 		},
@@ -141,7 +141,7 @@ func TestGenerator(t *testing.T) {
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, WeeklyRotate, 0)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				require.Equal(t, "2024008", id.RotateName())
 			},
@@ -158,7 +158,7 @@ func TestGenerator(t *testing.T) {
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, DailyRotate, 0)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				require.Equal(t, "20240220", id.RotateName())
 			},
@@ -182,13 +182,13 @@ func TestGenerator(t *testing.T) {
 				gen.nextSequence = MaxSequence
 				id := gen.Next()
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, DailyRotate, MaxSequence)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				require.Equal(t, "20240220", id.RotateName())
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(1*time.Millisecond).UnixMilli(), 1, 0, DailyRotate, 0)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				require.Equal(t, "20240220", id.RotateName())
 			},
@@ -215,12 +215,12 @@ func TestGenerator(t *testing.T) {
 			assert: func(t *testing.T, gen *Generator) {
 				id := gen.Next()
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, DailyRotate, 0)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 				require.Equal(t, "20240220", id.RotateName())
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(1*time.Millisecond).UnixMilli(), 1, 0, DailyRotate, 1)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 				require.Equal(t, "20240220", id.RotateName())
 
 			},
@@ -248,13 +248,13 @@ func TestGenerator(t *testing.T) {
 				gen.nextSequence = MaxSequence
 				id := gen.Next()
 				want := Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 1, 0, DailyRotate, MaxSequence)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				require.Equal(t, "20240220", id.RotateName())
 
 				id = gen.Next()
 				want = Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(2*time.Millisecond).UnixMilli(), 1, 0, DailyRotate, 0)
-				require.Equal(t, want.Value, id.Value)
+				require.Equal(t, want.Int64, id.Int64)
 
 				require.Equal(t, "20240220", id.RotateName())
 
