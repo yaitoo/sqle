@@ -5,6 +5,7 @@ A SQL-First/ORM-like Golang SQL enhanced package.
 [![Tests](https://github.com/yaitoo/sqle/actions/workflows/tests.yml/badge.svg)](https://github.com/yaitoo/sqle/actions/workflows/tests.yml)
 [![GoDoc](https://godoc.org/github.com/yaitoo/sqle?status.png)](https://godoc.org/github.com/yaitoo/sqle)
 [![Codecov](https://codecov.io/gh/yaitoo/sqle/branch/main/graph/badge.svg)](https://codecov.io/gh/yaitoo/sqle)
+[![GitHub Release](https://img.shields.io/github/v/release/yaitoo/sqle)]()
 [![Go Report Card](https://goreportcard.com/badge/yaitoo/sqle)](http://goreportcard.com/report/yaitoo/sqle)
 
 The SQLE package provides extensions to Go’s built-in `database/sql` package for more efficient, comprehensive interactions with databases in Go. The SQLE package is backward-compatible and extendable, so you can easily use it with the database/sql package.
@@ -475,3 +476,10 @@ func UsePostgres(b *Builder) {
 	}
 }
 ```
+
+## Contributing
+Contributions are welcome! If you're interested in contributing, please feel free to [contribute to SQLE](CONTRIBUTING.md)
+
+
+## License
+[MIT License](LICENSE)
