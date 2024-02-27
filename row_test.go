@@ -41,7 +41,7 @@ func (ns *NullStr) Scan(value any) error {
 
 type customBinder struct {
 	UserID int
-	Status BitBool
+	Status int
 	Email  string
 }
 
@@ -69,17 +69,17 @@ func TestRowBind(t *testing.T) {
 	d, err := sql.Open("sqlite3", "file::memory:?cache=shared")
 	require.NoError(t, err)
 
-	_, err = d.Exec("CREATE TABLE `users` (`id` int , `status` bit(1),`email` varchar(50),`passwd` varchar(120), `salt` varchar(45), `created` DATETIME, PRIMARY KEY (`id`))")
+	_, err = d.Exec("CREATE TABLE `users` (`id` int , `status` tinyint,`email` varchar(50),`passwd` varchar(120), `salt` varchar(45), `created` DATETIME, PRIMARY KEY (`id`))")
 	require.NoError(t, err)
 
 	now := time.Now()
 
-	_, err = d.Exec("INSERT INTO `users`(`id`,`status`,`email`,`passwd`,`salt`,`created`) VALUES(1, 0,'test1@mail.com','1xxxx','1zzzz', ?)", now)
+	_, err = d.Exec("INSERT INTO `users`(`id`,`status`,`email`,`passwd`,`salt`,`created`) VALUES(1, 1,'test1@mail.com','1xxxx','1zzzz', ?)", now)
 	require.NoError(t, err)
-	_, err = d.Exec("INSERT INTO `users`(`id`,`status`,`email`,`passwd`,`salt`) VALUES(2, 1,'test2@mail.com','2xxxx','2zzzz')")
+	_, err = d.Exec("INSERT INTO `users`(`id`,`status`,`email`,`passwd`,`salt`) VALUES(2, 2,'test2@mail.com','2xxxx','2zzzz')")
 	require.NoError(t, err)
 
-	_, err = d.Exec("INSERT INTO `users`(`id`,`status`,`email`,`passwd`,`salt`) VALUES(3, 0,'test3@mail.com','3xxxx','3zzzz')")
+	_, err = d.Exec("INSERT INTO `users`(`id`,`status`,`email`,`passwd`,`salt`) VALUES(3, 3,'test3@mail.com','3xxxx','3zzzz')")
 	require.NoError(t, err)
 
 	_, err = d.Exec("INSERT INTO `users`(`id`, `email`) VALUES(4, 'test4@mail.com')")
@@ -96,7 +96,7 @@ func TestRowBind(t *testing.T) {
 			run: func(t *testing.T) {
 				type user struct {
 					ID      uint
-					Status  BitBool
+					Status  int
 					Email   string
 					Passwd  string
 					Salt    string

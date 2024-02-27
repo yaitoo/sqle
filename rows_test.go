@@ -14,17 +14,17 @@ func TestRowsBind(t *testing.T) {
 	d, err := sql.Open("sqlite3", "file::memory:")
 	require.NoError(t, err)
 
-	_, err = d.Exec("CREATE TABLE `rows` (`id` int , `status` bit(1),`email` varchar(50),`passwd` varchar(120), `salt` varchar(45), `created` DATETIME, PRIMARY KEY (`id`))")
+	_, err = d.Exec("CREATE TABLE `rows` (`id` int , `status` tinyint,`email` varchar(50),`passwd` varchar(120), `salt` varchar(45), `created` DATETIME, PRIMARY KEY (`id`))")
 	require.NoError(t, err)
 
 	now := time.Now()
 
-	_, err = d.Exec("INSERT INTO `rows`(`id`,`status`,`email`,`passwd`,`salt`,`created`) VALUES(1, ?,'test1@mail.com','1xxxx','1zzzz', ?)", false, now)
+	_, err = d.Exec("INSERT INTO `rows`(`id`,`status`,`email`,`passwd`,`salt`,`created`) VALUES(1, 1,'test1@mail.com','1xxxx','1zzzz', ?)", now)
 	require.NoError(t, err)
-	_, err = d.Exec("INSERT INTO `rows`(`id`,`status`,`email`,`passwd`,`salt`) VALUES(2, ?,'test2@mail.com','2xxxx','2zzzz')", true)
+	_, err = d.Exec("INSERT INTO `rows`(`id`,`status`,`email`,`passwd`,`salt`) VALUES(2, 2,'test2@mail.com','2xxxx','2zzzz')")
 	require.NoError(t, err)
 
-	_, err = d.Exec("INSERT INTO `rows`(`id`,`status`,`email`,`passwd`,`salt`) VALUES(3, ?,'test3@mail.com','3xxxx','3zzzz')", false)
+	_, err = d.Exec("INSERT INTO `rows`(`id`,`status`,`email`,`passwd`,`salt`) VALUES(3, 3,'test3@mail.com','3xxxx','3zzzz')")
 	require.NoError(t, err)
 
 	_, err = d.Exec("INSERT INTO `rows`(`id`) VALUES(4)")
@@ -41,7 +41,7 @@ func TestRowsBind(t *testing.T) {
 			run: func(t *testing.T) {
 				type user struct {
 					ID      int
-					Status  BitBool
+					Status  int
 					Email   string
 					Passwd  string
 					Salt    string
@@ -177,9 +177,9 @@ func TestRowsBind(t *testing.T) {
 				require.EqualValues(t, 2, users[1].UserID)
 				require.EqualValues(t, 3, users[2].UserID)
 
-				require.EqualValues(t, false, users[0].Status)
-				require.EqualValues(t, true, users[1].Status)
-				require.EqualValues(t, false, users[2].Status)
+				require.EqualValues(t, 1, users[0].Status)
+				require.EqualValues(t, 2, users[1].Status)
+				require.EqualValues(t, 3, users[2].Status)
 
 				require.EqualValues(t, "test1@mail.com", users[0].Email)
 				require.EqualValues(t, "test2@mail.com", users[1].Email)
