@@ -24,10 +24,15 @@ func (b *BitBool) Scan(src interface{}) error {
 	if src == nil {
 		return nil
 	}
-	v, ok := src.([]byte)
-	if !ok {
+
+	switch v := src.(type) {
+	case []byte:
+		*b = v[0] == 1
+	case int64:
+		*b = v == 1
+	default:
 		return errors.New("bad []byte type assertion")
 	}
-	*b = v[0] == 1
+
 	return nil
 }
