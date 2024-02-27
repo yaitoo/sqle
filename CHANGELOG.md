@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixes
 - fixed missed input variable issue (#15)
+- fixed sql.Scanner/driver.Valuer support in BitBool/shardid.ID (#16)
 
 ## [1.2.0] - 2024-02-36
 ### Added
