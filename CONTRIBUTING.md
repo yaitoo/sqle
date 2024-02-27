@@ -1,5 +1,5 @@
 # Contributing
-SQLE is actively looking for maintainers so feel free to help out when:
+SQLE is actively looking for contributors so feel free to help out when:
 
 - Reporting a bug
 - Discussing the current state of the code
