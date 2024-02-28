@@ -194,10 +194,9 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 		err = m.db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.Tx) error {
 
 			var checksum string
-			var name string
 
 			for i, s := range v.Migrations {
-				err = tx.QueryRow("SELECT `checksum`, `name` FROM `sqle_migrations` WHERE `checksum` = ?", s.Checksum).Scan(&checksum, &name)
+				err = tx.QueryRow("SELECT `checksum` FROM `sqle_migrations` WHERE `checksum` = ?", s.Checksum).Scan(&checksum)
 				if err != nil {
 					if !errors.Is(err, sql.ErrNoRows) {
 						return err
@@ -205,7 +204,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 				}
 
 				if checksum != "" {
-					log.Printf(" [*]%d/%d: %s\n", i+1, n, name)
+					log.Printf(" [%d/%d]%-15s [*]\n", i+1, n, s.Name)
 					continue
 				}
 
@@ -241,7 +240,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 					return err
 				}
 
-				log.Printf(" [+]%d/%d: %s \n", s.Rank, i+1, s.Name)
+				log.Printf(" [%d/%d]%-15s [+]\n", i+1, n, s.Name)
 			}
 
 			return nil
