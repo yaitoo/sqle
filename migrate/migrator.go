@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -188,51 +189,60 @@ func (m *Migrator) Init(ctx context.Context) error {
 func (m *Migrator) Migrate(ctx context.Context) error {
 	var err error
 	for _, v := range m.Versions {
+		n := len(v.Migrations)
+		log.Printf("migrate: %-4s(%d)\n", v.Name, n)
 		err = m.db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.Tx) error {
 
 			var checksum string
+			var rank int
+			var name string
 
 			for _, s := range v.Migrations {
-				err = tx.QueryRow("SELECT checksum FROM sqle_migrations WHERE checksum=?", s.Checksum).Bind(&checksum)
+				err = tx.QueryRow("SELECT checksum,rank, name FROM sqle_migrations WHERE checksum=?", s.Checksum).Scan(&checksum, &rank, &name)
 				if err != nil {
 					if !errors.Is(err, sql.ErrNoRows) {
 						return err
 					}
 				}
 
-				if checksum == "" {
-					now := time.Now()
-					for _, it := range strings.Split(s.Scripts, ";") {
-						it = strings.TrimSpace(it)
-						if it != "" {
-							_, err = tx.Exec(it + ";")
-							if err != nil {
-								return err
-							}
+				if checksum != "" {
+					log.Printf("[%3d/%d] %-12s [SKIP]\n", rank, n, name)
+					continue
+				}
+
+				now := time.Now()
+				for _, it := range strings.Split(s.Scripts, ";") {
+					it = strings.TrimSpace(it)
+					if it != "" {
+						_, err = tx.Exec(it + ";")
+						if err != nil {
+							return err
 						}
 					}
-
-					cmd := sqle.New()
-
-					cmd.Insert("sqle_migrations").
-						Set("checksum", s.Checksum).
-						Set("version", v.Name).
-						Set("name", s.Name).
-						Set("rank", s.Rank).
-						Set("scripts", s.Scripts).
-						Set("migrated_on", now).
-						Set("execution_time", time.Since(now).String()).
-						End()
-
-					query, args, err := cmd.Build()
-					if err != nil {
-						return err
-					}
-					_, err = tx.ExecContext(ctx, query, args...)
-					if err != nil {
-						return err
-					}
 				}
+
+				cmd := sqle.New()
+
+				cmd.Insert("sqle_migrations").
+					Set("checksum", s.Checksum).
+					Set("version", v.Name).
+					Set("name", s.Name).
+					Set("rank", s.Rank).
+					Set("scripts", s.Scripts).
+					Set("migrated_on", now).
+					Set("execution_time", time.Since(now).String()).
+					End()
+
+				query, args, err := cmd.Build()
+				if err != nil {
+					return err
+				}
+				_, err = tx.ExecContext(ctx, query, args...)
+				if err != nil {
+					return err
+				}
+
+				log.Printf("[%3d/%d] %-12s [DONE]\n", rank, n, name)
 			}
 
 			return nil
