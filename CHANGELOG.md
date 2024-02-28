@@ -5,10 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-### Fixes
+## [1.2.1]
+### Added
+- added detail logs on migration (#17)
+  
+### Fixed
 - fixed missed input variable issue (#15)
 - fixed sql.Scanner/driver.Valuer support in BitBool/shardid.ID (#16)
+  
 
 ## [1.2.0] - 2024-02-36
 ### Added
