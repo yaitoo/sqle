@@ -10,7 +10,7 @@ A SQL-First/ORM-like Golang SQL enhanced package.
 
 The SQLE package provides extensions to Go’s built-in `database/sql` package for more efficient, comprehensive interactions with databases in Go. The SQLE package is backward-compatible and extendable, so you can easily use it with the database/sql package.
 
-The SQLE package takes the sql-first approach and provides functionalities for marshaling rows into struct, map,slice and golang primitive types.
+The SQLE package takes the sql-first approach and provides functionalities for marshaling rows into struct, map,slice and primitive types.
 
 The SQLE package also provides functionalities for schema auto migration, logging, contexts, prepared statements, advanced database operations like sharding, and much more.
 
@@ -18,8 +18,9 @@ You’ll find the SQLE package useful if you’re not a fan of full-featured ORM
 
 ## Features
 - Works with any database engine(eg MySQL, Postgres, SQLite...etc) by [Go-MySQL-Driver](https://github.com/go-sql-driver/mysql/)
-- [ORM-like](row_test.go) experience using good old SQL. SQLE supports structs, maps, primitive types, and
+- [ORM-like](rows_test.go) experience using good old SQL. SQLE supports structs, maps, primitive types, and
   slices of map/structs/primitive types.
+- [SQLBuilder](sqlbuilder_test.go)
 - 100% compatible drop-in replacement of "database/sql". Code is really easy to migrate from `database/sql` to `SQLE`. see [examples](row_test.go)
 - [Migration](migrate/migrator_test.go)
 - [ShardID](shardid/README.md) is a `snowflakes-like` distributed unique identifier with extended metadata : worker, table rotation and database sharding, and sortable by time
@@ -432,7 +433,7 @@ use `shardid.ID` to enable rotate feature for a table based on option (NoRotate/
 gen := shardid.New(shardid.WithMonthlyRotate())
 id := gen.Next()
 
-b := New().On(id) //call `On` to enable rotate feature, and setup a input variable <rotate>
+b := New().On(id) //call `On` to enable rotate feature, and setup an input variable <rotate>
 b.Delete("orders<rotate>").Where().
     If(true).And("order_id = {order_id}").
     If(false).And("member_id").
