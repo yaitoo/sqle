@@ -190,7 +190,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 	var err error
 	for _, v := range m.Versions {
 		n := len(v.Migrations)
-		log.Printf("migrate: %-4s(%d)\n", v.Name, n)
+		log.Printf("migrate: v%s [%d]\n", v.Name, n)
 		err = m.db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.Tx) error {
 
 			var checksum string
@@ -206,7 +206,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 				}
 
 				if checksum != "" {
-					log.Printf("[>]%2d/%d %s\n", rank, n, name)
+					log.Printf("	[>]%2d/%d: %s\n", rank, n, name)
 					continue
 				}
 
@@ -242,7 +242,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 					return err
 				}
 
-				log.Printf("[+]%2d/%d %12s \n", s.Rank, n, s.Name)
+				log.Printf("	[+]%2d/%d: %12s \n", s.Rank, n, s.Name)
 			}
 
 			return nil
