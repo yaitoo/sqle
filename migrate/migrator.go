@@ -204,7 +204,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 				}
 
 				if checksum != "" {
-					log.Printf(" [%d/%d]%-15s [*]\n", i+1, n, s.Name)
+					log.Printf(" > [%d/%d]%-15s [*]\n", i+1, n, s.Name)
 					continue
 				}
 
@@ -240,7 +240,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 					return err
 				}
 
-				log.Printf(" [%d/%d]%-15s [+]\n", i+1, n, s.Name)
+				log.Printf(" > [%d/%d]%-15s [+]\n", i+1, n, s.Name)
 			}
 
 			return nil
