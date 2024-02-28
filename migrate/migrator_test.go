@@ -289,6 +289,9 @@ func TestMigrate(t *testing.T) {
 			require.NoError(t, err)
 			err = m.Migrate(context.TODO())
 			require.NoError(t, err)
+			// Nothing should be changed on re-migration
+			err = m.Migrate(context.TODO())
+			require.NoError(t, err)
 
 			test.assert(t, m)
 		})
