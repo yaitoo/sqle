@@ -206,7 +206,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 				}
 
 				if checksum != "" {
-					log.Printf("[%3d/%d] %-12s [SKIP]\n", rank, n, name)
+					log.Printf("[>]%2d/%d %s\n", rank, n, name)
 					continue
 				}
 
@@ -242,7 +242,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 					return err
 				}
 
-				log.Printf("[%3d/%d] %-12s [DONE]\n", rank, n, name)
+				log.Printf("[+]%2d/%d %12s \n", s.Rank, n, s.Name)
 			}
 
 			return nil
