@@ -190,15 +190,14 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 	var err error
 	for _, v := range m.Versions {
 		n := len(v.Migrations)
-		log.Printf("migrate: v%s [%d]\n", v.Name, n)
+		log.Printf("migrate: v%s\n", v.Name)
 		err = m.db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.Tx) error {
 
 			var checksum string
-			var rank int
 			var name string
 
-			for _, s := range v.Migrations {
-				err = tx.QueryRow("SELECT `checksum`, `rank`, `name` FROM `sqle_migrations` WHERE `checksum` = ?", s.Checksum).Scan(&checksum, &rank, &name)
+			for i, s := range v.Migrations {
+				err = tx.QueryRow("SELECT `checksum`, `name` FROM `sqle_migrations` WHERE `checksum` = ?", s.Checksum).Scan(&checksum, &name)
 				if err != nil {
 					if !errors.Is(err, sql.ErrNoRows) {
 						return err
@@ -206,7 +205,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 				}
 
 				if checksum != "" {
-					log.Printf("	[*]%2d/%d: %s\n", rank, n, name)
+					log.Printf(" [*]%d/%d: %s\n", i+1, n, name)
 					continue
 				}
 
@@ -242,7 +241,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 					return err
 				}
 
-				log.Printf("	[+]%2d/%d: %12s \n", s.Rank, n, s.Name)
+				log.Printf(" [+]%d/%d: %s \n", s.Rank, i+1, s.Name)
 			}
 
 			return nil
