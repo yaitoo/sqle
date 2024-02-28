@@ -206,7 +206,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 				}
 
 				if checksum != "" {
-					log.Printf("	[>]%2d/%d: %s\n", rank, n, name)
+					log.Printf("	[*]%2d/%d: %s\n", rank, n, name)
 					continue
 				}
 
