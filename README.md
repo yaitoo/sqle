@@ -429,7 +429,7 @@ func deleteAlbums(ids []int64) error {
 use `shardid.ID` to enable rotate feature for a table based on option (NoRotate/MonthlyRotate/WeeklyRotate/DailyRotate)
 
 ```
-gen := shardid.New(WithTableRotate(shardid.DailyRotate))
+gen := shardid.New(shardid.WithMonthlyRotate())
 id := gen.Next()
 
 b := New().On(id) //call `On` to enable rotate feature, and setup a input variable <rotate>

@@ -118,7 +118,7 @@ func TestGenerator(t *testing.T) {
 			new: func() *Generator {
 				g := New(WithTimeNow(func() time.Time {
 					return time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC)
-				}), WithWorkerID(1), WithDatabase(3), WithTableRotate(MonthlyRotate))
+				}), WithWorkerID(1), WithDatabase(3), WithMonthlyRotate())
 
 				return g
 			},
@@ -134,7 +134,7 @@ func TestGenerator(t *testing.T) {
 			new: func() *Generator {
 				g := New(WithTimeNow(func() time.Time {
 					return time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC)
-				}), WithWorkerID(1), WithDatabase(3), WithTableRotate(WeeklyRotate))
+				}), WithWorkerID(1), WithDatabase(3), WithWeeklyRotate())
 
 				return g
 			},
@@ -151,7 +151,7 @@ func TestGenerator(t *testing.T) {
 			new: func() *Generator {
 				g := New(WithTimeNow(func() time.Time {
 					return time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC)
-				}), WithWorkerID(1), WithDatabase(3), WithTableRotate(DailyRotate))
+				}), WithWorkerID(1), WithDatabase(3), WithDailyRotate())
 
 				return g
 			},
@@ -174,7 +174,7 @@ func TestGenerator(t *testing.T) {
 
 					return time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(time.Duration(i) * time.Millisecond)
 
-				}), WithWorkerID(1), WithTableRotate(DailyRotate))
+				}), WithWorkerID(1), WithRotate(DailyRotate))
 
 				return g
 			},
@@ -208,7 +208,7 @@ func TestGenerator(t *testing.T) {
 
 					return time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(time.Duration(i) * time.Millisecond)
 
-				}), WithWorkerID(1), WithTableRotate(DailyRotate))
+				}), WithWorkerID(1), WithRotate(DailyRotate))
 
 				return g
 			},
@@ -240,7 +240,7 @@ func TestGenerator(t *testing.T) {
 
 					return time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).Add(time.Duration(i) * time.Millisecond)
 
-				}), WithWorkerID(1), WithTableRotate(DailyRotate))
+				}), WithWorkerID(1), WithRotate(DailyRotate))
 
 				return g
 			},

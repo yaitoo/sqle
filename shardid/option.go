@@ -22,12 +22,24 @@ func WithDatabase(total int16) Option {
 	}
 }
 
-func WithTableRotate(ts TableRotate) Option {
+func WithRotate(ts TableRotate) Option {
 	return func(g *Generator) {
 		if ts >= NoRotate && ts <= DailyRotate {
 			g.tableRotate = ts
 		}
 	}
+}
+
+func WithMonthlyRotate() Option {
+	return WithRotate(MonthlyRotate)
+}
+
+func WithWeeklyRotate() Option {
+	return WithRotate(WeeklyRotate)
+}
+
+func WithDailyRotate() Option {
+	return WithRotate(DailyRotate)
 }
 
 func WithTimeNow(now func() time.Time) Option {
