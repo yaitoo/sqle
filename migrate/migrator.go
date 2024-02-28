@@ -198,7 +198,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 			var name string
 
 			for _, s := range v.Migrations {
-				err = tx.QueryRow("SELECT checksum,rank, name FROM sqle_migrations WHERE checksum=?", s.Checksum).Scan(&checksum, &rank, &name)
+				err = tx.QueryRow("SELECT `checksum`, `rank`, `name` FROM `sqle_migrations` WHERE `checksum` = ?", s.Checksum).Scan(&checksum, &rank, &name)
 				if err != nil {
 					if !errors.Is(err, sql.ErrNoRows) {
 						return err
