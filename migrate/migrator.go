@@ -188,9 +188,10 @@ func (m *Migrator) Init(ctx context.Context) error {
 
 func (m *Migrator) Migrate(ctx context.Context) error {
 	var err error
+	log.Printf("migrate:\n")
 	for _, v := range m.Versions {
 		n := len(v.Migrations)
-		log.Printf("migrate: v%s\n", v.Name)
+		log.Printf("┌─[ v%s ]\n", v.Name)
 		err = m.db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.Tx) error {
 
 			var checksum string
@@ -204,7 +205,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 				}
 
 				if checksum != "" {
-					log.Printf(" > [%d/%d] %-30s [~]", i+1, n, s.Name)
+					log.Printf("│ »[%d/%d] %-35s [✔]", i+1, n, s.Name)
 					continue
 				}
 
@@ -240,9 +241,10 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 					return err
 				}
 
-				log.Printf(" > [%d/%d] %-30s [+]\n", i+1, n, s.Name)
+				log.Printf("│ »[%d/%d] %-35s [+]\n", i+1, n, s.Name)
 			}
 
+			log.Println("└───────────────────────────────────────────────")
 			return nil
 		})
 
