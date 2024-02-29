@@ -140,17 +140,19 @@ func (db *Context) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error
 
 func (db *Context) Transaction(ctx context.Context, opts *sql.TxOptions, fn func(ctx context.Context, tx *Tx) error) error {
 	tx, err := db.BeginTx(ctx, opts)
-	defer func() {
-		if e := tx.Rollback(); e != nil {
-			log.Error().Str("pkg", "sqle").Str("tag", "tx").Err(e)
-		}
-	}()
-
 	if err != nil {
 		return err
 	}
 
 	err = fn(ctx, tx)
+	defer func() {
+		if err != nil {
+			if e := tx.Rollback(); e != nil {
+				log.Error().Str("pkg", "sqle").Str("tag", "tx").Err(e)
+			}
+		}
+	}()
+
 	if err != nil {
 		return err
 	}
