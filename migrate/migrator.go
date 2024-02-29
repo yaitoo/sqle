@@ -188,7 +188,7 @@ func (m *Migrator) Init(ctx context.Context) error {
 
 func (m *Migrator) Migrate(ctx context.Context) error {
 	var err error
-	log.Printf("migrate:\n")
+	log.Println("migrate:")
 	for _, v := range m.Versions {
 		n := len(v.Migrations)
 		log.Printf("┌─[ v%s ]\n", v.Name)
