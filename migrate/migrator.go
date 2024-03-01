@@ -245,7 +245,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 				log.Printf("│ »[%*d/%d] %-35s [+]\n", w, i+1, n, s.Name)
 			}
 
-			log.Println("└─────────────────────────────────────────────────")
+			log.Println("└────────────────────────────────────────────────")
 			return nil
 		})
 
