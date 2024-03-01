@@ -191,6 +191,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 	log.Println("migrate:")
 	for _, v := range m.Versions {
 		n := len(v.Migrations)
+		w := len(strconv.Itoa(n))
 		log.Printf("┌─[ v%s ]\n", v.Name)
 		err = m.db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.Tx) error {
 
@@ -205,7 +206,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 				}
 
 				if checksum != "" {
-					log.Printf("│ »[%d/%d] %-35s [✔]", i+1, n, s.Name)
+					log.Printf("│ »[%-*d/%d] %-35s [✔]", w, i+1, n, s.Name)
 					continue
 				}
 
@@ -241,10 +242,10 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 					return err
 				}
 
-				log.Printf("│ »[%d/%d] %-35s [+]\n", i+1, n, s.Name)
+				log.Printf("│ »[%-*d/%d] %-35s [+]\n", w, i+1, n, s.Name)
 			}
 
-			log.Println("└───────────────────────────────────────────────")
+			log.Println("└─────────────────────────────────────────────────")
 			return nil
 		})
 
