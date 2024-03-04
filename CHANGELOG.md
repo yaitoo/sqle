@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.2.2]
 ### Added
 - added detail logs on migration (#17)
+- added rotated table migration support (#17)
 
 ### Fixed
 - fixed rollback issue on `Transaction` (#17)
