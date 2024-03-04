@@ -145,11 +145,19 @@ func (db *Context) Transaction(ctx context.Context, opts *sql.TxOptions, fn func
 	}
 
 	err = fn(ctx, tx)
-	if err != nil {
-		if e := tx.Rollback(); e != nil {
-			log.Error().Str("pkg", "sqle").Str("tag", "tx").Err(e)
+	defer func() {
+		if err != nil {
+			if e := tx.Rollback(); e != nil {
+				log.Error().Str("pkg", "sqle").Str("tag", "tx").Err(e)
+			}
 		}
+	}()
+
+	if err != nil {
 		return err
 	}
-	return tx.Commit()
+
+	err = tx.Commit()
+
+	return err
 }

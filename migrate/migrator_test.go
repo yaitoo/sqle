@@ -7,10 +7,12 @@ import (
 	"os"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
 	"github.com/yaitoo/sqle"
+	"github.com/yaitoo/sqle/shardid"
 )
 
 func createSqlite3() (*sql.DB, func(), error) {
@@ -90,7 +92,6 @@ func TestDiscover(t *testing.T) {
 
 			},
 		},
-
 		{
 			name: "suffix_should_work",
 			options: []Option{
@@ -133,6 +134,79 @@ func TestDiscover(t *testing.T) {
 				require.Equal(t, 1, v1_1_2.Migrations[0].Rank)
 				require.Equal(t, "create_table_members", v1_1_2.Migrations[0].Name)
 				require.Equal(t, "CREATE TABLE members", v1_1_2.Migrations[0].Scripts)
+
+			},
+		},
+		{
+			name: "rotate_should_work",
+			fsys: fstest.MapFS{
+				"1.1.2/1_create_table_members.sql": &fstest.MapFile{
+					Data: []byte(`/* rotate:monthly=20240201-20240401 */
+CREATE TABLE members`),
+				},
+				"0.1.0/1_create_table_users.sql": &fstest.MapFile{
+					Data: []byte(`/* rotate:weekly=20240201-20240401 */
+CREATE TABLE users`),
+				},
+				"0.1.0/13_create_table_orders.sql": &fstest.MapFile{
+					Data: []byte(`/* rotate:daily=20240201-20240401 */
+CREATE TABLE orders`),
+				},
+				"0.1.0/02_create_table_login.sql": &fstest.MapFile{
+					Data: []byte("CREATE TABLE logins"),
+				},
+			},
+			setup: func(db *sql.DB) *Migrator {
+				return New(sqle.Open(db))
+			},
+			assert: func(m *Migrator, t *testing.T) {
+
+				begin := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+				end := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
+				require.Len(t, m.Versions, 2)
+				v0_1_0 := m.Versions[0]
+				require.Equal(t, 0, v0_1_0.Major)
+				require.Equal(t, 1, v0_1_0.Minor)
+				require.Equal(t, 0, v0_1_0.Patch)
+
+				require.Len(t, v0_1_0.Migrations, 3)
+
+				users := v0_1_0.Migrations[0]
+
+				require.Equal(t, 1, users.Rank)
+				require.Equal(t, "create_table_users", users.Name)
+				require.Equal(t, `/* rotate:weekly=20240201-20240401 */
+CREATE TABLE users`, users.Scripts)
+				require.Equal(t, shardid.WeeklyRotate, users.Rotate)
+				require.Equal(t, begin, users.RotateBegin)
+				require.Equal(t, end, users.RotateEnd)
+
+				logins := v0_1_0.Migrations[1]
+				require.Equal(t, 2, logins.Rank)
+				require.Equal(t, "create_table_login", logins.Name)
+				require.Equal(t, "CREATE TABLE logins", logins.Scripts)
+				require.Equal(t, shardid.NoRotate, logins.Rotate)
+
+				orders := v0_1_0.Migrations[2]
+				require.Equal(t, 13, orders.Rank)
+				require.Equal(t, "create_table_orders", orders.Name)
+				require.Equal(t, `/* rotate:daily=20240201-20240401 */
+CREATE TABLE orders`, orders.Scripts)
+				require.Equal(t, shardid.DailyRotate, orders.Rotate)
+				require.Equal(t, begin, orders.RotateBegin)
+				require.Equal(t, end, orders.RotateEnd)
+
+				v1_1_2 := m.Versions[1]
+				require.Len(t, v1_1_2.Migrations, 1)
+
+				members := v1_1_2.Migrations[0]
+				require.Equal(t, 1, members.Rank)
+				require.Equal(t, "create_table_members", members.Name)
+				require.Equal(t, `/* rotate:monthly=20240201-20240401 */
+CREATE TABLE members`, members.Scripts)
+				require.Equal(t, shardid.MonthlyRotate, members.Rotate)
+				require.Equal(t, begin, members.RotateBegin)
+				require.Equal(t, end, members.RotateEnd)
 
 			},
 		},
@@ -272,6 +346,161 @@ func TestMigrate(t *testing.T) {
 
 				err = m.db.QueryRow("SELECT id,name FROM roles WHERE id=?", 0).Bind(&Role{})
 				require.ErrorIs(t, err, sql.ErrNoRows)
+
+			},
+		},
+		{
+			name: "with_monthly_rotate_should_work",
+			setup: func(db *sql.DB) (*Migrator, error) {
+
+				m := New(sqle.Open(db))
+
+				err := m.Discover(fstest.MapFS{
+					"0.1.0/1_create_monthly_logs.sql": &fstest.MapFile{
+						Data: []byte(`/* rotate: monthly = 20240201 - 20240401 */
+						CREATE TABLE IF NOT EXISTS monthly_logs<rotate> (
+							id int NOT NULL,
+							msg varchar(50) NOT NULL,
+							PRIMARY KEY (id)
+						);`),
+					},
+				})
+
+				if err != nil {
+					return nil, err
+				}
+
+				return m, nil
+
+			},
+			assert: func(t *testing.T, m *Migrator) {
+				var id int64
+
+				rotations := []string{
+					"", "_202402", "_202403", "_202404",
+				}
+
+				for _, rt := range rotations {
+					err := m.db.QueryRow("SELECT id FROM monthly_logs"+rt+" WHERE id=?", 0).Scan(&id)
+					require.ErrorIs(t, err, sql.ErrNoRows)
+				}
+
+			},
+		},
+		{
+			name: "with_weekly_rotate_should_work",
+			setup: func(db *sql.DB) (*Migrator, error) {
+
+				m := New(sqle.Open(db))
+
+				err := m.Discover(fstest.MapFS{
+					"0.1.0/1_create_weekly_logs.sql": &fstest.MapFile{
+						Data: []byte(`/* rotate: weekly = 20240201 - 20240222 */
+						CREATE TABLE IF NOT EXISTS weekly_logs<rotate> (
+							id int NOT NULL,
+							msg varchar(50) NOT NULL,
+							PRIMARY KEY (id)
+						);`),
+					},
+				})
+
+				if err != nil {
+					return nil, err
+				}
+
+				return m, nil
+
+			},
+			assert: func(t *testing.T, m *Migrator) {
+				var id int64
+
+				rotations := []string{
+					"", "_2024005", "_2024006", "_2024007", "_2024008",
+				}
+
+				for _, rt := range rotations {
+					err := m.db.QueryRow("SELECT id FROM weekly_logs"+rt+" WHERE id=?", 0).Scan(&id)
+					require.ErrorIs(t, err, sql.ErrNoRows)
+				}
+
+			},
+		},
+		{
+			name: "with_daily_rotate_should_work",
+			setup: func(db *sql.DB) (*Migrator, error) {
+
+				m := New(sqle.Open(db))
+
+				err := m.Discover(fstest.MapFS{
+					"0.1.0/1_create_weekly_logs.sql": &fstest.MapFile{
+						Data: []byte(`/* rotate: daily = 20240201 - 20240206 */
+						CREATE TABLE IF NOT EXISTS daily_logs<rotate> (
+							id int NOT NULL,
+							msg varchar(50) NOT NULL,
+							PRIMARY KEY (id)
+						);`),
+					},
+				})
+
+				if err != nil {
+					return nil, err
+				}
+
+				return m, nil
+
+			},
+			assert: func(t *testing.T, m *Migrator) {
+				var id int64
+
+				rotations := []string{
+					"", "_20240201", "_20240202", "_20240203", "_20240204", "_20240205", "_20240206",
+				}
+
+				for _, rt := range rotations {
+					err := m.db.QueryRow("SELECT id FROM daily_logs"+rt+" WHERE id=?", 0).Scan(&id)
+					require.ErrorIs(t, err, sql.ErrNoRows)
+				}
+
+			},
+		},
+		{
+			name: "with_invalid_rotate_should_be_skipped",
+			setup: func(db *sql.DB) (*Migrator, error) {
+
+				m := New(sqle.Open(db))
+
+				err := m.Discover(fstest.MapFS{
+					"0.1.0/1_create_invalid_logs.sql": &fstest.MapFile{
+						Data: []byte(`/* no: daily = 20240201 - 20240206 */
+						CREATE TABLE IF NOT EXISTS no_logs<rotate> (
+							id int NOT NULL,
+							msg varchar(50) NOT NULL,
+							PRIMARY KEY (id)
+						);`),
+					},
+				})
+
+				if err != nil {
+					return nil, err
+				}
+
+				return m, nil
+
+			},
+			assert: func(t *testing.T, m *Migrator) {
+				var id int64
+
+				rotations := []string{
+					"_20240201", "_20240202", "_20240203", "_20240204", "_20240205", "_20240206",
+				}
+
+				err := m.db.QueryRow("SELECT id FROM no_logs WHERE id=?", 0).Scan(&id)
+				require.ErrorIs(t, err, sql.ErrNoRows)
+
+				for _, rt := range rotations {
+					err := m.db.QueryRow("SELECT id FROM daily_logs"+rt+" WHERE id=?", 0).Scan(&id)
+					require.ErrorContains(t, err, "no such table")
+				}
 
 			},
 		},
