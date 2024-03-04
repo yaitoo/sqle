@@ -463,6 +463,47 @@ func TestMigrate(t *testing.T) {
 
 			},
 		},
+		{
+			name: "with_invalid_rotate_should_be_skipped",
+			setup: func(db *sql.DB) (*Migrator, error) {
+
+				m := New(sqle.Open(db))
+
+				err := m.Discover(fstest.MapFS{
+					"0.1.0/1_create_invalid_logs.sql": &fstest.MapFile{
+						Data: []byte(`/* no: daily = 20240201 - 20240206 */
+						CREATE TABLE IF NOT EXISTS no_logs<rotate> (
+							id int NOT NULL,
+							msg varchar(50) NOT NULL,
+							PRIMARY KEY (id)
+						);`),
+					},
+				})
+
+				if err != nil {
+					return nil, err
+				}
+
+				return m, nil
+
+			},
+			assert: func(t *testing.T, m *Migrator) {
+				var id int64
+
+				rotations := []string{
+					"_20240201", "_20240202", "_20240203", "_20240204", "_20240205", "_20240206",
+				}
+
+				err := m.db.QueryRow("SELECT id FROM no_logs WHERE id=?", 0).Scan(&id)
+				require.ErrorIs(t, err, sql.ErrNoRows)
+
+				for _, rt := range rotations {
+					err := m.db.QueryRow("SELECT id FROM daily_logs"+rt+" WHERE id=?", 0).Scan(&id)
+					require.ErrorContains(t, err, "no such table")
+				}
+
+			},
+		},
 	}
 
 	for _, test := range tests {
