@@ -37,8 +37,8 @@ const TABLE_MIGRATIONS = "CREATE TABLE IF NOT EXISTS sqle_migrations(" +
 
 const TABLE_ROTATIONS = "CREATE TABLE IF NOT EXISTS sqle_rotations(" +
 	"`checksum` varchar(32) NOT NULL," +
-	"`name` varchar(45) NOT NULL," +
 	"`rotated_name` varchar(8) NOT NULL," +
+	"`name` varchar(45) NOT NULL," +
 	"`rotated_on` datetime NOT NULL," +
 	"`execution_time` varchar(25) NOT NULL," +
 	"PRIMARY KEY (checksum, rotated_name));"
@@ -494,7 +494,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 			"_" + now.AddDate(0, 1, 0).Format("200601"),
 		}
 
-		err = m.rotate(ctx, db, "monthly", months, m.MonthlyRotations)
+		err = m.rotate(ctx, db, months, m.MonthlyRotations)
 		if err != nil {
 			return err
 		}
@@ -510,7 +510,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 			"_" + next.Format("2006") + fmt.Sprintf("%03d", nextWeek),
 		}
 
-		err = m.rotate(ctx, db, "weekly", weeks, m.WeeklyRotations)
+		err = m.rotate(ctx, db, weeks, m.WeeklyRotations)
 		if err != nil {
 			return err
 		}
@@ -520,7 +520,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 			"_" + now.AddDate(0, 0, 1).Format("20060102"),
 		}
 
-		err = m.rotate(ctx, db, "daily", days, m.DailyRotations)
+		err = m.rotate(ctx, db, days, m.DailyRotations)
 		if err != nil {
 			return err
 		}
@@ -530,7 +530,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 	return nil
 }
 
-func (m *Migrator) rotate(ctx context.Context, db *sqle.DB, rotatedPeriod string, rotatedNames []string, rotations []Rotation) error {
+func (m *Migrator) rotate(ctx context.Context, db *sqle.DB, rotatedNames []string, rotations []Rotation) error {
 	var err error
 	var n int
 	var w int
@@ -539,7 +539,7 @@ func (m *Migrator) rotate(ctx context.Context, db *sqle.DB, rotatedPeriod string
 		err = db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.Tx) error {
 			n = len(rotatedNames)
 			w = len(strconv.Itoa(n))
-			log.Printf("┌─[ %s: %s ]\n", rotatedPeriod, r.Name)
+			log.Printf("┌─[ %s ]\n", r.Name)
 
 			for i, rn := range rotatedNames {
 				err = tx.QueryRow("SELECT `checksum` FROM `sqle_rotations` WHERE `checksum` = ? and `rotated_name` = ?", r.Checksum, rn).Scan(&checksum)
