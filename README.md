@@ -519,6 +519,18 @@ CREATE TABLE IF NOT EXISTS monthly_logs<rotate> (
 
 see more [examples](./migrate/migrator_test.go?L360) 
 
+if rotate is enabled for any table, rotate should be executed periodically in a cron job. so rotated tables will be created periodically. 
+```
+├── db
+│   └── monthly
+│       ├── members.sql
+│   └── weekly
+│       ├── orders.sql
+│   └── daily
+│       ├── logs.sql
+```
+see more [examples](./migrate/migrator_test.go?L581) 
+
 ## Security: SQL Injection
 SQLE uses the database/sql‘s argument placeholders to build parameterized SQL statement, which will automatically escape arguments to avoid SQL injection. eg if it is PostgreSQL, please apply [UsePostgres](use.go#L5) on SQLBuilder or change [DefaultSQLQuote](sqlbuilder.go?L16) and [DefaultSQLParameterize](sqlbuilder.go?L17) to update parameterization options.
 
