@@ -32,6 +32,8 @@ func WithDays[T any](start, end time.Time) QueryOption[T] {
 	}
 }
 
-func WithQueryer[T any](q Queryer[T]) QueryOption[T] {
-
+func WithQueryer[T any](qr Queryer[T]) QueryOption[T] {
+	return func(q *Query[T]) {
+		q.queryer = qr
+	}
 }
