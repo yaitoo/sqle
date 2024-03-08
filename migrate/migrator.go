@@ -405,18 +405,16 @@ func (m *Migrator) migrate(ctx context.Context, db *sqle.DB) error {
 				switch s.Rotate {
 				case shardid.MonthlyRotate:
 					for t := s.RotateBegin; !t.After(s.RotateEnd); t = t.AddDate(0, 1, 0) {
-						rotations = append(rotations, "_"+t.Format("200601"))
+						rotations = append(rotations, "_"+shardid.FormatMonth(t))
 					}
 				case shardid.WeeklyRotate:
-					var week int
 					for t := s.RotateBegin; !t.After(s.RotateEnd); t = t.AddDate(0, 0, 7) {
-						_, week = t.ISOWeek() //1-53 week
-						rotations = append(rotations, "_"+t.Format("2006")+fmt.Sprintf("%03d", week))
+						rotations = append(rotations, "_"+shardid.FormatWeek(t))
 					}
 
 				case shardid.DailyRotate:
 					for t := s.RotateBegin; !t.After(s.RotateEnd); t = t.AddDate(0, 0, 1) {
-						rotations = append(rotations, "_"+t.Format("20060102"))
+						rotations = append(rotations, "_"+shardid.FormatDay(t))
 					}
 				}
 
