@@ -18,20 +18,19 @@ func (ib *InsertBuilder) If(predicate bool) *InsertBuilder {
 }
 
 func (ib *InsertBuilder) Set(name string, value any) *InsertBuilder {
-	if name == "" {
-		return ib
-	}
-	if ib.values == nil {
-		ib.values = make(map[string]any)
-	}
-
 	if ib.shouldSkip {
 		ib.shouldSkip = false
 		return ib
 	}
 
-	ib.columns = append(ib.columns, name)
-	ib.values[name] = value
+	if name != "" {
+		if ib.values == nil {
+			ib.values = make(map[string]any)
+		}
+
+		ib.columns = append(ib.columns, name)
+		ib.values[name] = value
+	}
 
 	return ib
 }

@@ -20,24 +20,22 @@ func (wb *WhereBuilder) Or(cmd string) *WhereBuilder {
 }
 
 func (wb *WhereBuilder) SQL(op string, cmd string) *WhereBuilder {
-	if cmd == "" {
-		return wb
-	}
-
 	if wb.shouldSkip {
 		wb.shouldSkip = false
 		return wb
 	}
 
-	//first condition, op expression should not be written
-	if wb.written {
-		wb.Builder.stmt.WriteString(" ")
-		wb.Builder.stmt.WriteString(op)
-	}
+	if cmd != "" {
+		//first condition, op expression should not be written
+		if wb.written {
+			wb.Builder.stmt.WriteString(" ")
+			wb.Builder.stmt.WriteString(op)
+		}
 
-	wb.written = true
-	wb.Builder.stmt.WriteString(" ")
-	wb.Builder.stmt.WriteString(cmd)
+		wb.written = true
+		wb.Builder.stmt.WriteString(" ")
+		wb.Builder.stmt.WriteString(cmd)
+	}
 
 	return wb
 }

@@ -80,16 +80,14 @@ func (b *Builder) If(predicate bool) *Builder {
 }
 
 func (b *Builder) SQL(cmd string) *Builder {
-	if cmd == "" {
-		return b
-	}
-
 	if b.shouldSkip {
 		b.shouldSkip = false
 		return b
 	}
 
-	b.stmt.WriteString(cmd)
+	if cmd != "" {
+		b.stmt.WriteString(cmd)
+	}
 	return b
 }
 
