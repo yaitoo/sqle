@@ -33,6 +33,22 @@ func TestBuilder(t *testing.T) {
 			},
 		},
 		{
+			name: "build_if",
+			build: func() *Builder {
+				b := New("SELECT * FROM orders")
+				b.SQL(" WHERE created>=now()").
+					If(true).SQL(" LIMIT 5").
+					If(false).SQL(" OFFSET 5")
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "SELECT * FROM orders WHERE created>=now() LIMIT 5", s)
+				require.Nil(t, vars)
+			},
+		},
+		{
 			name: "build_with_input_tokens",
 			build: func() *Builder {
 				b := New("SELECT * FROM", "orders_<yyyyMM> as orders")

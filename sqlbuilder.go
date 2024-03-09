@@ -232,10 +232,5 @@ func (b *Builder) sortColumns(m map[string]any, opts ...BuilderOption) []string 
 }
 
 func (b *Builder) On(id shardid.ID) *Builder {
-	rn := id.RotateName()
-	if rn != "" {
-		rn = "_" + rn
-	}
-
-	return b.Input("rotate", rn)
+	return b.Input("rotate", id.RotateName())
 }
