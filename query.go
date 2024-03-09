@@ -56,6 +56,6 @@ func (q *Query[T]) Query(ctx context.Context, b *Builder, less func(i, j T) bool
 	return q.queryer.Query(ctx, q.tables, b, less)
 }
 
-func (q *Query[T]) QueryLimit(ctx context.Context, b *Builder, less func(i, j T) bool, limit int, offset int) ([]T, error) {
-	return q.queryer.QueryLimit(ctx, q.tables, b, less, limit, offset)
+func (q *Query[T]) QueryLimit(ctx context.Context, b *Builder, less func(i, j T) bool, limit int) ([]T, error) {
+	return q.queryer.QueryLimit(ctx, q.tables, b, less, limit)
 }

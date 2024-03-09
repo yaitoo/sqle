@@ -16,6 +16,7 @@ type MapR[T any] struct {
 
 func (q *MapR[T]) First(ctx context.Context, tables []string, b *Builder) (T, error) {
 	var it T
+	b.Input("rotate", "<rotate>") //lazy replace on async.Wait
 	query, args, err := b.Build()
 	if err != nil {
 		return it, err
@@ -24,24 +25,26 @@ func (q *MapR[T]) First(ctx context.Context, tables []string, b *Builder) (T, er
 	w := async.New[T]()
 
 	for _, r := range tables {
-		qr := strings.ReplaceAll(query, "_rotate", r)
+		qr := strings.ReplaceAll(query, "<rotate>", r)
 		for _, db := range q.dbs {
-			w.Add(func(context.Context) (T, error) {
-				var t T
-				err := db.QueryRowContext(ctx, qr, args...).Bind(&t)
-				if err != nil {
-					return t, err
-				}
+			w.Add(func(db *Context, qr string) func(context.Context) (T, error) {
+				return func(ctx context.Context) (T, error) {
+					var t T
+					err := db.QueryRowContext(ctx, qr, args...).Bind(&t)
+					if err != nil {
+						return t, err
+					}
 
-				return t, nil
-			})
+					return t, nil
+				}
+			}(db, qr))
 		}
 	}
 
 	return w.WaitAny(ctx)
 }
 func (q *MapR[T]) Count(ctx context.Context, tables []string, b *Builder) (int, error) {
-
+	b.Input("rotate", "<rotate>") //lazy replace on async.Wait
 	query, args, err := b.Build()
 	if err != nil {
 		return 0, err
@@ -50,17 +53,19 @@ func (q *MapR[T]) Count(ctx context.Context, tables []string, b *Builder) (int, 
 	w := async.New[int]()
 
 	for _, r := range tables {
-		qr := strings.ReplaceAll(query, "_rotate", r)
+		qr := strings.ReplaceAll(query, "<rotate>", r)
 		for _, db := range q.dbs {
-			w.Add(func(context.Context) (int, error) {
-				var i int
-				err := db.QueryRowContext(ctx, qr, args...).Bind(&i)
-				if err != nil {
-					return i, err
-				}
+			w.Add(func(db *Context, qr string) func(context.Context) (int, error) {
+				return func(ctx context.Context) (int, error) {
+					var i int
+					err := db.QueryRowContext(ctx, qr, args...).Scan(&i)
+					if err != nil {
+						return i, err
+					}
 
-				return i, nil
-			})
+					return i, nil
+				}
+			}(db, qr))
 		}
 	}
 
@@ -79,25 +84,34 @@ func (q *MapR[T]) Count(ctx context.Context, tables []string, b *Builder) (int, 
 	return total, nil
 }
 func (q *MapR[T]) Query(ctx context.Context, tables []string, b *Builder, less func(i, j T) bool) ([]T, error) {
+
+	b.Input("rotate", "<rotate>") //lazy replace on async.Wait
 	query, args, err := b.Build()
 	if err != nil {
 		return nil, err
 	}
 
-	w := async.New[T]()
+	w := async.New[[]T]()
 
 	for _, r := range tables {
-		qr := strings.ReplaceAll(query, "_rotate", r)
+		qr := strings.ReplaceAll(query, "<rotate>", r)
 		for _, db := range q.dbs {
-			w.Add(func(context.Context) (T, error) {
-				var t T
-				err := db.QueryRowContext(ctx, qr, args...).Bind(&t)
-				if err != nil {
-					return t, err
-				}
+			w.Add(func(db *Context, qr string) func(context.Context) ([]T, error) {
+				return func(context.Context) ([]T, error) {
+					var t []T
+					rows, err := db.QueryContext(ctx, qr, args...)
+					if err != nil {
+						return t, err
+					}
 
-				return t, nil
-			})
+					err = rows.Bind(&t)
+					if err != nil {
+						return t, err
+					}
+
+					return t, nil
+				}
+			}(db, qr))
 		}
 	}
 
@@ -110,7 +124,9 @@ func (q *MapR[T]) Query(ctx context.Context, tables []string, b *Builder, less f
 	var list []T
 
 	for _, it := range items {
-		list = append(list, it)
+		if it != nil {
+			list = append(list, it...)
+		}
 	}
 
 	if less != nil {
@@ -121,14 +137,10 @@ func (q *MapR[T]) Query(ctx context.Context, tables []string, b *Builder, less f
 
 	return list, nil
 }
-func (q *MapR[T]) QueryLimit(ctx context.Context, tables []string, b *Builder, less func(i, j T) bool, limit int, offset int) ([]T, error) {
+func (q *MapR[T]) QueryLimit(ctx context.Context, tables []string, b *Builder, less func(i, j T) bool, limit int) ([]T, error) {
 
 	if limit > 0 {
-		b.SQL(" LIMIT " + strconv.Itoa(limit))
-	}
-
-	if offset > 0 {
-		b.SQL(" OFFSET " + strconv.Itoa(offset))
+		b.SQL(" LIMIT " + strconv.Itoa(limit*len(q.dbs)))
 	}
 
 	list, err := q.Query(ctx, tables, b, less)
@@ -136,5 +148,9 @@ func (q *MapR[T]) QueryLimit(ctx context.Context, tables []string, b *Builder, l
 		return nil, err
 	}
 
-	return list[0:limit], nil
+	if limit < len(list) {
+		return list[0:limit], nil
+	}
+
+	return list, nil
 }

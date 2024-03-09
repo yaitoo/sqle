@@ -20,9 +20,10 @@ var (
 )
 
 type Builder struct {
-	stmt   strings.Builder
-	inputs map[string]string
-	params map[string]any
+	stmt       strings.Builder
+	inputs     map[string]string
+	params     map[string]any
+	shouldSkip bool
 
 	Quote        string //escape column name in UPDATE and INSERT
 	Parameterize func(name string, index int) string
@@ -73,10 +74,21 @@ func (b *Builder) Params(v map[string]any) *Builder {
 	return b
 }
 
+func (b *Builder) If(predicate bool) *Builder {
+	b.shouldSkip = !predicate
+	return b
+}
+
 func (b *Builder) SQL(cmd string) *Builder {
 	if cmd == "" {
 		return b
 	}
+
+	if b.shouldSkip {
+		b.shouldSkip = false
+		return b
+	}
+
 	b.stmt.WriteString(cmd)
 	return b
 }
@@ -136,6 +148,14 @@ func (b *Builder) Where(cmd ...string) *WhereBuilder {
 	return wb
 }
 
+func (b *Builder) quoteColumn(c string) string {
+	if strings.ContainsAny(c, "(") || strings.ContainsAny(c, " ") || strings.ContainsAny(c, "as") {
+		return c
+	} else {
+		return b.Quote + c + b.Quote
+	}
+}
+
 func (b *Builder) Update(table string) *UpdateBuilder {
 	b.SQL("UPDATE ").SQL(b.Quote).SQL(table).SQL(b.Quote).SQL(" SET ")
 	return &UpdateBuilder{
@@ -159,9 +179,9 @@ func (b *Builder) Select(table string, columns ...string) *Builder {
 	} else {
 		for i, col := range columns {
 			if i == 0 {
-				b.SQL(" ").SQL(b.Quote).SQL(col).SQL(b.Quote)
+				b.SQL(" ").SQL(b.quoteColumn(col))
 			} else {
-				b.SQL(" ,").SQL(b.Quote).SQL(col).SQL(b.Quote)
+				b.SQL(" ,").SQL(b.quoteColumn(col))
 			}
 		}
 	}
