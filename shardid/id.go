@@ -3,7 +3,6 @@ package shardid
 import (
 	"database/sql/driver"
 	"errors"
-	"fmt"
 	"time"
 )
 
@@ -61,12 +60,11 @@ type ID struct {
 func (i *ID) RotateName() string {
 	switch i.TableRotate {
 	case DailyRotate:
-		return i.Time.Format("20060102")
+		return FormatDay(i.Time)
 	case WeeklyRotate:
-		_, week := i.Time.ISOWeek() //1-53 week
-		return i.Time.Format("2006") + fmt.Sprintf("%03d", week)
+		return FormatWeek(i.Time)
 	case MonthlyRotate:
-		return i.Time.Format("200601")
+		return FormatMonth(i.Time)
 	default:
 		return ""
 	}

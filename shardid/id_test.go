@@ -71,12 +71,12 @@ func TestID(t *testing.T) {
 			case NoRotate:
 				require.Equal(t, "", id.RotateName())
 			case MonthlyRotate:
-				require.Equal(t, test.timeNow.UTC().Format("200601"), id.RotateName())
+				require.Equal(t, test.timeNow.UTC().Format("_200601"), id.RotateName())
 			case WeeklyRotate:
 				_, week := test.timeNow.UTC().ISOWeek()
-				require.Equal(t, test.timeNow.UTC().Format("2006")+fmt.Sprintf("%03d", week), id.RotateName())
+				require.Equal(t, test.timeNow.UTC().Format("_2006")+fmt.Sprintf("%03d", week), id.RotateName())
 			case DailyRotate:
-				require.Equal(t, test.timeNow.UTC().Format("20060102"), id.RotateName())
+				require.Equal(t, test.timeNow.UTC().Format("_20060102"), id.RotateName())
 			default:
 				require.Equal(t, "", id.RotateName())
 			}
