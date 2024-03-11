@@ -41,7 +41,8 @@ func (q *MapR[T]) First(ctx context.Context, tables []string, b *Builder) (T, er
 		}
 	}
 
-	return w.WaitAny(ctx)
+	d, err, _ := w.WaitAny(ctx)
+	return d, err
 }
 func (q *MapR[T]) Count(ctx context.Context, tables []string, b *Builder) (int, error) {
 	b.Input("rotate", "<rotate>") //lazy replace on async.Wait
@@ -69,7 +70,7 @@ func (q *MapR[T]) Count(ctx context.Context, tables []string, b *Builder) (int, 
 		}
 	}
 
-	items, err := w.Wait(ctx)
+	items, err, _ := w.Wait(ctx)
 
 	if err != nil {
 		return 0, err
@@ -115,7 +116,7 @@ func (q *MapR[T]) Query(ctx context.Context, tables []string, b *Builder, less f
 		}
 	}
 
-	items, err := w.Wait(ctx)
+	items, err, _ := w.Wait(ctx)
 
 	if err != nil {
 		return nil, err
