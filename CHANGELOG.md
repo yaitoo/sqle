@@ -5,8 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.2]
-### Added
+## [1.3.0]
+### Added 
+- added `Query[T]` feature and `MapR[T]` Queryer for cross-databases query (#21)
+
+## [1.2.2] - 2024-03-05
+### Added 
 - added detail logs on migration (#17)
 - added rotated table migration support (#17)
 - added `Rotate` method for rotate service (#18)

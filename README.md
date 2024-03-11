@@ -25,6 +25,7 @@ You’ll find the SQLE package useful if you’re not a fan of full-featured ORM
 - [ShardID](shardid/README.md) is a `snowflakes-like` distributed unique identifier with extended metadata : worker, table rotation and database sharding, and sortable by time
 - Table AutoRotation 
 - Database AutoSharding
+- MapR Query
 - [Migration](migrate/migrator_test.go): migrate database with sql files organized in filesystem. it supports to migrate table and multiple rotated tables on all sharding database instances.
 
 ## Tutorials
@@ -464,6 +465,9 @@ db.On(id). //automatically select database based on `id.DatabaseID`
 ```
 
 see more [examples](db_test.go#L49)
+
+## MapR Query
+SQLE uses `MapR[T]` queryer to connect and retrieve data from rotated tables and sharding databases. see more [examples](./queryer_mapr_test.go)
 
 ## Migration
 SQLE discovers migrations from local file system or go embed file system. There are two objects here.
