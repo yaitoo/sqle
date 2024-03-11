@@ -3,7 +3,7 @@ A SQL-First/ORM-like Golang SQL enhanced package.
 
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 [![Tests](https://github.com/yaitoo/sqle/actions/workflows/tests.yml/badge.svg)](https://github.com/yaitoo/sqle/actions/workflows/tests.yml)
-[![GoDoc](https://godoc.org/github.com/yaitoo/sqle?status.png)](https://godoc.org/github.com/yaitoo/sqle)
+[![Go Reference](https://pkg.go.dev/badge/github.com/yaitoo/sqle.svg)](https://pkg.go.dev/github.com/yaitoo/sqle)
 [![Codecov](https://codecov.io/gh/yaitoo/sqle/branch/main/graph/badge.svg)](https://codecov.io/gh/yaitoo/sqle)
 [![GitHub Release](https://img.shields.io/github/v/release/yaitoo/sqle)](https://github.com/yaitoo/sqle/blob/main/CHANGELOG.md)
 [![Go Report Card](https://goreportcard.com/badge/yaitoo/sqle)](http://goreportcard.com/report/yaitoo/sqle)
