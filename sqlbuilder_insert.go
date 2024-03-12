@@ -60,7 +60,7 @@ func (ib *InsertBuilder) SetMap(m map[string]any, opts ...BuilderOption) *Insert
 		return ib
 	}
 
-	columns := ib.b.sortColumns(m, opts...)
+	columns := sortColumns(m, opts...)
 
 	for _, n := range columns {
 		v, ok := m[n]

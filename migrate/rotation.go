@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	// skipcq: GSC-G501
 	"crypto/md5"
 	"fmt"
 	"io/fs"
@@ -92,6 +93,7 @@ func loadRotations(fsys fs.FS, d string) ([]Rotation, error) {
 			it.Name = dn[0 : len(dn)-len(filepath.Ext(dn))]
 			it.Script = s
 
+			// skipcq: GSC-G401, GO-S1023
 			h := md5.New()
 			h.Write(buf)
 

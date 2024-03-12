@@ -57,6 +57,7 @@ type ID struct {
 	TableRotate TableRotate
 }
 
+// skipcq: GO-W1029
 func (i *ID) RotateName() string {
 	switch i.TableRotate {
 	case DailyRotate:
@@ -70,11 +71,13 @@ func (i *ID) RotateName() string {
 	}
 }
 
+// skipcq: GO-W1029
 // Value implements the driver.Valuer interface
 func (b ID) Value() (driver.Value, error) {
 	return b.Int64, nil
 }
 
+// skipcq: GO-W1029
 // Scan implements the sql.Scanner interface,
 func (b *ID) Scan(src interface{}) error {
 	if src == nil {

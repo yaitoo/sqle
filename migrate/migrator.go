@@ -207,19 +207,6 @@ func (m *Migrator) Init(ctx context.Context) error {
 	return nil
 }
 
-func (m *Migrator) round(d time.Duration) time.Duration {
-	switch {
-	case d > time.Second:
-		return d.Round(time.Second)
-	case d > time.Millisecond:
-		return d.Round(time.Millisecond)
-	case d > time.Microsecond:
-		return d.Round(time.Microsecond)
-	default:
-		return d
-	}
-}
-
 func (m *Migrator) Migrate(ctx context.Context) error {
 	var err error
 	n := len(m.dbs)
@@ -276,7 +263,7 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 				}
 
 				cmd := sqle.New()
-				et := m.round(time.Since(now)).String()
+				et := round(time.Since(now)).String()
 				cmd.Insert("sqle_migrations").
 					Set("checksum", s.Checksum).
 					Set("version", v.Name).

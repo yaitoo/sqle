@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"bufio"
+	// skipcq: GSC-G501
 	"crypto/md5"
 	"errors"
 	"fmt"
@@ -70,6 +71,7 @@ func loadMigration(name string, fsys fs.FS, path string) (Migration, error) {
 		return Migration{}, err
 	}
 
+	// skipcq: GSC-G401, GO-S1023
 	h := md5.New()
 	h.Write(buf)
 
