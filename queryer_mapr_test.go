@@ -750,17 +750,17 @@ func TestQueryLimit(t *testing.T) {
 				return NewQuery[MRUser](db)
 			},
 			wanted: []MRUser{
-				//db1
+				// db1
 				{ID: 1},
 				{ID: 2},
 				{ID: 3},
 				{ID: 4},
-				//db2
+				// db2
 				{ID: 11},
 				// {ID: 12},
 				// {ID: 13},
 				// {ID: 14},
-				//db3
+				// db3
 				// {ID: 21},
 				// {ID: 22},
 				// {ID: 23},

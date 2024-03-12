@@ -7,7 +7,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/rs/zerolog v1.32.0
 	github.com/stretchr/testify v1.9.0
-	github.com/yaitoo/async v1.0.2
+	github.com/yaitoo/async v1.0.3-0.20240312152131-8b904863b0b4
 )
 
 require (

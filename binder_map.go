@@ -10,7 +10,8 @@ type mapBinder struct {
 	elem any
 }
 
-func (b *mapBinder) Bind(v reflect.Value, columns []string) []any {
+// skipcq: GO-R1005
+func (b *mapBinder) Bind(_ reflect.Value, columns []string) []any {
 	values := make([]any, len(columns))
 
 	switch b.elem.(type) {
@@ -134,7 +135,7 @@ func (b *mapBinder) Bind(v reflect.Value, columns []string) []any {
 	return values
 }
 
-func getMapBinder(t reflect.Type, kt reflect.Type) Binder {
+func getMapBinder(t reflect.Type, _ reflect.Type) Binder {
 	bindersMu.RLock()
 	var b Binder
 	var cached bool

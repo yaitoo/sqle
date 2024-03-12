@@ -16,7 +16,7 @@ type MapR[T any] struct {
 
 func (q *MapR[T]) First(ctx context.Context, tables []string, b *Builder) (T, error) {
 	var it T
-	b.Input("rotate", "<rotate>") //lazy replace on async.Wait
+	b.Input("rotate", "<rotate>") // lazy replace on async.Wait
 	query, args, err := b.Build()
 	if err != nil {
 		return it, err
@@ -41,11 +41,11 @@ func (q *MapR[T]) First(ctx context.Context, tables []string, b *Builder) (T, er
 		}
 	}
 
-	d, err, _ := w.WaitAny(ctx)
+	d, _, err := w.WaitAny(ctx)
 	return d, err
 }
 func (q *MapR[T]) Count(ctx context.Context, tables []string, b *Builder) (int, error) {
-	b.Input("rotate", "<rotate>") //lazy replace on async.Wait
+	b.Input("rotate", "<rotate>") // lazy replace on async.Wait
 	query, args, err := b.Build()
 	if err != nil {
 		return 0, err
@@ -70,7 +70,7 @@ func (q *MapR[T]) Count(ctx context.Context, tables []string, b *Builder) (int, 
 		}
 	}
 
-	items, err, _ := w.Wait(ctx)
+	items, _, err := w.Wait(ctx)
 
 	if err != nil {
 		return 0, err
@@ -86,7 +86,7 @@ func (q *MapR[T]) Count(ctx context.Context, tables []string, b *Builder) (int, 
 }
 func (q *MapR[T]) Query(ctx context.Context, tables []string, b *Builder, less func(i, j T) bool) ([]T, error) {
 
-	b.Input("rotate", "<rotate>") //lazy replace on async.Wait
+	b.Input("rotate", "<rotate>") // lazy replace on async.Wait
 	query, args, err := b.Build()
 	if err != nil {
 		return nil, err
@@ -116,7 +116,7 @@ func (q *MapR[T]) Query(ctx context.Context, tables []string, b *Builder, less f
 		}
 	}
 
-	items, err, _ := w.Wait(ctx)
+	items, _, err := w.Wait(ctx)
 
 	if err != nil {
 		return nil, err

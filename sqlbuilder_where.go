@@ -26,7 +26,7 @@ func (wb *WhereBuilder) SQL(op string, cmd string) *WhereBuilder {
 	}
 
 	if cmd != "" {
-		//first condition, op expression should not be written
+		// first condition, op expression should not be written
 		if wb.written {
 			wb.Builder.stmt.WriteString(" ")
 			wb.Builder.stmt.WriteString(op)

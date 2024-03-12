@@ -29,7 +29,7 @@ const (
 	DatabaseShift = TableBits + SequenceBits
 	TableShift    = SequenceBits
 
-	MaxSequence   int16 = -1 ^ (-1 << SequenceBits) //1023
+	MaxSequence   int16 = -1 ^ (-1 << SequenceBits) // 1023
 	MaxTableShard int8  = -1 ^ (-1 << TableBits)
 	MaxDatabaseID int16 = -1 ^ (-1 << DatabaseBits)
 	MaxWorkerID   int8  = -1 ^ (-1 << WorkerBits)

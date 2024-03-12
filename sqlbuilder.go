@@ -25,7 +25,7 @@ type Builder struct {
 	params     map[string]any
 	shouldSkip bool
 
-	Quote        string //escape column name in UPDATE and INSERT
+	Quote        string // escape column name in UPDATE and INSERT
 	Parameterize func(name string, index int) string
 }
 

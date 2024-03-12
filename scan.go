@@ -108,7 +108,7 @@ func scanToList(item reflect.Value, itemType reflect.Type, list reflect.Value, c
 	return list, nil
 }
 
-func scanToBinderList(item reflect.Value, itemType reflect.Type, list reflect.Value, cols []string, rows *sql.Rows) (reflect.Value, error) {
+func scanToBinderList(_ reflect.Value, itemType reflect.Type, list reflect.Value, cols []string, rows *sql.Rows) (reflect.Value, error) {
 
 	var err error
 

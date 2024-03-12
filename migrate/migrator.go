@@ -1,15 +1,12 @@
 package migrate
 
 import (
-	"bufio"
 	"context"
-	"crypto/md5"
 	"database/sql"
 	"errors"
 	"fmt"
 	"io/fs"
 	"log"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -69,7 +66,7 @@ func (s *Migrator) Less(i, j int) bool {
 		return false
 	}
 
-	//Major == Major
+	// Major == Major
 	if l.Minor < r.Minor {
 		return true
 	}
@@ -78,7 +75,7 @@ func (s *Migrator) Less(i, j int) bool {
 		return false
 	}
 
-	//Minor == Minor
+	// Minor == Minor
 	if l.Patch < r.Patch {
 		return true
 	}
@@ -87,9 +84,9 @@ func (s *Migrator) Less(i, j int) bool {
 		return false
 	}
 
-	//Patch == Patch
+	// Patch == Patch
 
-	//simply compare prerelease
+	// simply compare prerelease
 	return l.Prerelease < r.Prerelease
 
 }
@@ -115,59 +112,29 @@ func (m *Migrator) Discover(fsys fs.FS, options ...Option) error {
 			dn := d.Name()
 			matches := regexpSemver.FindStringSubmatch(dn)
 
-			//full/Major/Minor/Patch/Prerelease/Build
+			// full/Major/Minor/Patch/Prerelease/Build
 			if len(matches) == 6 {
-
 				major, _ := strconv.Atoi(matches[1])
 				minor, _ := strconv.Atoi(matches[2])
 				patch, _ := strconv.Atoi(matches[3])
 
-				v := Semver{
-					Name:       matches[0],
-					Major:      major,
-					Minor:      minor,
-					Patch:      patch,
-					Prerelease: matches[4],
-					Build:      matches[5],
-				}
-				files, err := fs.ReadDir(fsys, path)
+				err = m.loadVersion(matches[0], major, minor, patch, matches[4], matches[5], fsys, path)
 				if err != nil {
 					return err
 				}
-
-				for _, di := range files {
-					if di.IsDir() {
-						continue
-					}
-
-					name := di.Name()
-					if !strings.HasSuffix(name, m.suffix) {
-						continue
-					}
-
-					mi, err := m.loadMigration(name, fsys, path)
-					if err != nil {
-						return err
-					}
-
-					v.Migrations = append(v.Migrations, mi)
-				}
-
-				sort.Sort(&v)
-				m.Versions = append(m.Versions, v)
 				return nil
 			} else if dn == "monthly" {
-				m.MonthlyRotations, err = m.loadRotations(fsys, path)
+				m.MonthlyRotations, err = loadRotations(fsys, path)
 				if err != nil {
 					return err
 				}
 			} else if dn == "weekly" {
-				m.WeeklyRotations, err = m.loadRotations(fsys, path)
+				m.WeeklyRotations, err = loadRotations(fsys, path)
 				if err != nil {
 					return err
 				}
 			} else if dn == "daily" {
-				m.DailyRotations, err = m.loadRotations(fsys, path)
+				m.DailyRotations, err = loadRotations(fsys, path)
 				if err != nil {
 					return err
 				}
@@ -187,146 +154,41 @@ func (m *Migrator) Discover(fsys fs.FS, options ...Option) error {
 	return nil
 }
 
-func (m *Migrator) loadMigration(name string, fsys fs.FS, path string) (Migration, error) {
-	mi := Migration{}
-
-	matches := regexpChange.FindStringSubmatch(name)
-	if matches == nil {
-		return Migration{}, ErrInvalidScriptName
+func (m *Migrator) loadVersion(name string, major int, minor int, patch int, prerelease, build string, fsys fs.FS, path string) error {
+	v := Semver{
+		Name:       name,
+		Major:      major,
+		Minor:      minor,
+		Patch:      patch,
+		Prerelease: prerelease,
+		Build:      build,
 	}
-
-	o, err := strconv.Atoi(matches[1])
+	files, err := fs.ReadDir(fsys, path)
 	if err != nil {
-		return Migration{}, ErrInvalidScriptName
+		return err
 	}
-
-	mi.Rank = o
-	mi.Name = matches[2]
-
-	buf, err := fs.ReadFile(fsys, filepath.Join(path, name))
-	if err != nil {
-		return Migration{}, err
-	}
-
-	h := md5.New()
-	h.Write(buf)
-
-	mi.Checksum = fmt.Sprintf("%x", h.Sum(nil))
-	mi.Scripts = string(buf)
-
-	s := bufio.NewScanner(strings.NewReader(mi.Scripts))
-	s.Split(bufio.ScanLines)
-
-	if s.Scan() {
-		l := strings.ReplaceAll(s.Text(), " ", "")
-
-		/*rotate:monthly=yyyyMMDD-yyyyMMDD*/
-		if strings.HasPrefix(l, "/*") && strings.HasSuffix(l, "*/") {
-			items := strings.Split(l, ":")
-			if len(items) == 2 && items[0] == "/*rotate" {
-				options := strings.Split(items[1][0:len(items[1])-2], "=")
-				if len(options) == 2 && len(options[1]) == 17 {
-					r := m.getRotate(options[0])
-					if r != shardid.NoRotate {
-						begin, end, err := m.getRotateRange(options[1])
-						if err == nil {
-							mi.Rotate = r
-							mi.RotateBegin = begin
-							mi.RotateEnd = end
-						}
-					}
-				}
-			}
-		}
-
-	}
-	return mi, nil
-}
-
-func (m *Migrator) loadRotations(fsys fs.FS, d string) ([]Rotation, error) {
-	files, err := fs.ReadDir(fsys, d)
-	if err != nil {
-		return nil, err
-	}
-
-	var items []Rotation
-	var s string
 
 	for _, di := range files {
-		dn := di.Name()
-		buf, err := fs.ReadFile(fsys, filepath.Join(d, dn))
+		if di.IsDir() {
+			continue
+		}
+
+		name := di.Name()
+		if !strings.HasSuffix(name, m.suffix) {
+			continue
+		}
+
+		mi, err := loadMigration(name, fsys, path)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		s = string(buf)
-		if strings.Contains(s, "<rotate>") {
-			var it Rotation
-
-			it.Name = dn[0 : len(dn)-len(filepath.Ext(dn))]
-			it.Script = s
-
-			h := md5.New()
-			h.Write(buf)
-
-			it.Checksum = fmt.Sprintf("%x", h.Sum(nil))
-
-			items = append(items, it)
-		}
+		v.Migrations = append(v.Migrations, mi)
 	}
 
-	return items, nil
-}
-
-func (m *Migrator) getRotate(option string) shardid.TableRotate {
-	switch strings.ToLower(option) {
-	case "monthly":
-		return shardid.MonthlyRotate
-	case "weekly":
-		return shardid.WeeklyRotate
-	case "daily":
-		return shardid.DailyRotate
-	default:
-		return shardid.NoRotate
-	}
-}
-
-func (m *Migrator) getRotateTime(option string) (time.Time, error) {
-	year, err := strconv.Atoi(string(option[0:4]))
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	month, err := strconv.Atoi(string(option[4:6]))
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	day, err := strconv.Atoi(string(option[6:8]))
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC), nil
-}
-
-func (m *Migrator) getRotateRange(option string) (time.Time, time.Time, error) {
-	r := strings.Split(option, "-")
-	if len(r) == 2 {
-		b, err := m.getRotateTime(r[0])
-		if err != nil {
-			return time.Time{}, time.Time{}, err
-		}
-
-		e, err := m.getRotateTime(r[1])
-		if err != nil {
-			return time.Time{}, time.Time{}, err
-		}
-
-		return b, e, nil
-	}
-
-	return time.Time{}, time.Time{}, ErrInvalidRotateRange
+	sort.Sort(&v)
+	m.Versions = append(m.Versions, v)
+	return nil
 }
 
 func (m *Migrator) Init(ctx context.Context) error {
@@ -368,7 +230,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 			log.Printf("migrate db%v:\n", i)
 		}
 
-		err = m.migrate(ctx, db)
+		err = m.startMigrate(ctx, db)
 		if err != nil {
 			return err
 		}
@@ -377,7 +239,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 	return nil
 }
 
-func (m *Migrator) migrate(ctx context.Context, db *sqle.DB) error {
+func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 	var err error
 
 	for _, v := range m.Versions {
@@ -386,37 +248,18 @@ func (m *Migrator) migrate(ctx context.Context, db *sqle.DB) error {
 		log.Printf("┌─[ v%s ]\n", v.Name)
 		err = db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.Tx) error {
 
-			var checksum string
-
 			for i, s := range v.Migrations {
-				err = tx.QueryRow("SELECT `checksum` FROM `sqle_migrations` WHERE `checksum` = ?", s.Checksum).Scan(&checksum)
+				yes, err := m.isMigrated(tx, s)
 				if err != nil {
-					if !errors.Is(err, sql.ErrNoRows) {
-						return err
-					}
+					return err
 				}
 
-				if checksum != "" {
+				if yes {
 					log.Printf("│ »[%*d/%d] %-35s %-10s [✔]", w, i+1, n, s.Name, "")
 					continue
 				}
 
-				rotations := []string{""}
-				switch s.Rotate {
-				case shardid.MonthlyRotate:
-					for t := s.RotateBegin; !t.After(s.RotateEnd); t = t.AddDate(0, 1, 0) {
-						rotations = append(rotations, shardid.FormatMonth(t))
-					}
-				case shardid.WeeklyRotate:
-					for t := s.RotateBegin; !t.After(s.RotateEnd); t = t.AddDate(0, 0, 7) {
-						rotations = append(rotations, shardid.FormatWeek(t))
-					}
-
-				case shardid.DailyRotate:
-					for t := s.RotateBegin; !t.After(s.RotateEnd); t = t.AddDate(0, 0, 1) {
-						rotations = append(rotations, shardid.FormatDay(t))
-					}
-				}
+				rotations := m.buildRotations(s.Rotate, s.RotateBegin, s.RotateEnd)
 
 				now := time.Now()
 				for _, it := range strings.Split(s.Scripts, ";") {
@@ -476,6 +319,40 @@ func (m *Migrator) migrate(ctx context.Context, db *sqle.DB) error {
 	return nil
 }
 
+func (*Migrator) isMigrated(tx *sqle.Tx, s Migration) (bool, error) {
+	var checksum string
+	err := tx.QueryRow("SELECT `checksum` FROM `sqle_migrations` WHERE `checksum` = ?", s.Checksum).Scan(&checksum)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+
+		return false, err
+
+	}
+	return checksum != "", nil
+}
+
+func (*Migrator) buildRotations(r shardid.TableRotate, begin, end time.Time) []string {
+	rotations := []string{""}
+	switch r {
+	case shardid.MonthlyRotate:
+		for t := begin; !t.After(end); t = t.AddDate(0, 1, 0) {
+			rotations = append(rotations, shardid.FormatMonth(t))
+		}
+	case shardid.WeeklyRotate:
+		for t := begin; !t.After(end); t = t.AddDate(0, 0, 7) {
+			rotations = append(rotations, shardid.FormatWeek(t))
+		}
+
+	case shardid.DailyRotate:
+		for t := begin; !t.After(end); t = t.AddDate(0, 0, 1) {
+			rotations = append(rotations, shardid.FormatDay(t))
+		}
+	}
+	return rotations
+}
+
 func (m *Migrator) Rotate(ctx context.Context) error {
 	var err error
 	n := len(m.dbs)
@@ -492,7 +369,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 			"_" + now.AddDate(0, 1, 0).Format("200601"),
 		}
 
-		err = m.rotate(ctx, db, months, m.MonthlyRotations)
+		err = m.startRotate(ctx, db, months, m.MonthlyRotations)
 		if err != nil {
 			return err
 		}
@@ -508,7 +385,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 			"_" + next.Format("2006") + fmt.Sprintf("%03d", nextWeek),
 		}
 
-		err = m.rotate(ctx, db, weeks, m.WeeklyRotations)
+		err = m.startRotate(ctx, db, weeks, m.WeeklyRotations)
 		if err != nil {
 			return err
 		}
@@ -518,7 +395,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 			"_" + now.AddDate(0, 0, 1).Format("20060102"),
 		}
 
-		err = m.rotate(ctx, db, days, m.DailyRotations)
+		err = m.startRotate(ctx, db, days, m.DailyRotations)
 		if err != nil {
 			return err
 		}
@@ -528,7 +405,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 	return nil
 }
 
-func (m *Migrator) rotate(ctx context.Context, db *sqle.DB, rotatedNames []string, rotations []Rotation) error {
+func (m *Migrator) startRotate(ctx context.Context, db *sqle.DB, rotatedNames []string, rotations []Rotation) error {
 	var err error
 	var n int
 	var w int

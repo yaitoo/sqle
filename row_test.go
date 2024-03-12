@@ -45,7 +45,7 @@ type customBinder struct {
 	Email  string
 }
 
-func (cb *customBinder) Bind(v reflect.Value, columns []string) []any {
+func (cb *customBinder) Bind(_ reflect.Value, columns []string) []any {
 	var missed any
 	values := make([]any, 0, len(columns))
 	for _, col := range columns {
