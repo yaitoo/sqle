@@ -424,7 +424,7 @@ func (m *Migrator) startRotate(ctx context.Context, db *sqle.DB, rotatedNames []
 				}
 
 				cmd := sqle.New()
-				et := m.round(time.Since(now)).String()
+				et := round(time.Since(now)).String()
 				cmd.Insert("sqle_rotations").
 					Set("checksum", r.Checksum).
 					Set("name", r.Name).
