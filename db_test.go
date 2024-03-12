@@ -23,13 +23,13 @@ func createSQLite3() *sql.DB {
 	// 	return nil, clean, err
 	// }
 
-	//db, err := sql.Open("sqlite3", "file:"+f.Name()+"?cache=shared")
+	// db, err := sql.Open("sqlite3", "file:"+f.Name()+"?cache=shared")
 	db, err := sql.Open("sqlite3", "file::memory:")
 
 	if err != nil {
 		return nil
 	}
-	//https://github.com/mattn/go-sqlite3/issues/209
+	// https://github.com/mattn/go-sqlite3/issues/209
 	// db.SetMaxOpenConns(1)
 	return db
 }

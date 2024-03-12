@@ -36,18 +36,18 @@ func (r *Rows) Bind(dest any) error {
 		return err
 	}
 
-	listType := list.Type()       //list type
-	itemType := listType.Elem()   //item type
-	item := reflect.New(itemType) //item value
+	listType := list.Type()       // list type
+	itemType := listType.Elem()   // item type
+	item := reflect.New(itemType) // item value
 
 	switch itemType.Kind() {
-	case reflect.Slice: //[][]T
+	case reflect.Slice: // [][]T
 		list, err = scanToList(v, itemType, list, cols, r.Rows)
 		if err != nil {
 			return err
 		}
 
-	case reflect.Struct: //[]T
+	case reflect.Struct: // []T
 		_, ok := item.Interface().(Binder)
 		if ok {
 			list, err = scanToBinderList(item.Elem(), itemType, list, cols, r.Rows)
@@ -62,7 +62,7 @@ func (r *Rows) Bind(dest any) error {
 			}
 		}
 
-	case reflect.Map: //[]map[string]T
+	case reflect.Map: // []map[string]T
 		list, err = scanToMapList(item.Elem(), itemType, list, cols, r.Rows)
 		if err != nil {
 			return err

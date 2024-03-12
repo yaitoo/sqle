@@ -10,7 +10,7 @@ func FormatMonth(t time.Time) string {
 }
 
 func FormatWeek(t time.Time) string {
-	_, week := t.ISOWeek() //1-53 week
+	_, week := t.ISOWeek() // 1-53 week
 	return t.Format("_2006") + fmt.Sprintf("%03d", week)
 }
 

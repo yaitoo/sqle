@@ -434,14 +434,14 @@ use `shardid.ID` to enable rotate feature for a table based on option (NoRotate/
 gen := shardid.New(shardid.WithMonthlyRotate())
 id := gen.Next()
 
-b := New().On(id) //call `On` to enable rotate feature, and setup an input variable <rotate>
+b := New().On(id) // call `On` to enable rotate feature, and setup an input variable <rotate>
 b.Delete("orders<rotate>").Where().
     If(true).And("order_id = {order_id}").
     If(false).And("member_id").
     Param("order_id", "order_123456")
 
 
-db.ExecBuilder(context.TODO(),b) //DELETE FROM `orders_20240220` WHERE order_id = ?
+db.ExecBuilder(context.TODO(),b) // DELETE FROM `orders_20240220` WHERE order_id = ?
 ```
 see more [examples](sqlbuilder_test.go#L490)
 
@@ -452,15 +452,15 @@ use `shardid.ID` to enable sharding feature for any sql
 gen := shardid.New(WithDatabase(10)) // 10 database instances
 id := gen.Next()
 
-b := New().On(id) //call `On` to setup an input variable named `rotate`, and enable rotation feature
+b := New().On(id) // call `On` to setup an input variable named `rotate`, and enable rotation feature
 b.Delete("orders<rotate>").Where().
     If(true).And("order_id = {order_id}").
     If(false).And("member_id").
     Param("order_id", "order_123456")
 
 
-db.On(id). //automatically select database based on `id.DatabaseID`
- ExecBuilder(context.TODO(),b) //DELETE FROM `orders` WHERE order_id = ?
+db.On(id). // automatically select database based on `id.DatabaseID`
+ ExecBuilder(context.TODO(),b) // DELETE FROM `orders` WHERE order_id = ?
 
 ```
 

@@ -47,7 +47,7 @@ func getColumns(query string, rows *sql.Rows) ([]string, error) {
 	}
 
 	for _, it := range columns {
-		cols = append(cols, strings.ToLower(strings.Replace(it, "_", "", -1)))
+		cols = append(cols, strings.ToLower(strings.ReplaceAll(it, "_", "")))
 	}
 
 	return cols, nil

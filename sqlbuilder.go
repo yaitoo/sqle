@@ -25,7 +25,7 @@ type Builder struct {
 	params     map[string]any
 	shouldSkip bool
 
-	Quote        string //escape column name in UPDATE and INSERT
+	Quote        string // escape column name in UPDATE and INSERT
 	Parameterize func(name string, index int) string
 }
 
@@ -195,7 +195,11 @@ func (b *Builder) Delete(table string) *Builder {
 	return b
 }
 
-func (b *Builder) sortColumns(m map[string]any, opts ...BuilderOption) []string {
+func (b *Builder) On(id shardid.ID) *Builder {
+	return b.Input("rotate", id.RotateName())
+}
+
+func sortColumns(m map[string]any, opts ...BuilderOption) []string {
 
 	bo := &BuilderOptions{}
 	for _, opt := range opts {
@@ -227,8 +231,4 @@ func (b *Builder) sortColumns(m map[string]any, opts ...BuilderOption) []string 
 
 	return bo.Columns
 
-}
-
-func (b *Builder) On(id shardid.ID) *Builder {
-	return b.Input("rotate", id.RotateName())
 }

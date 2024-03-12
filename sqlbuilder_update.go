@@ -44,7 +44,7 @@ func (ub *UpdateBuilder) SetMap(m map[string]any, opts ...BuilderOption) *Update
 		return ub
 	}
 
-	columns := ub.sortColumns(m, opts...)
+	columns := sortColumns(m, opts...)
 
 	for _, n := range columns {
 		v, ok := m[n]

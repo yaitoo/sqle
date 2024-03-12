@@ -29,7 +29,7 @@ const (
 	DatabaseShift = TableBits + SequenceBits
 	TableShift    = SequenceBits
 
-	MaxSequence   int16 = -1 ^ (-1 << SequenceBits) //1023
+	MaxSequence   int16 = -1 ^ (-1 << SequenceBits) // 1023
 	MaxTableShard int8  = -1 ^ (-1 << TableBits)
 	MaxDatabaseID int16 = -1 ^ (-1 << DatabaseBits)
 	MaxWorkerID   int8  = -1 ^ (-1 << WorkerBits)
@@ -57,7 +57,7 @@ type ID struct {
 	TableRotate TableRotate
 }
 
-func (i *ID) RotateName() string {
+func (i *ID) RotateName() string { // skipcq: GO-W1029
 	switch i.TableRotate {
 	case DailyRotate:
 		return FormatDay(i.Time)
@@ -71,12 +71,12 @@ func (i *ID) RotateName() string {
 }
 
 // Value implements the driver.Valuer interface
-func (b ID) Value() (driver.Value, error) {
+func (b ID) Value() (driver.Value, error) { // skipcq: GO-W1029
 	return b.Int64, nil
 }
 
 // Scan implements the sql.Scanner interface,
-func (b *ID) Scan(src interface{}) error {
+func (b *ID) Scan(src interface{}) error { // skipcq: GO-W1029
 	if src == nil {
 		return nil
 	}
