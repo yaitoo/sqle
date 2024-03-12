@@ -57,8 +57,7 @@ type ID struct {
 	TableRotate TableRotate
 }
 
-// skipcq: GO-W1029
-func (i *ID) RotateName() string {
+func (i *ID) RotateName() string { // skipcq: GO-W1029
 	switch i.TableRotate {
 	case DailyRotate:
 		return FormatDay(i.Time)
@@ -71,15 +70,13 @@ func (i *ID) RotateName() string {
 	}
 }
 
-// skipcq: GO-W1029
 // Value implements the driver.Valuer interface
-func (b ID) Value() (driver.Value, error) {
+func (b ID) Value() (driver.Value, error) { // skipcq: GO-W1029
 	return b.Int64, nil
 }
 
-// skipcq: GO-W1029
 // Scan implements the sql.Scanner interface,
-func (b *ID) Scan(src interface{}) error {
+func (b *ID) Scan(src interface{}) error { // skipcq: GO-W1029
 	if src == nil {
 		return nil
 	}

@@ -356,7 +356,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 			"_" + now.AddDate(0, 1, 0).Format("200601"),
 		}
 
-		err = m.startRotate(ctx, db, months, m.MonthlyRotations)
+		err = startRotate(ctx, db, months, m.MonthlyRotations)
 		if err != nil {
 			return err
 		}
@@ -372,7 +372,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 			"_" + next.Format("2006") + fmt.Sprintf("%03d", nextWeek),
 		}
 
-		err = m.startRotate(ctx, db, weeks, m.WeeklyRotations)
+		err = startRotate(ctx, db, weeks, m.WeeklyRotations)
 		if err != nil {
 			return err
 		}
@@ -382,7 +382,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 			"_" + now.AddDate(0, 0, 1).Format("20060102"),
 		}
 
-		err = m.startRotate(ctx, db, days, m.DailyRotations)
+		err = startRotate(ctx, db, days, m.DailyRotations)
 		if err != nil {
 			return err
 		}
@@ -392,7 +392,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 	return nil
 }
 
-func (m *Migrator) startRotate(ctx context.Context, db *sqle.DB, rotatedNames []string, rotations []Rotation) error {
+func startRotate(ctx context.Context, db *sqle.DB, rotatedNames []string, rotations []Rotation) error {
 	var err error
 	var n int
 	var w int
