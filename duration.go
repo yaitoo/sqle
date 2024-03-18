@@ -8,6 +8,10 @@ import (
 
 type Duration time.Duration
 
+func (d Duration) Duration() time.Duration {
+	return time.Duration(d)
+}
+
 // Value implements the driver.Valuer interface,
 // and turns the Duration into a VARCHAR field  for MySQL storage.
 func (d Duration) Value() (driver.Value, error) {
