@@ -362,7 +362,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 		}
 
 		var week int
-		_, week = now.ISOWeek() //1-53 week
+		_, week = now.ISOWeek() // 1-53 week
 
 		next := now.AddDate(0, 0, 7)
 		_, nextWeek := next.ISOWeek()

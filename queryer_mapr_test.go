@@ -801,7 +801,7 @@ func TestQueryLimit(t *testing.T) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users", "id").
 					SQL("ORDER BY id DESC"), func(i, j MRUser) bool {
-					//DESC
+					// DESC
 					return j.ID < i.ID
 				}, 16)
 			},
