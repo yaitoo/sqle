@@ -12,7 +12,7 @@ func TestDuration(t *testing.T) {
 	d, err := sql.Open("sqlite3", "file::memory:")
 	require.NoError(t, err)
 
-	_, err = d.Exec("CREATE TABLE `users` (`id` id NOT NULL,`ttl` VARCHAR(20), PRIMARY KEY (`id`))")
+	_, err = d.Exec("CREATE TABLE `users` (`id` id NOT NULL,`ttl` VARCHAR(20), `b_ttl` VARBINARY, PRIMARY KEY (`id`))")
 	require.NoError(t, err)
 
 	d10 := Duration(10 * time.Second)
@@ -20,7 +20,7 @@ func TestDuration(t *testing.T) {
 	d12 := Duration(12 * time.Second)
 	d13 := Duration(13 * time.Second)
 
-	result, err := d.Exec("INSERT INTO `users`(`id`, `ttl`) VALUES(?, ?)", 10, d10)
+	result, err := d.Exec("INSERT INTO `users`(`id`, `ttl`,`b_ttl`) VALUES(?, ?, ?)", 10, d10, d10)
 	require.NoError(t, err)
 
 	rows, err := result.RowsAffected()
@@ -49,16 +49,20 @@ func TestDuration(t *testing.T) {
 	require.Equal(t, int64(1), rows)
 
 	var b10 Duration
-	err = d.QueryRow("SELECT `ttl` FROM `users` WHERE id=?", 10).Scan(&b10)
+	var b_b10 Duration
+	err = d.QueryRow("SELECT `ttl`, `b_ttl` FROM `users` WHERE id=?", 10).Scan(&b10, &b_b10)
 	require.NoError(t, err)
 
-	require.EqualValues(t, d10, b10)
+	require.Equal(t, d10.Duration(), b10.Duration())
+	require.Equal(t, d10.Duration(), b_b10.Duration())
 
 	var b11 Duration
-	err = d.QueryRow("SELECT `ttl` FROM `users` WHERE id=?", 11).Scan(&b11)
+	var b_b11 Duration
+	err = d.QueryRow("SELECT `ttl`, `b_ttl` FROM `users` WHERE id=?", 11).Scan(&b11, &b_b11)
 	require.NoError(t, err)
 
 	require.EqualValues(t, d11, b11)
+	require.Empty(t, b_b11)
 
 	var b12 Duration
 	err = d.QueryRow("SELECT `ttl` FROM `users` WHERE id=?", 12).Scan(&b12)
