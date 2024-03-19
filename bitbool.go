@@ -10,7 +10,7 @@ type BitBool bool
 
 // Value implements the driver.Valuer interface,
 // and turns the BitBool into a bit field (BIT(1)) for MySQL storage.
-func (b BitBool) Value() (driver.Value, error) {
+func (b BitBool) Value() (driver.Value, error) { // skipcq: GO-W1029
 	if b {
 		return []byte{1}, nil
 	} else {
@@ -20,7 +20,7 @@ func (b BitBool) Value() (driver.Value, error) {
 
 // Scan implements the sql.Scanner interface,
 // and turns the bit field incoming from MySQL into a BitBool
-func (b *BitBool) Scan(src interface{}) error {
+func (b *BitBool) Scan(src interface{}) error { // skipcq: GO-W1029
 	if src == nil {
 		return nil
 	}
