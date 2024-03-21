@@ -3,9 +3,8 @@ package sqle
 import (
 	"context"
 	"database/sql"
+	"log"
 	"sync"
-
-	"github.com/rs/zerolog/log"
 )
 
 type Context struct {
@@ -148,7 +147,7 @@ func (db *Context) Transaction(ctx context.Context, opts *sql.TxOptions, fn func
 	defer func() {
 		if err != nil {
 			if e := tx.Rollback(); e != nil {
-				log.Error().Str("pkg", "sqle").Str("tag", "tx").Err(e)
+				log.Println("sqle: rollback ", e)
 			}
 		}
 	}()
