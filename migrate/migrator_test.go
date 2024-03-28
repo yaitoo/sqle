@@ -314,7 +314,7 @@ func TestMigrate(t *testing.T) {
 						PRIMARY KEY (id)
 						);`),
 					},
-				})
+				}, WithModule("tests"))
 
 				if err != nil {
 					return nil, err
