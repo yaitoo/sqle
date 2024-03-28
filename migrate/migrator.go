@@ -24,6 +24,7 @@ var (
 
 const TABLE_MIGRATIONS = "CREATE TABLE IF NOT EXISTS sqle_migrations(" +
 	"`checksum` varchar(32) NOT NULL," +
+	"`module` varchar(45) NOT NULL," +
 	"`version` varchar(45) NOT NULL," +
 	"`name` varchar(45) NOT NULL," +
 	"`rank` int NOT NULL DEFAULT '0'," +
@@ -43,6 +44,7 @@ const TABLE_ROTATIONS = "CREATE TABLE IF NOT EXISTS sqle_rotations(" +
 type Migrator struct {
 	dbs    []*sqle.DB
 	suffix string
+	module string
 
 	Versions         []Semver
 	MonthlyRotations []Rotation
@@ -214,7 +216,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 		if n == 1 {
 			log.Println("migrate:")
 		} else {
-			log.Printf("migrate db%v:\n", i)
+			log.Printf("migrate db-%v:\n", i)
 		}
 
 		err = m.startMigrate(ctx, db)
@@ -266,6 +268,7 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 				et := round(time.Since(now)).String()
 				cmd.Insert("sqle_migrations").
 					Set("checksum", s.Checksum).
+					Set("module", m.module).
 					Set("version", v.Name).
 					Set("name", s.Name).
 					Set("rank", s.Rank).

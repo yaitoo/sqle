@@ -15,3 +15,9 @@ func WithSuffix(suffix string) Option {
 		}
 	}
 }
+
+func WithModule(name string) Option {
+	return func(m *Migrator) {
+		m.module = name
+	}
+}
