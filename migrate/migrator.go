@@ -214,9 +214,9 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 	n := len(m.dbs)
 	for i, db := range m.dbs {
 		if n == 1 {
-			log.Println("migrate:")
+			log.Printf("migrate: %s\n", m.module)
 		} else {
-			log.Printf("migrate db-%v:\n", i)
+			log.Printf("migrate db-%v: %s\n", i, m.module)
 		}
 
 		err = m.startMigrate(ctx, db)
@@ -348,9 +348,9 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 	n := len(m.dbs)
 	for i, db := range m.dbs {
 		if n == 1 {
-			log.Println("rotate:")
+			log.Printf("rotate: %s\n", m.module)
 		} else {
-			log.Printf("rotate db%v:\n", i)
+			log.Printf("rotate db-%v: %s\n", i, m.module)
 		}
 
 		now := m.now().UTC()
