@@ -36,6 +36,7 @@ const (
 	MaxTimeMillis int64 = -1 ^ (-1 << TimeMillisBits)
 )
 
+// TableRotate table rotation option
 type TableRotate int8
 
 var (
@@ -45,6 +46,7 @@ var (
 	DailyRotate   TableRotate = 3
 )
 
+// ID shardid info
 type ID struct {
 	Time       time.Time
 	Int64      int64
@@ -57,6 +59,7 @@ type ID struct {
 	TableRotate TableRotate
 }
 
+// RotateName format time parts as rotated table name suffix
 func (i *ID) RotateName() string { // skipcq: GO-W1029
 	switch i.TableRotate {
 	case DailyRotate:

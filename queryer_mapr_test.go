@@ -269,6 +269,18 @@ func TestFirst(t *testing.T) {
 					Where("id = 2024020294").End())
 			},
 		},
+		{
+			name: "day_on_last_db_should_work",
+			query: func() Query[MRUser] {
+				return NewQuery[MRUser](db, WithDays[MRUser](d20240201, d20240202))
+			},
+			wanted: MRUser{ID: 2024020294},
+			first: func(q Query[MRUser]) (MRUser, error) {
+				return q.First(context.Background(), New().
+					Select("users<rotate>", "id").
+					Where("id = 2024020294").End())
+			},
+		},
 	}
 
 	for _, test := range tests {
