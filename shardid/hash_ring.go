@@ -40,7 +40,7 @@ func NewHR(n int, options ...HashRingOption) *HashRing {
 
 	for i := 0; i < n; i++ {
 		for _, v := range r.replicas {
-			k := r.getHash(v + strconv.Itoa(i))
+			k := getHash(v + strconv.Itoa(i))
 			r.dbs[k] = i
 			r.vNodes = append(r.vNodes, k)
 		}
@@ -53,7 +53,7 @@ func NewHR(n int, options ...HashRingOption) *HashRing {
 
 // Locate locate db and vNode for data v
 func (r *HashRing) Locate(v string) (int, uint32) {
-	k := r.getHash(v)
+	k := getHash(v)
 
 	var found uint32
 	for i, n := range r.vNodes {
@@ -83,7 +83,7 @@ func (r *HashRing) getPreviousDB(v uint32) int {
 }
 
 // getHash get hash for data v
-func (r *HashRing) getHash(v string) uint32 {
+func getHash(v string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(v)) // nolint: errcheck
 	return h.Sum32()

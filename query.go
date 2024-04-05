@@ -20,14 +20,14 @@ type Query[T any] struct {
 }
 
 // NewQuery create a Query
-func NewQuery[T any](db *DB, options ...QueryOption[T]) Query[T] {
-	q := Query[T]{
+func NewQuery[T any](db *DB, options ...QueryOption[T]) *Query[T] {
+	q := &Query[T]{
 		db: db,
 	}
 
 	for _, opt := range options {
 		if opt != nil {
-			opt(&q)
+			opt(q)
 		}
 	}
 
