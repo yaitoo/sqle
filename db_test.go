@@ -34,7 +34,7 @@ func createSQLite3() *sql.DB {
 	return db
 }
 
-func TestSharding(t *testing.T) {
+func TestOn(t *testing.T) {
 	dbs := make([]*sql.DB, 0, 10)
 
 	for i := 0; i < 10; i++ {
@@ -81,4 +81,65 @@ func TestSharding(t *testing.T) {
 		require.Equal(t, id.Int64, userID)
 	}
 
+}
+
+func TestOnDHT(t *testing.T) {
+	dbs := make([]*sql.DB, 0, 10)
+
+	for i := 0; i < 10; i++ {
+		db3 := createSQLite3()
+
+		db3.Exec("CREATE TABLE `users_dht` (`email` varchar(50), PRIMARY KEY (`email`))") //nolint: errcheck
+
+		dbs = append(dbs, db3)
+	}
+
+	db := Open(dbs...)
+
+	emails := []string{
+		"0@abc.com",
+		"1@abc.com",
+		"2@abc.com",
+		"3@abc.com",
+		"4@abc.com",
+		"5@abc.com",
+		"6@abc.com",
+		"7@abc.com",
+		"8@abc.com",
+		"9@abc.com",
+	}
+
+	items := make(map[string]int)
+	for _, e := range emails {
+
+		b := New().Insert("users_dht").
+			Set("email", e).
+			End()
+
+		c, err := db.OnDHT(e)
+		require.NoError(t, err)
+
+		result, err := c.ExecBuilder(context.TODO(), b)
+
+		require.NoError(t, err)
+		rows, err := result.RowsAffected()
+		require.NoError(t, err)
+		require.Equal(t, int64(1), rows)
+
+		items[e] = c.index
+	}
+
+	for e, i := range items {
+		b := New().Select("users_dht", "email").Where("email = {email}").Param("email", e)
+
+		ctx, err := db.OnDHT(e)
+
+		require.NoError(t, err)
+		require.Equal(t, i, ctx.index)
+
+		var email string
+		err = ctx.QueryRowBuilder(context.TODO(), b).Scan(&email)
+		require.NoError(t, err)
+		require.Equal(t, e, email)
+	}
 }

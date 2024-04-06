@@ -91,4 +91,10 @@ func TestDHT(t *testing.T) {
 	i, err = m.On("150")
 	require.Equal(t, 0, i)
 	require.ErrorIs(t, err, ErrItemIsBusy) // > Q1 last node => E0!
+
+	m.EndScale()
+
+	i, err = m.On("150")
+	require.Equal(t, 0, i)
+	require.Nil(t, err) // > Q1 last node => E0!
 }

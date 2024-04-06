@@ -29,7 +29,7 @@ func NewDHT(current *HashRing) *DHT {
 	return m
 }
 
-// On locate database with v from current HashRing, return ErrDataIsBusy if it is migrating on scaling
+// On locate database with v from current HashRing, return ErrItemIsBusy if it is on affected database
 func (m *DHT) On(v string) (int, error) {
 	m.RLock()
 	defer m.RUnlock()
