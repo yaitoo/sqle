@@ -11,7 +11,7 @@ import (
 
 var (
 	StmtMaxIdleTime = 1 * time.Minute
-	ErrDataIsBusy   = errors.New("sqle: data is busy")
+	ErrMissingDHT   = errors.New("sqle: DHT is missing")
 )
 
 type DB struct {
@@ -41,38 +41,11 @@ func Open(dbs ...*sql.DB) *DB {
 		go ctx.closeIdleStmt()
 	}
 
-	d.dht = shardid.NewDHT(shardid.NewHR(len(dbs)))
-
 	return d
 }
 
-// On select database from shardid.ID
-func (db *DB) On(id shardid.ID) *Context {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	return db.dbs[int(id.DatabaseID)]
-}
-
-// OnDHT select database from DHT
-func (db *DB) OnDHT(key string) (*Context, error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-	if len(db.dbs) == 1 {
-		return db.dbs[0], nil
-	}
-
-	i, err := db.dht.On(key)
-
-	if err != nil {
-		return nil, err
-
-	}
-	return db.dbs[i], nil
-}
-
-// ScaleOut dynamically scale out DB/DHT with new databases
-func (db *DB) ScaleOut(dbs ...*sql.DB) {
+// Add dynamically scale out DB with new databases
+func (db *DB) Add(dbs ...*sql.DB) {
 	db.Lock()
 	defer db.Unlock()
 
@@ -87,14 +60,62 @@ func (db *DB) ScaleOut(dbs ...*sql.DB) {
 		db.dbs = append(db.dbs, ctx)
 		go ctx.closeIdleStmt()
 	}
-
-	db.dht.ScaleTo(shardid.NewHR(len(db.dbs)))
 }
 
-// EndScale end scale out, and reload DHT
-func (db *DB) EndScale() {
+// On select database from shardid.ID
+func (db *DB) On(id shardid.ID) *Context {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	return db.dbs[int(id.DatabaseID)]
+}
+
+// NewDHT create new DTH with databases
+func (db *DB) NewDHT(dbs ...int) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	db.dht = shardid.NewDHT(dbs...)
+}
+
+// AddDHT add new databases into current DHT
+func (db *DB) AddDHT(dbs ...int) {
 	db.Lock()
 	defer db.Unlock()
+	if db.dht == nil {
+		return
+	}
+	db.dht.Add(dbs...)
+}
 
-	db.dht.EndScale()
+// EndDHT end current DHT scaling, and reload.
+func (db *DB) EndDHT() {
+	db.Lock()
+	defer db.Unlock()
+	if db.dht == nil {
+		return
+	}
+	db.dht.End()
+}
+
+// OnDHT select database from DHT
+func (db *DB) OnDHT(key string) (*Context, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	if len(db.dbs) == 1 {
+		return db.dbs[0], nil
+	}
+
+	if db.dht == nil {
+		return nil, ErrMissingDHT
+	}
+
+	cur, _, err := db.dht.On(key)
+
+	if err != nil {
+		return nil, err
+
+	}
+	return db.dbs[cur], nil
 }

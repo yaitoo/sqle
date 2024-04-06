@@ -13,6 +13,7 @@ func TestDHT(t *testing.T) {
 	// 46916880 E0 0  !
 	// 63694499 E1 1
 	//	<-	80472118 E2 2
+	//  ->  83143427          3850
 	//	<-  84017712 S2 2
 	//  ->  111074370         638
 	// 117572950 S0 0 !
@@ -43,11 +44,8 @@ func TestDHT(t *testing.T) {
 	//	<-  2633818442 Q2 2
 	//  -> 4113327457          150
 
-	current := NewHR(2, WithReplicas(defaultReplicas...))
-	next := NewHR(3)
-
-	m := NewDHT(current)
-	m.ScaleTo(next)
+	m := NewDHT(1, 2)
+	m.Add(3)
 
 	vn := map[uint32]bool{
 		46916880:   true, // E0
@@ -60,41 +58,70 @@ func TestDHT(t *testing.T) {
 	}
 	require.Equal(t, vn, m.affectedVNodes)
 	require.Equal(t, []int{0}, m.affectedDbs)
-	i, err := m.On("1149")
-	require.Equal(t, 0, i)
-	require.ErrorIs(t, err, ErrItemIsBusy) // < E0 => E0! first node
 
-	i, err = m.On("E0")
-	require.Equal(t, 1, i)
-	require.Nil(t, err) // == E0! => E1
+	// vNode E0 is affected, but 1149 is unnecessary to move
+	cur, next, err := m.On("1149")
+	require.Equal(t, 1, cur)
+	require.Equal(t, 1, next)
+	require.NoError(t, err) // < E0! => E0! first node
 
-	i, err = m.On("E1")
-	require.Equal(t, 0, i)
+	// vNode S0 is affected, and 3850 should be moved from S0 to S2
+	cur, next, err = m.On("3850")
+	require.Equal(t, 1, cur)
+	require.Equal(t, 3, next)
+	require.ErrorIs(t, err, ErrItemIsBusy) // < S0! => S2
+
+	// vNode S0 is affected, but 638 is unnecessary to move
+	cur, next, err = m.On("638")
+	require.Equal(t, 1, cur)
+	require.Equal(t, 1, next)
+	require.NoError(t, err) // S0! => S0!
+
+	// vNode E1 is not affected
+	cur, next, err = m.On("E0") // v equals E0, and on vNode E1
+	require.Equal(t, 2, cur)
+	require.Equal(t, 2, next)
+	require.Nil(t, err) // == E1 => E1
+
+	// vNode S0 is affected, and E1 should be moved from S0 to E2
+	cur, next, err = m.On("E1")
+	require.Equal(t, 1, cur)
+	require.Equal(t, 3, next)
 	require.ErrorIs(t, err, ErrItemIsBusy) // == E1 => S0!
 
-	i, err = m.On("638")
-	require.Equal(t, 0, i)
-	require.ErrorIs(t, err, ErrItemIsBusy) // E1 < 638 < S0! => S0!
-
-	i, err = m.On("S0")
-	require.Equal(t, 1, i)
+	// vNode S1 is not affected
+	cur, next, err = m.On("S0")
+	require.Equal(t, 2, cur)
+	require.Equal(t, 2, next)
 	require.Nil(t, err) // == S0! => S1
 
-	i, err = m.On("C0")
-	require.Equal(t, 1, i)
+	// vNode C1 is not affected
+	cur, next, err = m.On("C0")
+	require.Equal(t, 2, cur)
+	require.Equal(t, 2, next)
 	require.Nil(t, err) // == C0! => C1
 
-	i, err = m.On("C1")
-	require.Equal(t, 0, i)
+	// vNode I0 is not affected
+	cur, next, err = m.On("C1")
+	require.Equal(t, 1, cur)
+	require.Equal(t, 1, next)
 	require.Nil(t, err) // == C1 => I0
 
-	i, err = m.On("150")
-	require.Equal(t, 0, i)
-	require.ErrorIs(t, err, ErrItemIsBusy) // > Q1 last node => E0!
-
-	m.EndScale()
-
-	i, err = m.On("150")
-	require.Equal(t, 0, i)
+	// vNode E0 is affected, but 150 is unnecessary to move from E0 to Q2
+	cur, next, err = m.On("150")
+	require.Equal(t, 1, cur)
+	require.Equal(t, 1, next)
 	require.Nil(t, err) // > Q1 last node => E0!
+
+	m.End()
+
+	cur, next, err = m.On("E1")
+	require.Equal(t, 3, cur)
+	require.Equal(t, 3, next)
+	require.Nil(t, err)
+
+	cur, next, err = m.On("150")
+	require.Equal(t, 1, cur)
+	require.Equal(t, 1, next)
+	require.Nil(t, err)
 }
