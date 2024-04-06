@@ -14,13 +14,12 @@ type cachedStmt struct {
 }
 
 func (db *Context) prepareStmt(ctx context.Context, query string) (*sql.Stmt, error) {
-	db.stmtsMutex.RLock()
+	db.stmtsMutex.Lock()
+	defer db.stmtsMutex.Unlock()
 	s, ok := db.stmts[query]
-	db.stmtsMutex.RUnlock()
+
 	if ok {
-		s.Lock()
 		s.lastUsed = time.Now()
-		s.Unlock()
 		return s.stmt, nil
 	}
 
@@ -29,19 +28,17 @@ func (db *Context) prepareStmt(ctx context.Context, query string) (*sql.Stmt, er
 		return nil, err
 	}
 
-	db.stmtsMutex.Lock()
 	db.stmts[query] = &cachedStmt{
 		stmt:     stmt,
 		lastUsed: time.Now(),
 	}
-	db.stmtsMutex.Unlock()
 
 	return stmt, nil
 }
 
 func (db *Context) closeIdleStmt() {
 	for {
-		<-time.After(1 * time.Minute)
+		<-time.After(StmtMaxIdleTime)
 
 		db.stmtsMutex.Lock()
 		lastActive := time.Now().Add(-1 * time.Minute)

@@ -120,18 +120,18 @@ func TestFirst(t *testing.T) {
 		name    string
 		wanted  MRUser
 		wantErr error
-		query   func() Query[MRUser]
-		first   func(q Query[MRUser]) (MRUser, error)
+		query   func() *Query[MRUser]
+		first   func(q *Query[MRUser]) (MRUser, error)
 	}{
 		{
 			name: "1st_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db, WithQueryer[MRUser](&MapR[MRUser]{
 					dbs: db.dbs,
 				}))
 			},
 			wanted: MRUser{ID: 2},
-			first: func(q Query[MRUser]) (MRUser, error) {
+			first: func(q *Query[MRUser]) (MRUser, error) {
 				return q.First(context.Background(), New().
 					Select("users", "id").
 					Where("id = 2").End())
@@ -139,11 +139,11 @@ func TestFirst(t *testing.T) {
 		},
 		{
 			name: "3rd_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db)
 			},
 			wanted: MRUser{ID: 31},
-			first: func(q Query[MRUser]) (MRUser, error) {
+			first: func(q *Query[MRUser]) (MRUser, error) {
 				return q.First(context.Background(), New().
 					Select("users", "id").
 					Where("id = 31").End())
@@ -151,11 +151,11 @@ func TestFirst(t *testing.T) {
 		},
 		{
 			name: "last_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db)
 			},
 			wanted: MRUser{ID: 94},
-			first: func(q Query[MRUser]) (MRUser, error) {
+			first: func(q *Query[MRUser]) (MRUser, error) {
 				return q.First(context.Background(), New().
 					Select("users", "id").
 					Where("id = 94").End())
@@ -163,11 +163,11 @@ func TestFirst(t *testing.T) {
 		},
 		{
 			name: "month_on_1st_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db, WithMonths[MRUser](m202402, m202403))
 			},
 			wanted: MRUser{ID: 20240204},
-			first: func(q Query[MRUser]) (MRUser, error) {
+			first: func(q *Query[MRUser]) (MRUser, error) {
 				return q.First(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("id = 20240204").End())
@@ -175,11 +175,11 @@ func TestFirst(t *testing.T) {
 		},
 		{
 			name: "month_on_6th_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db, WithMonths[MRUser](m202402, m202403))
 			},
 			wanted: MRUser{ID: 20240354},
-			first: func(q Query[MRUser]) (MRUser, error) {
+			first: func(q *Query[MRUser]) (MRUser, error) {
 				return q.First(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("id = 20240354").End())
@@ -187,11 +187,11 @@ func TestFirst(t *testing.T) {
 		},
 		{
 			name: "month_on_last_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db, WithMonths[MRUser](m202402, m202403))
 			},
 			wanted: MRUser{ID: 20240394},
-			first: func(q Query[MRUser]) (MRUser, error) {
+			first: func(q *Query[MRUser]) (MRUser, error) {
 				return q.First(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("id = 20240394").End())
@@ -199,11 +199,11 @@ func TestFirst(t *testing.T) {
 		},
 		{
 			name: "week_on_1st_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db, WithWeeks[MRUser](w20240201, w20240208))
 			},
 			wanted: MRUser{ID: 202400504},
-			first: func(q Query[MRUser]) (MRUser, error) {
+			first: func(q *Query[MRUser]) (MRUser, error) {
 				return q.First(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("id = 202400504").End())
@@ -211,11 +211,11 @@ func TestFirst(t *testing.T) {
 		},
 		{
 			name: "week_on_5th_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db, WithWeeks[MRUser](w20240201, w20240208))
 			},
 			wanted: MRUser{ID: 202400654},
-			first: func(q Query[MRUser]) (MRUser, error) {
+			first: func(q *Query[MRUser]) (MRUser, error) {
 				return q.First(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("id = 202400654").End())
@@ -223,11 +223,11 @@ func TestFirst(t *testing.T) {
 		},
 		{
 			name: "week_on_last_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db, WithWeeks[MRUser](w20240201, w20240208))
 			},
 			wanted: MRUser{ID: 202400694},
-			first: func(q Query[MRUser]) (MRUser, error) {
+			first: func(q *Query[MRUser]) (MRUser, error) {
 				return q.First(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("id = 202400694").End())
@@ -235,11 +235,11 @@ func TestFirst(t *testing.T) {
 		},
 		{
 			name: "day_on_1st_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db, WithDays[MRUser](d20240201, d20240202))
 			},
 			wanted: MRUser{ID: 2024020104},
-			first: func(q Query[MRUser]) (MRUser, error) {
+			first: func(q *Query[MRUser]) (MRUser, error) {
 				return q.First(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("id = 2024020104").End())
@@ -247,11 +247,11 @@ func TestFirst(t *testing.T) {
 		},
 		{
 			name: "day_on_5th_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db, WithDays[MRUser](d20240201, d20240202))
 			},
 			wanted: MRUser{ID: 2024020154},
-			first: func(q Query[MRUser]) (MRUser, error) {
+			first: func(q *Query[MRUser]) (MRUser, error) {
 				return q.First(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("id = 2024020154").End())
@@ -259,11 +259,23 @@ func TestFirst(t *testing.T) {
 		},
 		{
 			name: "day_on_last_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db, WithDays[MRUser](d20240201, d20240202))
 			},
 			wanted: MRUser{ID: 2024020294},
-			first: func(q Query[MRUser]) (MRUser, error) {
+			first: func(q *Query[MRUser]) (MRUser, error) {
+				return q.First(context.Background(), New().
+					Select("users<rotate>", "id").
+					Where("id = 2024020294").End())
+			},
+		},
+		{
+			name: "day_on_last_db_should_work",
+			query: func() *Query[MRUser] {
+				return NewQuery[MRUser](db, WithDays[MRUser](d20240201, d20240202))
+			},
+			wanted: MRUser{ID: 2024020294},
+			first: func(q *Query[MRUser]) (MRUser, error) {
 				return q.First(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("id = 2024020294").End())
@@ -293,18 +305,18 @@ func TestCount(t *testing.T) {
 		name    string
 		wanted  int
 		wantErr error
-		query   func() Query[int]
-		count   func(q Query[int]) (int, error)
+		query   func() *Query[int]
+		count   func(q *Query[int]) (int, error)
 	}{
 		{
 			name: "1st_db_should_work",
-			query: func() Query[int] {
+			query: func() *Query[int] {
 				return NewQuery[int](db, WithQueryer[int](&MapR[int]{
 					dbs: db.dbs,
 				}))
 			},
 			wanted: 3,
-			count: func(q Query[int]) (int, error) {
+			count: func(q *Query[int]) (int, error) {
 				return q.Count(context.Background(), New().
 					Select("users", "count(id)").
 					Where("id < 4").
@@ -313,11 +325,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "3_dbs_should_work",
-			query: func() Query[int] {
+			query: func() *Query[int] {
 				return NewQuery[int](db)
 			},
 			wanted: 11,
-			count: func(q Query[int]) (int, error) {
+			count: func(q *Query[int]) (int, error) {
 				return q.Count(context.Background(), New().
 					Select("users", "count(id)").
 					Where("id < 24").End())
@@ -325,22 +337,22 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "all_dbs_should_work",
-			query: func() Query[int] {
+			query: func() *Query[int] {
 				return NewQuery[int](db)
 			},
 			wanted: 40,
-			count: func(q Query[int]) (int, error) {
+			count: func(q *Query[int]) (int, error) {
 				return q.Count(context.Background(), New().
 					Select("users", "count(id)"))
 			},
 		},
 		{
 			name: "month_on_1st_db_should_work",
-			query: func() Query[int] {
+			query: func() *Query[int] {
 				return NewQuery[int](db, WithMonths[int](m202402, m202403))
 			},
 			wanted: 7,
-			count: func(q Query[int]) (int, error) {
+			count: func(q *Query[int]) (int, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("( id > 20240200 AND id < 20240204) OR ( id >= 20240300 AND id < 20240305)").End())
@@ -348,11 +360,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "month_on_6th_db_should_work",
-			query: func() Query[int] {
+			query: func() *Query[int] {
 				return NewQuery[int](db, WithMonths[int](m202402, m202403))
 			},
 			wanted: 7,
-			count: func(q Query[int]) (int, error) {
+			count: func(q *Query[int]) (int, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 20240250 AND id < 20240254) OR ( id >= 20240350 AND id < 20240355)").End())
@@ -360,11 +372,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "month_on_last_db_should_work",
-			query: func() Query[int] {
+			query: func() *Query[int] {
 				return NewQuery[int](db, WithMonths[int](m202402, m202403))
 			},
 			wanted: 7,
-			count: func(q Query[int]) (int, error) {
+			count: func(q *Query[int]) (int, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 20240290 AND id < 20240294) OR ( id >= 20240390 AND id < 20240395)").End())
@@ -372,11 +384,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "week_on_1st_db_should_work",
-			query: func() Query[int] {
+			query: func() *Query[int] {
 				return NewQuery[int](db, WithWeeks[int](w20240201, w20240208))
 			},
 			wanted: 6,
-			count: func(q Query[int]) (int, error) {
+			count: func(q *Query[int]) (int, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 202400500 AND id < 202400504) OR ( id >= 202400600 AND id < 202400604)").End())
@@ -384,11 +396,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "week_on_5th_db_should_work",
-			query: func() Query[int] {
+			query: func() *Query[int] {
 				return NewQuery[int](db, WithWeeks[int](w20240201, w20240208))
 			},
 			wanted: 6,
-			count: func(q Query[int]) (int, error) {
+			count: func(q *Query[int]) (int, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 202400550 AND id < 202400554) OR ( id >= 202400650 AND id < 202400654)").End())
@@ -396,11 +408,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "week_on_last_db_should_work",
-			query: func() Query[int] {
+			query: func() *Query[int] {
 				return NewQuery[int](db, WithWeeks[int](w20240201, w20240208))
 			},
 			wanted: 6,
-			count: func(q Query[int]) (int, error) {
+			count: func(q *Query[int]) (int, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 202400590 AND id < 202400594) OR ( id >= 202400690 AND id < 202400694)").End())
@@ -408,11 +420,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "day_on_1st_db_should_work",
-			query: func() Query[int] {
+			query: func() *Query[int] {
 				return NewQuery[int](db, WithDays[int](d20240201, d20240202))
 			},
 			wanted: 6,
-			count: func(q Query[int]) (int, error) {
+			count: func(q *Query[int]) (int, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 2024020100 AND id < 2024020104) OR ( id > 2024020200 AND id < 2024020204)").End())
@@ -420,11 +432,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "day_on_5th_db_should_work",
-			query: func() Query[int] {
+			query: func() *Query[int] {
 				return NewQuery[int](db, WithDays[int](d20240201, d20240202))
 			},
 			wanted: 6,
-			count: func(q Query[int]) (int, error) {
+			count: func(q *Query[int]) (int, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 2024020150 AND id < 2024020154) OR ( id > 2024020250 AND id < 2024020254)").End())
@@ -432,11 +444,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "day_on_last_db_should_work",
-			query: func() Query[int] {
+			query: func() *Query[int] {
 				return NewQuery[int](db, WithDays[int](d20240201, d20240202))
 			},
 			wanted: 6,
-			count: func(q Query[int]) (int, error) {
+			count: func(q *Query[int]) (int, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 2024020190 AND id < 2024020194) OR ( id > 2024020290 AND id < 2024020294)").End())
@@ -465,12 +477,12 @@ func TestQuery(t *testing.T) {
 		name      string
 		wanted    []MRUser
 		wantErr   error
-		query     func() Query[MRUser]
-		queryRows func(q Query[MRUser]) ([]MRUser, error)
+		query     func() *Query[MRUser]
+		queryRows func(q *Query[MRUser]) ([]MRUser, error)
 	}{
 		{
 			name: "1st_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db, WithQueryer[MRUser](&MapR[MRUser]{
 					dbs: db.dbs,
 				}))
@@ -479,7 +491,7 @@ func TestQuery(t *testing.T) {
 				{ID: 1},
 				{ID: 2},
 				{ID: 3}},
-			queryRows: func(q Query[MRUser]) ([]MRUser, error) {
+			queryRows: func(q *Query[MRUser]) ([]MRUser, error) {
 				return q.Query(context.Background(), New().
 					Select("users", "id").
 					Where("id < 4").
@@ -490,7 +502,7 @@ func TestQuery(t *testing.T) {
 		},
 		{
 			name: "3_dbs_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db)
 			},
 			wanted: []MRUser{{ID: 1},
@@ -500,7 +512,7 @@ func TestQuery(t *testing.T) {
 				{ID: 14}, {ID: 21},
 				{ID: 22}, {ID: 23},
 			},
-			queryRows: func(q Query[MRUser]) ([]MRUser, error) {
+			queryRows: func(q *Query[MRUser]) ([]MRUser, error) {
 				return q.Query(context.Background(), New().
 					Select("users", "id").
 					Where("id < 24").
@@ -511,7 +523,7 @@ func TestQuery(t *testing.T) {
 		},
 		{
 			name: "all_dbs_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db)
 			},
 			wanted: []MRUser{{ID: 1}, {ID: 2}, {ID: 3}, {ID: 4},
@@ -524,7 +536,7 @@ func TestQuery(t *testing.T) {
 				{ID: 71}, {ID: 72}, {ID: 73}, {ID: 74},
 				{ID: 81}, {ID: 82}, {ID: 83}, {ID: 84},
 				{ID: 91}, {ID: 92}, {ID: 93}, {ID: 94}},
-			queryRows: func(q Query[MRUser]) ([]MRUser, error) {
+			queryRows: func(q *Query[MRUser]) ([]MRUser, error) {
 				return q.Query(context.Background(), New().
 					Select("users", "id").
 					SQL("ORDER BY id"), func(i, j MRUser) bool {
@@ -534,14 +546,14 @@ func TestQuery(t *testing.T) {
 		},
 		{
 			name: "month_on_1st_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithMonths[MRUser](m202402, m202403))
 			},
 			wanted: []MRUser{
 				{ID: 20240201}, {ID: 20240202}, {ID: 20240203},
 				{ID: 20240301}, {ID: 20240302}, {ID: 20240303}, {ID: 20240304},
 			},
-			queryRows: func(q Query[MRUser]) ([]MRUser, error) {
+			queryRows: func(q *Query[MRUser]) ([]MRUser, error) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("( id > 20240200 AND id < 20240204) OR ( id >= 20240300 AND id < 20240305)").
@@ -552,14 +564,14 @@ func TestQuery(t *testing.T) {
 		},
 		{
 			name: "month_on_6th_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithMonths[MRUser](m202402, m202403))
 			},
 			wanted: []MRUser{
 				{ID: 20240251}, {ID: 20240252}, {ID: 20240253},
 				{ID: 20240351}, {ID: 20240352}, {ID: 20240353}, {ID: 20240354},
 			},
-			queryRows: func(q Query[MRUser]) ([]MRUser, error) {
+			queryRows: func(q *Query[MRUser]) ([]MRUser, error) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 20240250 AND id < 20240254) OR ( id >= 20240350 AND id < 20240355)").
@@ -570,14 +582,14 @@ func TestQuery(t *testing.T) {
 		},
 		{
 			name: "month_on_last_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithMonths[MRUser](m202402, m202403))
 			},
 			wanted: []MRUser{
 				{ID: 20240291}, {ID: 20240292}, {ID: 20240293},
 				{ID: 20240391}, {ID: 20240392}, {ID: 20240393}, {ID: 20240394},
 			},
-			queryRows: func(q Query[MRUser]) ([]MRUser, error) {
+			queryRows: func(q *Query[MRUser]) ([]MRUser, error) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 20240290 AND id < 20240294) OR ( id >= 20240390 AND id < 20240395)").
@@ -588,14 +600,14 @@ func TestQuery(t *testing.T) {
 		},
 		{
 			name: "week_on_1st_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithWeeks[MRUser](w20240201, w20240208))
 			},
 			wanted: []MRUser{
 				{ID: 202400501}, {ID: 202400502}, {ID: 202400503},
 				{ID: 202400601}, {ID: 202400602}, {ID: 202400603},
 			},
-			queryRows: func(q Query[MRUser]) ([]MRUser, error) {
+			queryRows: func(q *Query[MRUser]) ([]MRUser, error) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 202400500 AND id < 202400504) OR ( id >= 202400600 AND id < 202400604)").
@@ -606,14 +618,14 @@ func TestQuery(t *testing.T) {
 		},
 		{
 			name: "week_on_5th_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithWeeks[MRUser](w20240201, w20240208))
 			},
 			wanted: []MRUser{
 				{ID: 202400551}, {ID: 202400552}, {ID: 202400553},
 				{ID: 202400651}, {ID: 202400652}, {ID: 202400653},
 			},
-			queryRows: func(q Query[MRUser]) ([]MRUser, error) {
+			queryRows: func(q *Query[MRUser]) ([]MRUser, error) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 202400550 AND id < 202400554) OR ( id >= 202400650 AND id < 202400654)").
@@ -624,14 +636,14 @@ func TestQuery(t *testing.T) {
 		},
 		{
 			name: "week_on_last_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithWeeks[MRUser](w20240201, w20240208))
 			},
 			wanted: []MRUser{
 				{ID: 202400591}, {ID: 202400592}, {ID: 202400593},
 				{ID: 202400691}, {ID: 202400692}, {ID: 202400693},
 			},
-			queryRows: func(q Query[MRUser]) ([]MRUser, error) {
+			queryRows: func(q *Query[MRUser]) ([]MRUser, error) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 202400590 AND id < 202400594) OR ( id >= 202400690 AND id < 202400694)").
@@ -642,14 +654,14 @@ func TestQuery(t *testing.T) {
 		},
 		{
 			name: "day_on_1st_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithDays[MRUser](d20240201, d20240202))
 			},
 			wanted: []MRUser{
 				{ID: 2024020101}, {ID: 2024020102}, {ID: 2024020103},
 				{ID: 2024020201}, {ID: 2024020202}, {ID: 2024020203},
 			},
-			queryRows: func(q Query[MRUser]) ([]MRUser, error) {
+			queryRows: func(q *Query[MRUser]) ([]MRUser, error) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 2024020100 AND id < 2024020104) OR ( id > 2024020200 AND id < 2024020204)").
@@ -660,14 +672,14 @@ func TestQuery(t *testing.T) {
 		},
 		{
 			name: "day_on_5th_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithDays[MRUser](d20240201, d20240202))
 			},
 			wanted: []MRUser{
 				{ID: 2024020151}, {ID: 2024020152}, {ID: 2024020153},
 				{ID: 2024020251}, {ID: 2024020252}, {ID: 2024020253},
 			},
-			queryRows: func(q Query[MRUser]) ([]MRUser, error) {
+			queryRows: func(q *Query[MRUser]) ([]MRUser, error) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 2024020150 AND id < 2024020154) OR ( id > 2024020250 AND id < 2024020254)").
@@ -678,14 +690,14 @@ func TestQuery(t *testing.T) {
 		},
 		{
 			name: "day_on_last_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db, WithDays[MRUser](d20240201, d20240202))
 			},
 			wanted: []MRUser{
 				{ID: 2024020191}, {ID: 2024020192}, {ID: 2024020193},
 				{ID: 2024020291}, {ID: 2024020292}, {ID: 2024020293},
 			},
-			queryRows: func(q Query[MRUser]) ([]MRUser, error) {
+			queryRows: func(q *Query[MRUser]) ([]MRUser, error) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 2024020190 AND id < 2024020194) OR ( id > 2024020290 AND id < 2024020294)").
@@ -719,12 +731,12 @@ func TestQueryLimit(t *testing.T) {
 		wanted     []MRUser
 		wantErr    error
 		limit      int
-		query      func() Query[MRUser]
-		queryLimit func(q Query[MRUser], limit int) ([]MRUser, error)
+		query      func() *Query[MRUser]
+		queryLimit func(q *Query[MRUser], limit int) ([]MRUser, error)
 	}{
 		{
 			name: "1st_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db, WithQueryer[MRUser](&MapR[MRUser]{
 					dbs: db.dbs,
 				}))
@@ -735,7 +747,7 @@ func TestQueryLimit(t *testing.T) {
 				// {ID: 3},
 			},
 			limit: 2,
-			queryLimit: func(q Query[MRUser], limit int) ([]MRUser, error) {
+			queryLimit: func(q *Query[MRUser], limit int) ([]MRUser, error) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users", "id").
 					Where("id < 4").
@@ -746,7 +758,7 @@ func TestQueryLimit(t *testing.T) {
 		},
 		{
 			name: "3_dbs_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db)
 			},
 			wanted: []MRUser{
@@ -766,7 +778,7 @@ func TestQueryLimit(t *testing.T) {
 				// {ID: 23},
 			},
 			limit: 5,
-			queryLimit: func(q Query[MRUser], limit int) ([]MRUser, error) {
+			queryLimit: func(q *Query[MRUser], limit int) ([]MRUser, error) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users", "id").
 					Where("id < 24").
@@ -777,7 +789,7 @@ func TestQueryLimit(t *testing.T) {
 		},
 		{
 			name: "all_dbs_desc_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db)
 			},
 			wanted: []MRUser{
@@ -797,7 +809,7 @@ func TestQueryLimit(t *testing.T) {
 				{64}, {63}, {62}, {61},
 			},
 			limit: 16,
-			queryLimit: func(q Query[MRUser], limit int) ([]MRUser, error) {
+			queryLimit: func(q *Query[MRUser], limit int) ([]MRUser, error) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users", "id").
 					SQL("ORDER BY id DESC"), func(i, j MRUser) bool {
@@ -808,7 +820,7 @@ func TestQueryLimit(t *testing.T) {
 		},
 		{
 			name: "month_on_1st_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithMonths[MRUser](m202402, m202403))
 			},
 			wanted: []MRUser{
@@ -821,7 +833,7 @@ func TestQueryLimit(t *testing.T) {
 				// {ID: 20240304},
 			},
 			limit: 5,
-			queryLimit: func(q Query[MRUser], limit int) ([]MRUser, error) {
+			queryLimit: func(q *Query[MRUser], limit int) ([]MRUser, error) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("( id > 20240200 AND id < 20240204) OR ( id >= 20240300 AND id < 20240305)").
@@ -832,7 +844,7 @@ func TestQueryLimit(t *testing.T) {
 		},
 		{
 			name: "month_on_6th_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithMonths[MRUser](m202402, m202403))
 			},
 			wanted: []MRUser{
@@ -845,7 +857,7 @@ func TestQueryLimit(t *testing.T) {
 				// {ID: 20240354},
 			},
 			limit: 6,
-			queryLimit: func(q Query[MRUser], limit int) ([]MRUser, error) {
+			queryLimit: func(q *Query[MRUser], limit int) ([]MRUser, error) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 20240250 AND id < 20240254) OR ( id >= 20240350 AND id < 20240355)").
@@ -856,7 +868,7 @@ func TestQueryLimit(t *testing.T) {
 		},
 		{
 			name: "month_on_last_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithMonths[MRUser](m202402, m202403))
 			},
 			wanted: []MRUser{
@@ -869,7 +881,7 @@ func TestQueryLimit(t *testing.T) {
 				{ID: 20240394},
 			},
 			limit: 8,
-			queryLimit: func(q Query[MRUser], limit int) ([]MRUser, error) {
+			queryLimit: func(q *Query[MRUser], limit int) ([]MRUser, error) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 20240290 AND id < 20240294) OR ( id >= 20240390 AND id < 20240395)").
@@ -880,7 +892,7 @@ func TestQueryLimit(t *testing.T) {
 		},
 		{
 			name: "week_on_1st_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithWeeks[MRUser](w20240201, w20240208))
 			},
 			wanted: []MRUser{
@@ -892,7 +904,7 @@ func TestQueryLimit(t *testing.T) {
 				{ID: 202400603},
 			},
 			limit: 6,
-			queryLimit: func(q Query[MRUser], limit int) ([]MRUser, error) {
+			queryLimit: func(q *Query[MRUser], limit int) ([]MRUser, error) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 202400500 AND id < 202400504) OR ( id >= 202400600 AND id < 202400604)").
@@ -903,7 +915,7 @@ func TestQueryLimit(t *testing.T) {
 		},
 		{
 			name: "week_on_5th_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithWeeks[MRUser](w20240201, w20240208))
 			},
 			wanted: []MRUser{
@@ -915,7 +927,7 @@ func TestQueryLimit(t *testing.T) {
 				// {ID: 202400653},
 			},
 			limit: 5,
-			queryLimit: func(q Query[MRUser], limit int) ([]MRUser, error) {
+			queryLimit: func(q *Query[MRUser], limit int) ([]MRUser, error) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 202400550 AND id < 202400554) OR ( id >= 202400650 AND id < 202400654)").
@@ -926,7 +938,7 @@ func TestQueryLimit(t *testing.T) {
 		},
 		{
 			name: "week_on_last_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithWeeks[MRUser](w20240201, w20240208))
 			},
 			wanted: []MRUser{
@@ -938,7 +950,7 @@ func TestQueryLimit(t *testing.T) {
 				{ID: 202400693},
 			},
 			limit: 8,
-			queryLimit: func(q Query[MRUser], limit int) ([]MRUser, error) {
+			queryLimit: func(q *Query[MRUser], limit int) ([]MRUser, error) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 202400590 AND id < 202400594) OR ( id >= 202400690 AND id < 202400694)").
@@ -949,7 +961,7 @@ func TestQueryLimit(t *testing.T) {
 		},
 		{
 			name: "day_desc_on_1st_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithDays[MRUser](d20240201, d20240202))
 			},
 			wanted: []MRUser{
@@ -961,7 +973,7 @@ func TestQueryLimit(t *testing.T) {
 				{ID: 2024020203},
 			},
 			limit: 1,
-			queryLimit: func(q Query[MRUser], limit int) ([]MRUser, error) {
+			queryLimit: func(q *Query[MRUser], limit int) ([]MRUser, error) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 2024020100 AND id < 2024020104) OR ( id > 2024020200 AND id < 2024020204)").
@@ -972,7 +984,7 @@ func TestQueryLimit(t *testing.T) {
 		},
 		{
 			name: "day_on_5th_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery(db, WithDays[MRUser](d20240201, d20240202))
 			},
 			wanted: []MRUser{
@@ -984,7 +996,7 @@ func TestQueryLimit(t *testing.T) {
 				// {ID: 2024020253},
 			},
 			limit: 4,
-			queryLimit: func(q Query[MRUser], limit int) ([]MRUser, error) {
+			queryLimit: func(q *Query[MRUser], limit int) ([]MRUser, error) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 2024020150 AND id < 2024020154) OR ( id > 2024020250 AND id < 2024020254)").
@@ -995,7 +1007,7 @@ func TestQueryLimit(t *testing.T) {
 		},
 		{
 			name: "day_on_last_db_should_work",
-			query: func() Query[MRUser] {
+			query: func() *Query[MRUser] {
 				return NewQuery[MRUser](db, WithDays[MRUser](d20240201, d20240202))
 			},
 			wanted: []MRUser{
@@ -1007,7 +1019,7 @@ func TestQueryLimit(t *testing.T) {
 				// {ID: 2024020293},
 			},
 			limit: 3,
-			queryLimit: func(q Query[MRUser], limit int) ([]MRUser, error) {
+			queryLimit: func(q *Query[MRUser], limit int) ([]MRUser, error) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 2024020190 AND id < 2024020194) OR ( id > 2024020290 AND id < 2024020294)").

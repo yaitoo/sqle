@@ -14,7 +14,7 @@ type Context struct {
 
 	index      int
 	stmts      map[string]*cachedStmt
-	stmtsMutex sync.RWMutex
+	stmtsMutex sync.Mutex
 }
 
 func (db *Context) Query(query string, args ...any) (*Rows, error) {
