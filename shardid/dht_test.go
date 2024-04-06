@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHRMigrator(t *testing.T) {
+func TestDHT(t *testing.T) {
 
 	//	2 dbs   ->   3 dbs  -> data
 	//  -> 2439456            1149
@@ -43,10 +43,11 @@ func TestHRMigrator(t *testing.T) {
 	//	<-  2633818442 Q2 2
 	//  -> 4113327457          150
 
-	r1 := NewHR(2, WithReplicas(defaultReplicas...))
-	r2 := NewHR(3)
+	current := NewHR(2, WithReplicas(defaultReplicas...))
+	next := NewHR(3)
 
-	m := NewHRMigrator(r1, r2)
+	m := NewDHT(current)
+	m.ScaleTo(next)
 
 	vn := map[uint32]bool{
 		46916880:   true, // E0
@@ -59,13 +60,35 @@ func TestHRMigrator(t *testing.T) {
 	}
 	require.Equal(t, vn, m.affectedVNodes)
 	require.Equal(t, []int{0}, m.affectedDbs)
+	i, ok := m.On("1149")
+	require.Equal(t, 0, i)
+	require.False(t, ok) // < E0 ! first node
 
-	require.True(t, m.Has("1149")) // < E0 ! first node
-	require.False(t, m.Has("E0"))  // == E0 !
-	require.True(t, m.Has("E1"))   // == E1
-	require.True(t, m.Has("638"))  // E1 < 638 < S0
-	require.False(t, m.Has("S0"))  // == S0 !
-	require.False(t, m.Has("C0"))  // == C0 !
-	require.False(t, m.Has("C1"))  // == C1
-	require.True(t, m.Has("150"))  // > Q1 last node
+	i, ok = m.On("E0")
+	require.Equal(t, 1, i)
+	require.True(t, ok) // == E0 !
+
+	i, ok = m.On("E1")
+	require.Equal(t, 0, i)
+	require.False(t, ok) // == E1
+
+	i, ok = m.On("638")
+	require.Equal(t, 0, i)
+	require.False(t, ok) // E1 < 638 < S0
+
+	i, ok = m.On("S0")
+	require.Equal(t, 1, i)
+	require.True(t, ok) // == S0 !
+
+	i, ok = m.On("C0")
+	require.Equal(t, 1, i)
+	require.True(t, ok) // == C0 !
+
+	i, ok = m.On("C1")
+	require.Equal(t, 0, i)
+	require.True(t, ok) // == C1
+
+	i, ok = m.On("150")
+	require.Equal(t, 0, i)
+	require.False(t, ok) // > Q1 last node
 }
