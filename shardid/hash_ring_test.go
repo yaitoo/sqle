@@ -174,7 +174,7 @@ func TestHR(t *testing.T) {
 			hr := NewHR(test.dbs)
 
 			for i, v := range test.data {
-				d, vn := hr.Locate(v)
+				d, vn := hr.On(v)
 				as.Equal(test.wantedDbs[i], d, v)
 				as.Equal(test.wantedNodes[i], vn, v)
 			}

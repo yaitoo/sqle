@@ -60,35 +60,35 @@ func TestDHT(t *testing.T) {
 	}
 	require.Equal(t, vn, m.affectedVNodes)
 	require.Equal(t, []int{0}, m.affectedDbs)
-	i, ok := m.On("1149")
+	i, err := m.On("1149")
 	require.Equal(t, 0, i)
-	require.False(t, ok) // < E0 ! first node
+	require.ErrorIs(t, err, ErrItemIsBusy) // < E0 => E0! first node
 
-	i, ok = m.On("E0")
+	i, err = m.On("E0")
 	require.Equal(t, 1, i)
-	require.True(t, ok) // == E0 !
+	require.Nil(t, err) // == E0! => E1
 
-	i, ok = m.On("E1")
+	i, err = m.On("E1")
 	require.Equal(t, 0, i)
-	require.False(t, ok) // == E1
+	require.ErrorIs(t, err, ErrItemIsBusy) // == E1 => S0!
 
-	i, ok = m.On("638")
+	i, err = m.On("638")
 	require.Equal(t, 0, i)
-	require.False(t, ok) // E1 < 638 < S0
+	require.ErrorIs(t, err, ErrItemIsBusy) // E1 < 638 < S0! => S0!
 
-	i, ok = m.On("S0")
+	i, err = m.On("S0")
 	require.Equal(t, 1, i)
-	require.True(t, ok) // == S0 !
+	require.Nil(t, err) // == S0! => S1
 
-	i, ok = m.On("C0")
+	i, err = m.On("C0")
 	require.Equal(t, 1, i)
-	require.True(t, ok) // == C0 !
+	require.Nil(t, err) // == C0! => C1
 
-	i, ok = m.On("C1")
+	i, err = m.On("C1")
 	require.Equal(t, 0, i)
-	require.True(t, ok) // == C1
+	require.Nil(t, err) // == C1 => I0
 
-	i, ok = m.On("150")
+	i, err = m.On("150")
 	require.Equal(t, 0, i)
-	require.False(t, ok) // > Q1 last node
+	require.ErrorIs(t, err, ErrItemIsBusy) // > Q1 last node => E0!
 }

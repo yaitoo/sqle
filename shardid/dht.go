@@ -1,9 +1,12 @@
 package shardid
 
 import (
+	"errors"
 	"slices"
 	"sync"
 )
+
+var ErrItemIsBusy = errors.New("sqle: item is busy, waiting for scaling done")
 
 // DHT distributed hash table
 type DHT struct {
@@ -26,23 +29,26 @@ func NewDHT(current *HashRing) *DHT {
 	return m
 }
 
-// On locate database with v from current HashRing, return false if it is migrating on scaling
-func (m *DHT) On(v string) (int, bool) {
+// On locate database with v from current HashRing, return ErrDataIsBusy if it is migrating on scaling
+func (m *DHT) On(v string) (int, error) {
 	m.RLock()
 	defer m.RUnlock()
+	if m.current.dbCount == 1 {
+		return 0, nil
+	}
 
-	i, n := m.current.Locate(v)
+	i, n := m.current.On(v)
 
 	ok := m.affectedVNodes[n]
 	if ok {
-		return i, false
+		return i, ErrItemIsBusy
 	}
 
-	return i, true
+	return i, nil
 }
 
-// End end scale out, and reset current and next HashRings
-func (m *DHT) End() {
+// EndScale end scale out, and reset current and next HashRings
+func (m *DHT) EndScale() {
 	m.Lock()
 	defer m.Unlock()
 

@@ -51,8 +51,8 @@ func NewHR(n int, options ...HashRingOption) *HashRing {
 	return r
 }
 
-// Locate locate db and vNode for data v
-func (r *HashRing) Locate(v string) (int, uint32) {
+// On locate db and vNode for data v
+func (r *HashRing) On(v string) (int, uint32) {
 	k := getHash(v)
 
 	var found uint32
