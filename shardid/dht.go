@@ -33,7 +33,7 @@ func NewDHT(dbs ...int) *DHT {
 		m.dbs[i] = db
 	}
 
-	m.current = NewHR(m.dbsCount)
+	m.current = NewHR(m.dbsCount, WithReplicas(defaultReplicas...))
 
 	return m
 }
@@ -60,8 +60,8 @@ func (m *DHT) On(v string) (int, int, error) {
 	return current, current, nil
 }
 
-// End end added, and reset current and next HashRings
-func (m *DHT) End() {
+// Done dbs are added, then reset current/next HashRing
+func (m *DHT) Done() {
 	m.Lock()
 	defer m.Unlock()
 
@@ -81,7 +81,7 @@ func (m *DHT) Add(dbs ...int) []int {
 	}
 
 	m.dbsCount += len(dbs)
-	m.next = NewHR(m.dbsCount)
+	m.next = NewHR(m.dbsCount, WithReplicas(defaultReplicas...))
 	var (
 		db1 int
 		db2 int

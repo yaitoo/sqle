@@ -78,8 +78,8 @@ func (db *DB) NewDHT(dbs ...int) {
 	db.dht = shardid.NewDHT(dbs...)
 }
 
-// AddDHT add new databases into current DHT
-func (db *DB) AddDHT(dbs ...int) {
+// DHTAdd add new databases into current DHT
+func (db *DB) DHTAdd(dbs ...int) {
 	db.Lock()
 	defer db.Unlock()
 	if db.dht == nil {
@@ -88,14 +88,14 @@ func (db *DB) AddDHT(dbs ...int) {
 	db.dht.Add(dbs...)
 }
 
-// EndDHT end current DHT scaling, and reload.
-func (db *DB) EndDHT() {
+// DHTAdded get databases added on current DHT, and reload it.
+func (db *DB) DHTAdded() {
 	db.Lock()
 	defer db.Unlock()
 	if db.dht == nil {
 		return
 	}
-	db.dht.End()
+	db.dht.Done()
 }
 
 // OnDHT select database from DHT

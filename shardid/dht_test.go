@@ -113,7 +113,7 @@ func TestDHT(t *testing.T) {
 	require.Equal(t, 1, next)
 	require.Nil(t, err) // > Q1 last node => E0!
 
-	m.End()
+	m.Done()
 
 	cur, next, err = m.On("E1")
 	require.Equal(t, 3, cur)

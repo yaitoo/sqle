@@ -83,6 +83,25 @@ func TestOn(t *testing.T) {
 
 }
 
+func TestDHT(t *testing.T) {
+	db := Open(createSQLite3())
+
+	// always work if only single server
+	ctx, err := db.OnDHT("")
+	require.Equal(t, 0, ctx.index)
+	require.Nil(t, err)
+
+	// MUST NOT panic even DHT is missing
+	db.DHTAdd(1)
+	db.DHTAdded()
+
+	db.Add(createSQLite3())
+
+	ctx, err = db.OnDHT("")
+	require.ErrorIs(t, err, ErrMissingDHT)
+	require.Nil(t, ctx)
+}
+
 func TestOnDHT(t *testing.T) {
 	dbs := make([]*sql.DB, 0, 10)
 
@@ -240,7 +259,7 @@ func TestDHTScaling(t *testing.T) {
 		require.Equal(t, it.current, ctx.index)
 	}
 
-	db.AddDHT(2)
+	db.DHTAdd(2)
 
 	for v, it := range values {
 		ctx, err := db.OnDHT(v)
@@ -253,7 +272,7 @@ func TestDHTScaling(t *testing.T) {
 
 	}
 
-	db.EndDHT()
+	db.DHTAdded()
 	for v, it := range values {
 		ctx, err := db.OnDHT(v)
 		require.NoError(t, err)
