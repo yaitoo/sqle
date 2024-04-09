@@ -32,11 +32,12 @@ func (r *Row) Close() error {
 }
 
 func (r *Row) Scan(dest ...any) error {
+	defer r.Close()
+
 	if r.err != nil {
 		return r.err
 	}
 
-	defer r.Close()
 	for _, dp := range dest {
 		if _, ok := dp.(*sql.RawBytes); ok {
 			return errors.New("sql: RawBytes isn't allowed on Row.Scan")
@@ -62,11 +63,12 @@ func (r *Row) Err() error {
 }
 
 func (r *Row) Bind(dest any) error {
+	defer r.Close()
+
 	if r.err != nil {
 		return r.err
 	}
 
-	defer r.Close()
 	if !r.rows.Next() {
 		if err := r.rows.Err(); err != nil {
 			return err
