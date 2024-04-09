@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log"
 	"sync"
+	"time"
 )
 
 type Context struct {
@@ -12,9 +13,11 @@ type Context struct {
 	sync.Mutex
 	_ noCopy
 
-	index      int
-	stmts      map[string]*cachedStmt
+	stmts      map[string]*Stmt
 	stmtsMutex sync.Mutex
+
+	stmtMaxIdleTime time.Duration
+	Index           int
 }
 
 func (db *Context) Query(query string, args ...any) (*Rows, error) {
@@ -32,13 +35,14 @@ func (db *Context) QueryBuilder(ctx context.Context, b *Builder) (*Rows, error) 
 
 func (db *Context) QueryContext(ctx context.Context, query string, args ...any) (*Rows, error) {
 	var rows *sql.Rows
-	var stmt *sql.Stmt
+	var stmt *Stmt
 	var err error
 	if len(args) > 0 {
 		stmt, err = db.prepareStmt(ctx, query)
 		if err == nil {
 			rows, err = stmt.QueryContext(ctx, args...)
 			if err != nil {
+				stmt.Reuse()
 				return nil, err
 			}
 		}
@@ -50,7 +54,7 @@ func (db *Context) QueryContext(ctx context.Context, query string, args ...any) 
 		}
 	}
 
-	return &Rows{Rows: rows, query: query}, nil
+	return &Rows{Rows: rows, stmt: stmt, query: query}, nil
 }
 
 func (db *Context) QueryRow(query string, args ...any) *Row {
@@ -71,7 +75,7 @@ func (db *Context) QueryRowBuilder(ctx context.Context, b *Builder) *Row {
 
 func (db *Context) QueryRowContext(ctx context.Context, query string, args ...any) *Row {
 	var rows *sql.Rows
-	var stmt *sql.Stmt
+	var stmt *Stmt
 	var err error
 
 	if len(args) > 0 {
@@ -79,20 +83,24 @@ func (db *Context) QueryRowContext(ctx context.Context, query string, args ...an
 		if err != nil {
 			return &Row{
 				err:   err,
+				stmt:  stmt,
 				query: query,
 			}
 		}
 		rows, err = stmt.QueryContext(ctx, args...)
 		return &Row{
-			rows:  rows,
 			err:   err,
+			stmt:  stmt,
 			query: query,
+
+			rows: rows,
 		}
 	}
 
 	rows, err = db.DB.QueryContext(ctx, query, args...)
 	return &Row{
 		rows:  rows,
+		stmt:  stmt,
 		err:   err,
 		query: query,
 	}
@@ -118,6 +126,8 @@ func (db *Context) ExecContext(ctx context.Context, query string, args ...any) (
 			return nil, err
 		}
 
+		defer stmt.Reuse()
+
 		return stmt.ExecContext(ctx, args...)
 	}
 	return db.DB.ExecContext(context.Background(), query, args...)
@@ -134,7 +144,7 @@ func (db *Context) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error
 		return nil, err
 	}
 
-	return &Tx{Tx: tx, cachedStmts: make(map[string]*sql.Stmt)}, nil
+	return &Tx{Tx: tx, stmts: make(map[string]*sql.Stmt)}, nil
 }
 
 func (db *Context) Transaction(ctx context.Context, opts *sql.TxOptions, fn func(ctx context.Context, tx *Tx) error) error {

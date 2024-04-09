@@ -6,7 +6,10 @@ import (
 	"sync"
 )
 
-var ErrItemIsBusy = errors.New("sqle: item is busy, waiting for scaling done")
+var (
+	ErrDataItemIsBusy = errors.New("sqle: data_item_is_busy")
+	ErrNilDHT         = errors.New("sqle: dht_is_nil")
+)
 
 // DHT distributed hash table
 type DHT struct {
@@ -40,6 +43,9 @@ func NewDHT(dbs ...int) *DHT {
 
 // On locate database with v from current/next HashRing, return ErrItemIsBusy if it is on affected database
 func (m *DHT) On(v string) (int, int, error) {
+	if m == nil {
+		return 0, 0, ErrNilDHT
+	}
 	m.RLock()
 	defer m.RUnlock()
 
@@ -54,7 +60,7 @@ func (m *DHT) On(v string) (int, int, error) {
 			return current, current, nil
 		}
 
-		return current, m.dbs[n], ErrItemIsBusy
+		return current, m.dbs[n], ErrDataItemIsBusy
 	}
 
 	return current, current, nil
@@ -62,6 +68,9 @@ func (m *DHT) On(v string) (int, int, error) {
 
 // Done dbs are added, then reset current/next HashRing
 func (m *DHT) Done() {
+	if m == nil {
+		return
+	}
 	m.Lock()
 	defer m.Unlock()
 
@@ -73,6 +82,9 @@ func (m *DHT) Done() {
 
 // Add dynamically add databases, and return affected database
 func (m *DHT) Add(dbs ...int) []int {
+	if m == nil {
+		return nil
+	}
 	m.Lock()
 	defer m.Unlock()
 

@@ -73,7 +73,7 @@ func TestOn(t *testing.T) {
 
 		ctx := db.On(id)
 
-		require.Equal(t, i, ctx.index)
+		require.Equal(t, i, ctx.Index)
 
 		var userID int64
 		err := ctx.QueryRowBuilder(context.TODO(), b).Scan(&userID)
@@ -86,20 +86,31 @@ func TestOn(t *testing.T) {
 func TestDHT(t *testing.T) {
 	db := Open(createSQLite3())
 
-	// always work if only single server
-	ctx, err := db.OnDHT("")
-	require.Equal(t, 0, ctx.index)
-	require.Nil(t, err)
+	// "" is default DHT name
+	_, err := db.OnDHT("")
+	require.ErrorIs(t, err, ErrMissingDHT)
 
 	// MUST NOT panic even DHT is missing
-	db.DHTAdd(1)
-	db.DHTAdded()
+	db.GetDHT("").Add(1)
+	db.GetDHT("").Done()
+
+	db.NewDHT("", 0)
+	ctx, err := db.OnDHT("")
+	require.NoError(t, err)
+	require.Equal(t, 0, ctx.Index)
 
 	db.Add(createSQLite3())
+	db.GetDHT("").Add(1)
+	db.GetDHT("").Done()
 
 	ctx, err = db.OnDHT("")
-	require.ErrorIs(t, err, ErrMissingDHT)
-	require.Nil(t, ctx)
+	require.NoError(t, err)
+	require.NotNil(t, ctx)
+
+	db.NewDHT("user", 1)
+	ctx, err = db.OnDHT("id", "user")
+	require.NoError(t, err)
+	require.Equal(t, 1, ctx.Index)
 }
 
 func TestOnDHT(t *testing.T) {
@@ -150,7 +161,7 @@ func TestOnDHT(t *testing.T) {
 	//	<-  2633818442 Q2 2
 	//  -> 4113327457          150
 
-	db.NewDHT(1, 2)
+	db.NewDHT("", 1, 2)
 
 	values := map[string]int{
 		"1149": 1,
@@ -166,7 +177,7 @@ func TestOnDHT(t *testing.T) {
 
 		c, err := db.OnDHT(v)
 		require.NoError(t, err)
-		require.Equal(t, i, c.index)
+		require.Equal(t, i, c.Index)
 
 		result, err := c.ExecBuilder(context.TODO(), b)
 
@@ -237,7 +248,7 @@ func TestDHTScaling(t *testing.T) {
 	//	<-  2633818442 Q2 2
 	//  -> 4113327457          150
 
-	db.NewDHT(0, 1)
+	db.NewDHT("", 0, 1)
 
 	type item struct {
 		current int
@@ -256,26 +267,26 @@ func TestDHTScaling(t *testing.T) {
 	for v, it := range values {
 		ctx, err := db.OnDHT(v)
 		require.NoError(t, err)
-		require.Equal(t, it.current, ctx.index)
+		require.Equal(t, it.current, ctx.Index)
 	}
 
-	db.DHTAdd(2)
+	db.GetDHT("").Add(2)
 
 	for v, it := range values {
 		ctx, err := db.OnDHT(v)
 		if it.busy {
-			require.ErrorIs(t, err, shardid.ErrItemIsBusy)
+			require.ErrorIs(t, err, shardid.ErrDataItemIsBusy)
 		} else {
 			require.NoError(t, err)
-			require.Equal(t, it.current, ctx.index)
+			require.Equal(t, it.current, ctx.Index)
 		}
 
 	}
 
-	db.DHTAdded()
+	db.GetDHT("").Done()
 	for v, it := range values {
 		ctx, err := db.OnDHT(v)
 		require.NoError(t, err)
-		require.Equal(t, it.next, ctx.index)
+		require.Equal(t, it.next, ctx.Index)
 	}
 }

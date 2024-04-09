@@ -16,17 +16,36 @@ var (
 )
 
 type Row struct {
-	rows  *sql.Rows
+	rows *sql.Rows
+
+	stmt  *Stmt
 	err   error
 	query string
 }
 
+func (r *Row) Close() error {
+	if r == nil {
+		return nil
+	}
+
+	if r.stmt != nil {
+		r.stmt.Reuse()
+	}
+
+	if r.rows == nil {
+		return nil
+	}
+
+	return r.rows.Close()
+}
+
 func (r *Row) Scan(dest ...any) error {
+	defer r.Close()
+
 	if r.err != nil {
 		return r.err
 	}
 
-	defer r.rows.Close()
 	for _, dp := range dest {
 		if _, ok := dp.(*sql.RawBytes); ok {
 			return errors.New("sql: RawBytes isn't allowed on Row.Scan")
@@ -52,11 +71,12 @@ func (r *Row) Err() error {
 }
 
 func (r *Row) Bind(dest any) error {
+	defer r.Close()
+
 	if r.err != nil {
 		return r.err
 	}
 
-	defer r.rows.Close()
 	if !r.rows.Next() {
 		if err := r.rows.Err(); err != nil {
 			return err

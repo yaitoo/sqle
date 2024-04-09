@@ -7,7 +7,21 @@ import (
 
 type Rows struct {
 	*sql.Rows
+	stmt  *Stmt
 	query string
+}
+
+func (r *Rows) Close() error {
+	if r.stmt != nil {
+		r.stmt.Reuse()
+	}
+
+	return r.Rows.Close()
+}
+
+func (r *Rows) Scan(dest ...any) error {
+	defer r.Close()
+	return r.Rows.Scan(dest...)
 }
 
 func (r *Rows) Bind(dest any) error {

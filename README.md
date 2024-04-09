@@ -32,6 +32,9 @@ You’ll find the SQLE package useful if you’re not a fan of full-featured ORM
 > All examples on https://go.dev/doc/tutorial/database-access can directly work with `sqle.DB` instance. 
 >
 
+> See full examples on https://github.com/yaitoo/auth
+> 
+
 ### Install SQLE
 - install latest commit from `main` branch
 ```
