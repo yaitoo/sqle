@@ -52,7 +52,7 @@ func (db *Context) closeStaleStmt() {
 	db.stmtsMutex.Lock()
 	defer db.stmtsMutex.Unlock()
 
-	lastActive := time.Now().Add(-StmtMaxIdleTime)
+	lastActive := time.Now().Add(-db.stmtMaxIdleTime)
 	for k, s := range db.stmts {
 		s.mu.Lock()
 		if !s.isUsing && s.lastUsed.Before(lastActive) {
@@ -66,7 +66,7 @@ func (db *Context) closeStaleStmt() {
 
 func (db *Context) checkIdleStmt() {
 	for {
-		<-time.After(StmtMaxIdleTime)
+		<-time.After(db.stmtMaxIdleTime)
 
 		db.closeStaleStmt()
 	}

@@ -26,8 +26,10 @@ type DB struct {
 func Open(dbs ...*sql.DB) *DB {
 	d := &DB{
 		Context: &Context{
-			DB:    dbs[0],
-			stmts: make(map[string]*Stmt),
+			DB:              dbs[0],
+			stmts:           make(map[string]*Stmt),
+			Index:           0,
+			stmtMaxIdleTime: StmtMaxIdleTime,
 		},
 		dhts: make(map[string]*shardid.DHT),
 	}

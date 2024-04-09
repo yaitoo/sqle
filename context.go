@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log"
 	"sync"
+	"time"
 )
 
 type Context struct {
@@ -15,7 +16,8 @@ type Context struct {
 	stmts      map[string]*Stmt
 	stmtsMutex sync.Mutex
 
-	Index int
+	stmtMaxIdleTime time.Duration
+	Index           int
 }
 
 func (db *Context) Query(query string, args ...any) (*Rows, error) {

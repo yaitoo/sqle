@@ -30,6 +30,8 @@ func TestStmt(t *testing.T) {
 
 	db := Open(d)
 
+	db.stmtMaxIdleTime = 1 * time.Second
+
 	tests := []struct {
 		name string
 		run  func(t *testing.T)
@@ -125,9 +127,7 @@ func TestStmt(t *testing.T) {
 				require.True(t, ok)
 				require.False(t, s.isUsing)
 
-				StmtMaxIdleTime = 1 * time.Second
-				time.Sleep(StmtMaxIdleTime)
-
+				time.Sleep(2 * time.Second)
 				db.closeStaleStmt()
 
 				// stmt should be closed and released
@@ -142,14 +142,6 @@ func TestStmt(t *testing.T) {
 		{
 			name: "stmt_reuse_should_work_in_rows_scan",
 			run: func(t *testing.T) {
-
-				stmtMaxIdleTime := StmtMaxIdleTime
-				defer func() {
-					StmtMaxIdleTime = stmtMaxIdleTime
-				}()
-
-				StmtMaxIdleTime = 1 * time.Second
-
 				var id int
 				q := "SELECT id, 'rows_scan' as reuse FROM rows WHERE id = ?"
 				rows, err := db.Query(q, 200)
@@ -159,7 +151,7 @@ func TestStmt(t *testing.T) {
 				require.True(t, ok)
 				require.True(t, s.isUsing)
 
-				time.Sleep(StmtMaxIdleTime + 1*time.Second)
+				time.Sleep(2 * time.Second)
 				db.closeStaleStmt()
 
 				// stmt that is in using should not be closed
@@ -185,13 +177,6 @@ func TestStmt(t *testing.T) {
 					ID int
 				}
 
-				stmtMaxIdleTime := StmtMaxIdleTime
-				defer func() {
-					StmtMaxIdleTime = stmtMaxIdleTime
-				}()
-
-				StmtMaxIdleTime = 1 * time.Second
-
 				q := "SELECT id, 'rows_bind' as reuse FROM rows WHERE id = ?"
 				rows, err := db.Query(q, 200)
 				require.NoError(t, err)
@@ -200,7 +185,7 @@ func TestStmt(t *testing.T) {
 				require.True(t, ok)
 				require.True(t, s.isUsing)
 
-				time.Sleep(StmtMaxIdleTime + 1*time.Second)
+				time.Sleep(2 * time.Second)
 				db.closeStaleStmt()
 
 				// stmt that is in using should not be closed
@@ -222,14 +207,6 @@ func TestStmt(t *testing.T) {
 		{
 			name: "stmt_reuse_should_work_in_row_scan",
 			run: func(t *testing.T) {
-
-				stmtMaxIdleTime := StmtMaxIdleTime
-				defer func() {
-					StmtMaxIdleTime = stmtMaxIdleTime
-				}()
-
-				StmtMaxIdleTime = 1 * time.Second
-
 				var id int
 				q := "SELECT id, 'row_scan' as reuse FROM rows WHERE id = ?"
 				row := db.QueryRow(q, 200)
@@ -239,7 +216,7 @@ func TestStmt(t *testing.T) {
 				require.True(t, ok)
 				require.True(t, s.isUsing)
 
-				time.Sleep(StmtMaxIdleTime + 1*time.Second)
+				time.Sleep(2 * time.Second)
 				db.closeStaleStmt()
 
 				// stmt that is in using should not be closed
@@ -264,14 +241,6 @@ func TestStmt(t *testing.T) {
 				var r struct {
 					ID int
 				}
-
-				stmtMaxIdleTime := StmtMaxIdleTime
-				defer func() {
-					StmtMaxIdleTime = stmtMaxIdleTime
-				}()
-
-				StmtMaxIdleTime = 1 * time.Second
-
 				q := "SELECT id, 'row_bind' as reuse FROM rows WHERE id = ?"
 				row, err := db.Query(q, 200)
 				require.NoError(t, err)
@@ -280,7 +249,7 @@ func TestStmt(t *testing.T) {
 				require.True(t, ok)
 				require.True(t, s.isUsing)
 
-				time.Sleep(StmtMaxIdleTime + 1*time.Second)
+				time.Sleep(2 * time.Second)
 				db.closeStaleStmt()
 
 				// stmt that is in using should not be closed
