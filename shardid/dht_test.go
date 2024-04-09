@@ -69,7 +69,7 @@ func TestDHT(t *testing.T) {
 	cur, next, err = m.On("3850")
 	require.Equal(t, 1, cur)
 	require.Equal(t, 3, next)
-	require.ErrorIs(t, err, ErrItemIsBusy) // < S0! => S2
+	require.ErrorIs(t, err, ErrDataItemIsBusy) // < S0! => S2
 
 	// vNode S0 is affected, but 638 is unnecessary to move
 	cur, next, err = m.On("638")
@@ -87,7 +87,7 @@ func TestDHT(t *testing.T) {
 	cur, next, err = m.On("E1")
 	require.Equal(t, 1, cur)
 	require.Equal(t, 3, next)
-	require.ErrorIs(t, err, ErrItemIsBusy) // == E1 => S0!
+	require.ErrorIs(t, err, ErrDataItemIsBusy) // == E1 => S0!
 
 	// vNode S1 is not affected
 	cur, next, err = m.On("S0")

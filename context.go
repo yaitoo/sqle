@@ -12,9 +12,10 @@ type Context struct {
 	sync.Mutex
 	_ noCopy
 
-	index      int
-	stmts      map[string]*cachedStmt
+	stmts      map[string]*Stmt
 	stmtsMutex sync.Mutex
+
+	Index int
 }
 
 func (db *Context) Query(query string, args ...any) (*Rows, error) {
@@ -32,7 +33,7 @@ func (db *Context) QueryBuilder(ctx context.Context, b *Builder) (*Rows, error) 
 
 func (db *Context) QueryContext(ctx context.Context, query string, args ...any) (*Rows, error) {
 	var rows *sql.Rows
-	var stmt *sql.Stmt
+	var stmt *Stmt
 	var err error
 	if len(args) > 0 {
 		stmt, err = db.prepareStmt(ctx, query)
@@ -50,7 +51,7 @@ func (db *Context) QueryContext(ctx context.Context, query string, args ...any) 
 		}
 	}
 
-	return &Rows{Rows: rows, query: query}, nil
+	return &Rows{Rows: rows, stmt: stmt, query: query}, nil
 }
 
 func (db *Context) QueryRow(query string, args ...any) *Row {
@@ -71,7 +72,7 @@ func (db *Context) QueryRowBuilder(ctx context.Context, b *Builder) *Row {
 
 func (db *Context) QueryRowContext(ctx context.Context, query string, args ...any) *Row {
 	var rows *sql.Rows
-	var stmt *sql.Stmt
+	var stmt *Stmt
 	var err error
 
 	if len(args) > 0 {
@@ -85,6 +86,7 @@ func (db *Context) QueryRowContext(ctx context.Context, query string, args ...an
 		rows, err = stmt.QueryContext(ctx, args...)
 		return &Row{
 			rows:  rows,
+			stmt:  stmt,
 			err:   err,
 			query: query,
 		}
@@ -93,6 +95,7 @@ func (db *Context) QueryRowContext(ctx context.Context, query string, args ...an
 	rows, err = db.DB.QueryContext(ctx, query, args...)
 	return &Row{
 		rows:  rows,
+		stmt:  stmt,
 		err:   err,
 		query: query,
 	}
@@ -117,6 +120,8 @@ func (db *Context) ExecContext(ctx context.Context, query string, args ...any) (
 		if err != nil {
 			return nil, err
 		}
+
+		defer stmt.Reuse()
 
 		return stmt.ExecContext(ctx, args...)
 	}

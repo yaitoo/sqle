@@ -7,20 +7,29 @@ import (
 	"time"
 )
 
-type cachedStmt struct {
-	sync.Mutex
-	stmt     *sql.Stmt
+type Stmt struct {
+	*sql.Stmt
+	mu       sync.Mutex
 	lastUsed time.Time
+	isUsing  bool
 }
 
-func (db *Context) prepareStmt(ctx context.Context, query string) (*sql.Stmt, error) {
+func (s *Stmt) Reuse() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.isUsing = false
+}
+
+func (db *Context) prepareStmt(ctx context.Context, query string) (*Stmt, error) {
 	db.stmtsMutex.Lock()
 	defer db.stmtsMutex.Unlock()
 	s, ok := db.stmts[query]
 
 	if ok {
 		s.lastUsed = time.Now()
-		return s.stmt, nil
+		s.isUsing = true
+		return s, nil
 	}
 
 	stmt, err := db.DB.PrepareContext(ctx, query)
@@ -28,12 +37,15 @@ func (db *Context) prepareStmt(ctx context.Context, query string) (*sql.Stmt, er
 		return nil, err
 	}
 
-	db.stmts[query] = &cachedStmt{
-		stmt:     stmt,
+	s = &Stmt{
+		Stmt:     stmt,
 		lastUsed: time.Now(),
+		isUsing:  true,
 	}
 
-	return stmt, nil
+	db.stmts[query] = s
+
+	return s, nil
 }
 
 func (db *Context) closeIdleStmt() {
@@ -42,11 +54,13 @@ func (db *Context) closeIdleStmt() {
 
 		db.stmtsMutex.Lock()
 		lastActive := time.Now().Add(-1 * time.Minute)
-		for k, v := range db.stmts {
-			if v.lastUsed.Before(lastActive) {
+		for k, s := range db.stmts {
+			s.mu.Lock()
+			if !s.isUsing && s.lastUsed.Before(lastActive) {
 				delete(db.stmts, k)
-				go v.stmt.Close() //nolint: errcheck
+				go s.Close() //nolint: errcheck
 			}
+			s.mu.Unlock()
 		}
 		db.stmtsMutex.Unlock()
 	}

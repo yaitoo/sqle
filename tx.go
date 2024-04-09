@@ -30,7 +30,7 @@ func (tx *Tx) prepareStmt(ctx context.Context, query string) (*sql.Stmt, error) 
 	return s, nil
 }
 
-func (tx *Tx) closeStmt() {
+func (tx *Tx) closeCachedStmts() {
 	for _, stmt := range tx.cachedStmts {
 		stmt.Close()
 	}
@@ -147,11 +147,11 @@ func (tx *Tx) ExecContext(ctx context.Context, query string, args ...any) (sql.R
 }
 
 func (tx *Tx) Rollback() error {
-	defer tx.closeStmt()
+	defer tx.closeCachedStmts()
 	return tx.Tx.Rollback()
 }
 
 func (tx *Tx) Commit() error {
-	defer tx.closeStmt()
+	defer tx.closeCachedStmts()
 	return tx.Tx.Commit()
 }

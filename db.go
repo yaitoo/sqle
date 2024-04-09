@@ -11,31 +11,32 @@ import (
 
 var (
 	StmtMaxIdleTime = 1 * time.Minute
-	ErrMissingDHT   = errors.New("sqle: DHT is missing")
+	ErrMissingDHT   = errors.New("sqle: missing_dht")
 )
 
 type DB struct {
 	*Context
 	_ noCopy //nolint: unused
 
-	mu  sync.RWMutex
-	dht *shardid.DHT
-	dbs []*Context
+	mu   sync.RWMutex
+	dhts map[string]*shardid.DHT
+	dbs  []*Context
 }
 
 func Open(dbs ...*sql.DB) *DB {
 	d := &DB{
 		Context: &Context{
 			DB:    dbs[0],
-			stmts: make(map[string]*cachedStmt),
+			stmts: make(map[string]*Stmt),
 		},
+		dhts: make(map[string]*shardid.DHT),
 	}
 
 	for i, db := range dbs {
 		ctx := &Context{
 			DB:    db,
-			index: i,
-			stmts: make(map[string]*cachedStmt),
+			Index: i,
+			stmts: make(map[string]*Stmt),
 		}
 		d.dbs = append(d.dbs, ctx)
 		go ctx.closeIdleStmt()
@@ -54,8 +55,8 @@ func (db *DB) Add(dbs ...*sql.DB) {
 	for i, d := range dbs {
 		ctx := &Context{
 			DB:    d,
-			index: n + i,
-			stmts: make(map[string]*cachedStmt),
+			Index: n + i,
+			stmts: make(map[string]*Stmt),
 		}
 		db.dbs = append(db.dbs, ctx)
 		go ctx.closeIdleStmt()
@@ -71,47 +72,36 @@ func (db *DB) On(id shardid.ID) *Context {
 }
 
 // NewDHT create new DTH with databases
-func (db *DB) NewDHT(dbs ...int) {
+func (db *DB) NewDHT(name string, dbs ...int) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	db.dht = shardid.NewDHT(dbs...)
+	db.dhts[name] = shardid.NewDHT(dbs...)
 }
 
-// DHTAdd add new databases into current DHT
-func (db *DB) DHTAdd(dbs ...int) {
-	db.Lock()
-	defer db.Unlock()
-	if db.dht == nil {
-		return
-	}
-	db.dht.Add(dbs...)
-}
-
-// DHTAdded get databases added on current DHT, and reload it.
-func (db *DB) DHTAdded() {
-	db.Lock()
-	defer db.Unlock()
-	if db.dht == nil {
-		return
-	}
-	db.dht.Done()
-}
-
-// OnDHT select database from DHT
-func (db *DB) OnDHT(key string) (*Context, error) {
+func (db *DB) GetDHT(name string) *shardid.DHT {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	if len(db.dbs) == 1 {
-		return db.dbs[0], nil
+	return db.dhts[name]
+}
+
+// OnDHT select database from DHT
+func (db *DB) OnDHT(key string, names ...string) (*Context, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	var name string
+	if len(names) > 0 {
+		name = names[0]
 	}
 
-	if db.dht == nil {
+	dht, ok := db.dhts[name]
+	if !ok {
 		return nil, ErrMissingDHT
 	}
 
-	cur, _, err := db.dht.On(key)
+	cur, _, err := dht.On(key)
 
 	if err != nil {
 		return nil, err
