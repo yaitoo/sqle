@@ -7,15 +7,15 @@ import (
 
 type Tx struct {
 	*sql.Tx
-	noCopy      //nolint
-	cachedStmts map[string]*sql.Stmt
+	noCopy //nolint
+	stmts  map[string]*sql.Stmt
 }
 
 func (tx *Tx) prepareStmt(ctx context.Context, query string) (*sql.Stmt, error) {
-	if tx.cachedStmts == nil {
-		tx.cachedStmts = make(map[string]*sql.Stmt)
+	if tx.stmts == nil {
+		tx.stmts = make(map[string]*sql.Stmt)
 	}
-	s, ok := tx.cachedStmts[query]
+	s, ok := tx.stmts[query]
 	if ok {
 		return s, nil
 	}
@@ -25,13 +25,13 @@ func (tx *Tx) prepareStmt(ctx context.Context, query string) (*sql.Stmt, error) 
 		return nil, err
 	}
 
-	tx.cachedStmts[query] = s
+	tx.stmts[query] = s
 
 	return s, nil
 }
 
-func (tx *Tx) closeCachedStmts() {
-	for _, stmt := range tx.cachedStmts {
+func (tx *Tx) closeStmts() {
+	for _, stmt := range tx.stmts {
 		stmt.Close()
 	}
 }
@@ -147,11 +147,11 @@ func (tx *Tx) ExecContext(ctx context.Context, query string, args ...any) (sql.R
 }
 
 func (tx *Tx) Rollback() error {
-	defer tx.closeCachedStmts()
+	defer tx.closeStmts()
 	return tx.Tx.Rollback()
 }
 
 func (tx *Tx) Commit() error {
-	defer tx.closeCachedStmts()
+	defer tx.closeStmts()
 	return tx.Tx.Commit()
 }

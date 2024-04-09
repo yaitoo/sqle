@@ -141,7 +141,7 @@ func (db *Context) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error
 		return nil, err
 	}
 
-	return &Tx{Tx: tx, cachedStmts: make(map[string]*sql.Stmt)}, nil
+	return &Tx{Tx: tx, stmts: make(map[string]*sql.Stmt)}, nil
 }
 
 func (db *Context) Transaction(ctx context.Context, opts *sql.TxOptions, fn func(ctx context.Context, tx *Tx) error) error {
