@@ -42,6 +42,7 @@ func (db *Context) QueryContext(ctx context.Context, query string, args ...any) 
 		if err == nil {
 			rows, err = stmt.QueryContext(ctx, args...)
 			if err != nil {
+				stmt.Reuse()
 				return nil, err
 			}
 		}
@@ -82,15 +83,17 @@ func (db *Context) QueryRowContext(ctx context.Context, query string, args ...an
 		if err != nil {
 			return &Row{
 				err:   err,
+				stmt:  stmt,
 				query: query,
 			}
 		}
 		rows, err = stmt.QueryContext(ctx, args...)
 		return &Row{
-			rows:  rows,
-			stmt:  stmt,
 			err:   err,
+			stmt:  stmt,
 			query: query,
+
+			rows: rows,
 		}
 	}
 

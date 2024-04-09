@@ -24,8 +24,16 @@ type Row struct {
 }
 
 func (r *Row) Close() error {
+	if r == nil {
+		return nil
+	}
+
 	if r.stmt != nil {
 		r.stmt.Reuse()
+	}
+
+	if r.rows == nil {
+		return nil
 	}
 
 	return r.rows.Close()
