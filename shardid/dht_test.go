@@ -125,3 +125,14 @@ func TestDHT(t *testing.T) {
 	require.Equal(t, 1, next)
 	require.Nil(t, err)
 }
+
+func TestNilDHT(t *testing.T) {
+	var d *DHT
+
+	// MUST NOT panic if DHT is nil
+	_, _, err := d.On("")
+	require.ErrorIs(t, err, ErrNilDHT)
+	d.Add(1)
+	d.Done()
+
+}

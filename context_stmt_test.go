@@ -87,7 +87,7 @@ func TestStmt(t *testing.T) {
 			},
 		},
 		{
-			name: "stmt_should_work_in_exec",
+			name: "stmt_should_work",
 			run: func(t *testing.T) {
 				for i := 0; i < 100; i++ {
 
@@ -108,6 +108,195 @@ func TestStmt(t *testing.T) {
 				for i, id := range list {
 					require.Equal(t, i+100, id[0])
 				}
+			},
+		},
+		{
+			name: "stmt_reuse_should_work_in_exec",
+			run: func(t *testing.T) {
+				q := "INSERT INTO `rows`(`id`,`status`) VALUES(?, ?)"
+
+				result, err := db.Exec(q, 200, 0)
+				require.NoError(t, err)
+				affected, err := result.RowsAffected()
+				require.NoError(t, err)
+				require.Equal(t, int64(1), affected)
+
+				s, ok := db.stmts[q]
+				require.True(t, ok)
+				require.False(t, s.isUsing)
+
+				StmtMaxIdleTime = 1 * time.Second
+				time.Sleep(StmtMaxIdleTime)
+
+				db.closeStaleStmt()
+
+				// stmt should be closed and released
+				require.False(t, s.isUsing)
+
+				s, ok = db.stmts[q]
+				require.False(t, ok)
+				require.Nil(t, s)
+
+			},
+		},
+		{
+			name: "stmt_reuse_should_work_in_rows_scan",
+			run: func(t *testing.T) {
+
+				stmtMaxIdleTime := StmtMaxIdleTime
+				defer func() {
+					StmtMaxIdleTime = stmtMaxIdleTime
+				}()
+
+				StmtMaxIdleTime = 1 * time.Second
+
+				var id int
+				q := "SELECT id, 'rows_scan' as reuse FROM rows WHERE id = ?"
+				rows, err := db.Query(q, 200)
+				require.NoError(t, err)
+
+				s, ok := db.stmts[q]
+				require.True(t, ok)
+				require.True(t, s.isUsing)
+
+				time.Sleep(StmtMaxIdleTime + 1*time.Second)
+				db.closeStaleStmt()
+
+				// stmt that is in using should not be closed
+				s, ok = db.stmts[q]
+				require.True(t, ok)
+				require.True(t, s.isUsing)
+
+				rows.Scan(&id) // nolint: errcheck
+				require.False(t, s.isUsing)
+
+				db.closeStaleStmt()
+
+				// stmt should be closed and released
+				s, ok = db.stmts[q]
+				require.False(t, ok)
+				require.Nil(t, s)
+			},
+		},
+		{
+			name: "stmt_reuse_should_work_in_rows_bind",
+			run: func(t *testing.T) {
+				var r struct {
+					ID int
+				}
+
+				stmtMaxIdleTime := StmtMaxIdleTime
+				defer func() {
+					StmtMaxIdleTime = stmtMaxIdleTime
+				}()
+
+				StmtMaxIdleTime = 1 * time.Second
+
+				q := "SELECT id, 'rows_bind' as reuse FROM rows WHERE id = ?"
+				rows, err := db.Query(q, 200)
+				require.NoError(t, err)
+
+				s, ok := db.stmts[q]
+				require.True(t, ok)
+				require.True(t, s.isUsing)
+
+				time.Sleep(StmtMaxIdleTime + 1*time.Second)
+				db.closeStaleStmt()
+
+				// stmt that is in using should not be closed
+				s, ok = db.stmts[q]
+				require.True(t, ok)
+				require.True(t, s.isUsing)
+
+				rows.Bind(&r) // nolint: errcheck
+				require.False(t, s.isUsing)
+
+				db.closeStaleStmt()
+
+				// stmt should be closed and released
+				s, ok = db.stmts[q]
+				require.False(t, ok)
+				require.Nil(t, s)
+			},
+		},
+		{
+			name: "stmt_reuse_should_work_in_row_scan",
+			run: func(t *testing.T) {
+
+				stmtMaxIdleTime := StmtMaxIdleTime
+				defer func() {
+					StmtMaxIdleTime = stmtMaxIdleTime
+				}()
+
+				StmtMaxIdleTime = 1 * time.Second
+
+				var id int
+				q := "SELECT id, 'row_scan' as reuse FROM rows WHERE id = ?"
+				row := db.QueryRow(q, 200)
+				require.NoError(t, err)
+
+				s, ok := db.stmts[q]
+				require.True(t, ok)
+				require.True(t, s.isUsing)
+
+				time.Sleep(StmtMaxIdleTime + 1*time.Second)
+				db.closeStaleStmt()
+
+				// stmt that is in using should not be closed
+				s, ok = db.stmts[q]
+				require.True(t, ok)
+				require.True(t, s.isUsing)
+
+				row.Scan(&id) // nolint: errcheck
+				require.False(t, s.isUsing)
+
+				db.closeStaleStmt()
+
+				// stmt should be closed and released
+				s, ok = db.stmts[q]
+				require.False(t, ok)
+				require.Nil(t, s)
+			},
+		},
+		{
+			name: "stmt_reuse_should_work_in_row_bind",
+			run: func(t *testing.T) {
+				var r struct {
+					ID int
+				}
+
+				stmtMaxIdleTime := StmtMaxIdleTime
+				defer func() {
+					StmtMaxIdleTime = stmtMaxIdleTime
+				}()
+
+				StmtMaxIdleTime = 1 * time.Second
+
+				q := "SELECT id, 'row_bind' as reuse FROM rows WHERE id = ?"
+				row, err := db.Query(q, 200)
+				require.NoError(t, err)
+
+				s, ok := db.stmts[q]
+				require.True(t, ok)
+				require.True(t, s.isUsing)
+
+				time.Sleep(StmtMaxIdleTime + 1*time.Second)
+				db.closeStaleStmt()
+
+				// stmt that is in using should not be closed
+				s, ok = db.stmts[q]
+				require.True(t, ok)
+				require.True(t, s.isUsing)
+
+				row.Bind(&r) // nolint: errcheck
+				require.False(t, s.isUsing)
+
+				db.closeStaleStmt()
+
+				// stmt should be closed and released
+				s, ok = db.stmts[q]
+				require.False(t, ok)
+				require.Nil(t, s)
 			},
 		},
 	}

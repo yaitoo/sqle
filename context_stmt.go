@@ -48,20 +48,26 @@ func (db *Context) prepareStmt(ctx context.Context, query string) (*Stmt, error)
 	return s, nil
 }
 
-func (db *Context) closeIdleStmt() {
+func (db *Context) closeStaleStmt() {
+	db.stmtsMutex.Lock()
+	defer db.stmtsMutex.Unlock()
+
+	lastActive := time.Now().Add(-StmtMaxIdleTime)
+	for k, s := range db.stmts {
+		s.mu.Lock()
+		if !s.isUsing && s.lastUsed.Before(lastActive) {
+			delete(db.stmts, k)
+			go s.Stmt.Close() //nolint: errcheck
+		}
+		s.mu.Unlock()
+	}
+
+}
+
+func (db *Context) checkIdleStmt() {
 	for {
 		<-time.After(StmtMaxIdleTime)
 
-		db.stmtsMutex.Lock()
-		lastActive := time.Now().Add(-1 * time.Minute)
-		for k, s := range db.stmts {
-			s.mu.Lock()
-			if !s.isUsing && s.lastUsed.Before(lastActive) {
-				delete(db.stmts, k)
-				go s.Stmt.Close() //nolint: errcheck
-			}
-			s.mu.Unlock()
-		}
-		db.stmtsMutex.Unlock()
+		db.closeStaleStmt()
 	}
 }

@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	StmtMaxIdleTime = 1 * time.Minute
+	StmtMaxIdleTime = 3 * time.Minute
 	ErrMissingDHT   = errors.New("sqle: missing_dht")
 )
 
@@ -39,7 +39,7 @@ func Open(dbs ...*sql.DB) *DB {
 			stmts: make(map[string]*Stmt),
 		}
 		d.dbs = append(d.dbs, ctx)
-		go ctx.closeIdleStmt()
+		go ctx.checkIdleStmt()
 	}
 
 	return d
@@ -59,7 +59,7 @@ func (db *DB) Add(dbs ...*sql.DB) {
 			stmts: make(map[string]*Stmt),
 		}
 		db.dbs = append(db.dbs, ctx)
-		go ctx.closeIdleStmt()
+		go ctx.checkIdleStmt()
 	}
 }
 
