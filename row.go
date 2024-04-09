@@ -66,7 +66,7 @@ func (r *Row) Bind(dest any) error {
 		return r.err
 	}
 
-	defer r.rows.Close()
+	defer r.Close()
 	if !r.rows.Next() {
 		if err := r.rows.Err(); err != nil {
 			return err

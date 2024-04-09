@@ -58,7 +58,7 @@ func (db *Context) closeIdleStmt() {
 			s.mu.Lock()
 			if !s.isUsing && s.lastUsed.Before(lastActive) {
 				delete(db.stmts, k)
-				go s.Close() //nolint: errcheck
+				go s.Stmt.Close() //nolint: errcheck
 			}
 			s.mu.Unlock()
 		}
