@@ -17,8 +17,8 @@ func TestOrderByBuilder(t *testing.T) {
 			build: func() *Builder {
 				b := New("SELECT * FROM users")
 				b.OrderBy().
-					Asc("id", "name").
 					Desc("created_at").
+					Asc("id", "name").
 					Asc("updated_at")
 
 				return b
@@ -30,8 +30,8 @@ func TestOrderByBuilder(t *testing.T) {
 			build: func() *Builder {
 				b := New("SELECT * FROM users")
 				b.OrderBy("id", "updated_at").
-					Asc("id", "name").
 					Desc("created_at", "unsafe_input").
+					Asc("id", "name").
 					Asc("updated_at")
 
 				return b

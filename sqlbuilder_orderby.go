@@ -7,15 +7,15 @@ import (
 
 type OrderByBuilder struct {
 	*Builder
-	isWritten   bool
-	safeColumns []string
+	isWritten      bool
+	allowedColumns []string
 }
 
-// OrderBy create an OrderByBuilder with safe columns to prevent sql injection
-func (b *Builder) OrderBy(safeColumns ...string) *OrderByBuilder {
+// OrderBy create an OrderByBuilder with allowed columns to prevent sql injection. NB: any input is allowed if it is not provided
+func (b *Builder) OrderBy(allowedColumns ...string) *OrderByBuilder {
 	ob := &OrderByBuilder{
-		Builder:     b,
-		safeColumns: safeColumns,
+		Builder:        b,
+		allowedColumns: allowedColumns,
 	}
 
 	b.SQL(" ORDER BY ")
@@ -23,13 +23,13 @@ func (b *Builder) OrderBy(safeColumns ...string) *OrderByBuilder {
 	return ob
 }
 
-// isSafe check if column is included in safe columns.
-func (ob *OrderByBuilder) isSafe(col string) bool {
-	if ob.safeColumns == nil {
+// isAllowed check if column is included in allowed columns. It will remove any untrust input from client
+func (ob *OrderByBuilder) isAllowed(col string) bool {
+	if ob.allowedColumns == nil {
 		return true
 	}
 
-	return slices.ContainsFunc(ob.safeColumns, func(c string) bool {
+	return slices.ContainsFunc(ob.allowedColumns, func(c string) bool {
 		return strings.EqualFold(c, col)
 	})
 }
@@ -37,7 +37,7 @@ func (ob *OrderByBuilder) isSafe(col string) bool {
 // Asc order by ASC with columns
 func (ob *OrderByBuilder) Asc(columns ...string) *OrderByBuilder {
 	for _, c := range columns {
-		if ob.isSafe(c) {
+		if ob.isAllowed(c) {
 			if ob.isWritten {
 				ob.Builder.SQL(", ").SQL(c).SQL(" ASC")
 			} else {
@@ -52,7 +52,7 @@ func (ob *OrderByBuilder) Asc(columns ...string) *OrderByBuilder {
 // Desc order by desc with columns
 func (ob *OrderByBuilder) Desc(columns ...string) *OrderByBuilder {
 	for _, c := range columns {
-		if ob.isSafe(c) {
+		if ob.isAllowed(c) {
 			if ob.isWritten {
 				ob.Builder.SQL(", ").SQL(c).SQL(" DESC")
 			} else {
