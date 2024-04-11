@@ -16,6 +16,10 @@ func (r *Rows) Close() error {
 		r.stmt.Reuse()
 	}
 
+	if r.Rows == nil {
+		return nil
+	}
+
 	return r.Rows.Close()
 }
 
