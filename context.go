@@ -39,12 +39,14 @@ func (db *Context) QueryContext(ctx context.Context, query string, args ...any) 
 	var err error
 	if len(args) > 0 {
 		stmt, err = db.prepareStmt(ctx, query)
-		if err == nil {
-			rows, err = stmt.QueryContext(ctx, args...)
-			if err != nil {
-				stmt.Reuse()
-				return nil, err
-			}
+		if err != nil {
+			return nil, err
+		}
+
+		rows, err = stmt.QueryContext(ctx, args...)
+		if err != nil {
+			stmt.Reuse()
+			return nil, err
 		}
 
 	} else {
