@@ -11,8 +11,8 @@ type OrderByBuilder struct {
 	allowedColumns []string
 }
 
-// OrderBy create an OrderByBuilder with allowed columns to prevent sql injection. NB: any input is allowed if it is not provided
-func (b *Builder) OrderBy(allowedColumns ...string) *OrderByBuilder {
+// Order create an OrderByBuilder with allowed columns to prevent sql injection. NB: any input is allowed if it is not provided
+func (b *Builder) Order(allowedColumns ...string) *OrderByBuilder {
 	ob := &OrderByBuilder{
 		Builder:        b,
 		allowedColumns: allowedColumns,
@@ -34,8 +34,37 @@ func (ob *OrderByBuilder) isAllowed(col string) bool {
 	})
 }
 
-// Asc order by ASC with columns
-func (ob *OrderByBuilder) Asc(columns ...string) *OrderByBuilder {
+// By order by raw sql. eg By("a asc, b desc")
+func (ob *OrderByBuilder) By(raw string) *OrderByBuilder {
+	cols := strings.Split(raw, ",")
+
+	var n int
+	var items []string
+	var by string
+	for _, col := range cols {
+		items = strings.Split(strings.TrimSpace(col), " ")
+		n = len(items)
+		switch n {
+		case 1:
+			ob.ByAsc(strings.TrimSpace(col))
+		case 2:
+			by = strings.TrimSpace(items[1])
+			if strings.EqualFold(by, "ASC") {
+				ob.ByAsc(strings.TrimSpace(items[0]))
+			} else {
+				if strings.EqualFold(by, "DESC") {
+					ob.ByDesc(strings.TrimSpace(items[0]))
+				}
+			}
+		}
+	}
+
+	return ob
+
+}
+
+// ByAsc order by ascending with columns
+func (ob *OrderByBuilder) ByAsc(columns ...string) *OrderByBuilder {
 	for _, c := range columns {
 		if ob.isAllowed(c) {
 			if ob.isWritten {
@@ -49,8 +78,8 @@ func (ob *OrderByBuilder) Asc(columns ...string) *OrderByBuilder {
 	return ob
 }
 
-// Desc order by desc with columns
-func (ob *OrderByBuilder) Desc(columns ...string) *OrderByBuilder {
+// ByDesc order by descending with columns
+func (ob *OrderByBuilder) ByDesc(columns ...string) *OrderByBuilder {
 	for _, c := range columns {
 		if ob.isAllowed(c) {
 			if ob.isWritten {
