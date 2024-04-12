@@ -39,11 +39,11 @@ func TestOrderByBuilder(t *testing.T) {
 			wanted: "SELECT * FROM users ORDER BY id ASC, created_at DESC, updated_at ASC",
 		},
 		{
-			name: "order_by_raw_sqll_should_work",
+			name: "order_by_raw_sql_should_work",
 			build: func() *Builder {
 				b := New("SELECT * FROM users")
-				b.Order("id", "created_at", "updated_at").
-					By("created_at desc, id, name asc, updated_at asc")
+				b.Order("id", "created_at", "updated_at", "age").
+					By("created_at desc, id, name asc, updated_at asc, age invalid_by,  unsafe_asc, unsafe_desc desc")
 
 				return b
 			},
