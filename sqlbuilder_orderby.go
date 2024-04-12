@@ -51,10 +51,8 @@ func (ob *OrderByBuilder) By(raw string) *OrderByBuilder {
 			by = strings.TrimSpace(items[1])
 			if strings.EqualFold(by, "ASC") {
 				ob.ByAsc(strings.TrimSpace(items[0]))
-			} else {
-				if strings.EqualFold(by, "DESC") {
-					ob.ByDesc(strings.TrimSpace(items[0]))
-				}
+			} else if strings.EqualFold(by, "DESC") {
+				ob.ByDesc(strings.TrimSpace(items[0]))
 			}
 		}
 	}
