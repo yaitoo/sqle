@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.4.2] - 2014-04-10
 ### Added
-- added `OrderByBuilder` to prevent sql injection (#32)
+- added `OrderByBuilder` to prevent sql injection (#32, #33)
 
 ## [1.4.1] - 2014-04-09
 ### Added
