@@ -16,10 +16,10 @@ func TestOrderByBuilder(t *testing.T) {
 			name: "no_safe_columns_should_work",
 			build: func() *Builder {
 				b := New("SELECT * FROM users")
-				b.OrderBy().
-					Desc("created_at").
-					Asc("id", "name").
-					Asc("updated_at")
+				b.Order().
+					ByDesc("created_at").
+					ByAsc("id", "name").
+					ByAsc("updated_at")
 
 				return b
 			},
@@ -29,14 +29,25 @@ func TestOrderByBuilder(t *testing.T) {
 			name: "safe_columns_should_work",
 			build: func() *Builder {
 				b := New("SELECT * FROM users")
-				b.OrderBy("id", "created_at", "updated_at").
-					Asc("id", "name").
-					Desc("created_at", "unsafe_input").
-					Asc("updated_at")
+				b.Order("id", "created_at", "updated_at").
+					ByAsc("id", "name").
+					ByDesc("created_at", "unsafe_input").
+					ByAsc("updated_at")
 
 				return b
 			},
 			wanted: "SELECT * FROM users ORDER BY id ASC, created_at DESC, updated_at ASC",
+		},
+		{
+			name: "order_by_raw_sql_should_work",
+			build: func() *Builder {
+				b := New("SELECT * FROM users")
+				b.Order("id", "created_at", "updated_at", "age").
+					By("created_at desc, id, name asc, updated_at asc, age invalid_by,  unsafe_asc, unsafe_desc desc")
+
+				return b
+			},
+			wanted: "SELECT * FROM users ORDER BY created_at DESC, id ASC, updated_at ASC",
 		},
 	}
 
