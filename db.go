@@ -14,6 +14,7 @@ var (
 	ErrMissingDHT   = errors.New("sqle: missing_dht")
 )
 
+// DB represents a database connection pool with sharding support.
 type DB struct {
 	*Context
 	_ noCopy //nolint: unused
@@ -23,6 +24,7 @@ type DB struct {
 	dbs  []*Context
 }
 
+// Open creates a new DB instance with the provided database connections.
 func Open(dbs ...*sql.DB) *DB {
 	d := &DB{
 		Context: &Context{
@@ -47,7 +49,7 @@ func Open(dbs ...*sql.DB) *DB {
 	return d
 }
 
-// Add dynamically scale out DB with new databases
+// Add dynamically scales out the DB with new databases.
 func (db *DB) Add(dbs ...*sql.DB) {
 	db.Lock()
 	defer db.Unlock()
@@ -65,7 +67,7 @@ func (db *DB) Add(dbs ...*sql.DB) {
 	}
 }
 
-// On select database from shardid.ID
+// On selects the database context based on the shard ID.
 func (db *DB) On(id shardid.ID) *Context {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
@@ -73,7 +75,7 @@ func (db *DB) On(id shardid.ID) *Context {
 	return db.dbs[int(id.DatabaseID)]
 }
 
-// NewDHT create new DTH with databases
+// NewDHT creates a new DHT (Distributed Hash Table) with the specified databases.
 func (db *DB) NewDHT(name string, dbs ...int) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -81,6 +83,7 @@ func (db *DB) NewDHT(name string, dbs ...int) {
 	db.dhts[name] = shardid.NewDHT(dbs...)
 }
 
+// GetDHT returns the DHT (Distributed Hash Table) with the specified name.
 func (db *DB) GetDHT(name string) *shardid.DHT {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
@@ -88,7 +91,7 @@ func (db *DB) GetDHT(name string) *shardid.DHT {
 	return db.dhts[name]
 }
 
-// OnDHT select database from DHT
+// OnDHT selects the database context based on the DHT (Distributed Hash Table) key.
 func (db *DB) OnDHT(key string, names ...string) (*Context, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
@@ -107,7 +110,6 @@ func (db *DB) OnDHT(key string, names ...string) (*Context, error) {
 
 	if err != nil {
 		return nil, err
-
 	}
 	return db.dbs[cur], nil
 }

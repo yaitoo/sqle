@@ -1,3 +1,5 @@
+// Package sqle provides a SQLBuilder for constructing SQL statements in a programmatic way.
+// It allows you to build SELECT, INSERT, UPDATE, and DELETE statements with ease.
 package sqle
 
 import (
@@ -8,17 +10,18 @@ import (
 	"github.com/yaitoo/sqle/shardid"
 )
 
-var (
-	ErrInvalidParamVariable = errors.New("sqle: invalid param variable")
-)
+// ErrInvalidParamVariable is an error that is returned when an invalid parameter variable is encountered.
+var ErrInvalidParamVariable = errors.New("sqle: invalid param variable")
 
-var (
-	DefaultSQLQuote        = "`"
-	DefaultSQLParameterize = func(name string, index int) string {
-		return "?"
-	}
-)
+// DefaultSQLQuote is the default character used to escape column names in UPDATE and INSERT statements.
+var DefaultSQLQuote = "`"
 
+// DefaultSQLParameterize is the default function used to parameterize values in SQL statements.
+var DefaultSQLParameterize = func(name string, index int) string {
+	return "?"
+}
+
+// Builder is a SQL query builder that allows you to construct SQL statements.
 type Builder struct {
 	stmt       strings.Builder
 	inputs     map[string]string
@@ -29,8 +32,8 @@ type Builder struct {
 	Parameterize func(name string, index int) string
 }
 
+// New creates a new instance of the Builder with the given initial command(s).
 func New(cmd ...string) *Builder {
-
 	b := &Builder{
 		inputs:       make(map[string]string),
 		params:       make(map[string]any),
@@ -48,11 +51,13 @@ func New(cmd ...string) *Builder {
 	return b
 }
 
+// Input sets the value of an input variable in the Builder.
 func (b *Builder) Input(name, value string) *Builder {
 	b.inputs[name] = value
 	return b
 }
 
+// Inputs sets multiple input variables in the Builder.
 func (b *Builder) Inputs(v map[string]string) *Builder {
 	for n, v := range v {
 		b.Input(n, v)
@@ -61,11 +66,13 @@ func (b *Builder) Inputs(v map[string]string) *Builder {
 	return b
 }
 
+// Param sets the value of a parameter variable in the Builder.
 func (b *Builder) Param(name string, value any) *Builder {
 	b.params[name] = value
 	return b
 }
 
+// Params sets multiple parameter variables in the Builder.
 func (b *Builder) Params(v map[string]any) *Builder {
 	for n, v := range v {
 		b.Param(n, v)
@@ -74,11 +81,15 @@ func (b *Builder) Params(v map[string]any) *Builder {
 	return b
 }
 
+// If sets a condition that determines whether the subsequent SQL command should be executed.
+// If the predicate is false, the command is skipped.
 func (b *Builder) If(predicate bool) *Builder {
 	b.shouldSkip = !predicate
 	return b
 }
 
+// SQL appends the given SQL command to the Builder's statement.
+// If the Builder's shouldSkip flag is set, the command is skipped.
 func (b *Builder) SQL(cmd string) *Builder {
 	if b.shouldSkip {
 		b.shouldSkip = false
@@ -91,10 +102,12 @@ func (b *Builder) SQL(cmd string) *Builder {
 	return b
 }
 
+// String returns the SQL statement constructed by the Builder.
 func (b *Builder) String() string {
 	return b.stmt.String()
 }
 
+// Build constructs the final SQL statement and returns it along with the parameter values.
 func (b *Builder) Build() (string, []any, error) {
 	tz := Tokenize(b.stmt.String())
 
@@ -131,6 +144,20 @@ func (b *Builder) Build() (string, []any, error) {
 
 }
 
+func (b *Builder) WithWhere(wb *WhereBuilder) *WhereBuilder {
+	for k, v := range wb.inputs {
+		b.Input(k, v)
+	}
+
+	for k, v := range wb.params {
+		b.Param(k, v)
+	}
+
+	return b.Where(wb.stmt.String())
+}
+
+// Where starts a new WhereBuilder and adds the given conditions to the current query builder.
+// Returns the new WhereBuilder.
 func (b *Builder) Where(cmd ...string) *WhereBuilder {
 	wb := &WhereBuilder{Builder: b}
 
@@ -146,6 +173,7 @@ func (b *Builder) Where(cmd ...string) *WhereBuilder {
 	return wb
 }
 
+// quoteColumn escapes the given column name using the Builder's Quote character.
 func (b *Builder) quoteColumn(c string) string {
 	if strings.ContainsAny(c, "(") || strings.ContainsAny(c, " ") || strings.ContainsAny(c, "as") {
 		return c
@@ -154,6 +182,8 @@ func (b *Builder) quoteColumn(c string) string {
 	}
 }
 
+// Update starts a new UpdateBuilder and sets the table to update.
+// Returns the new UpdateBuilder.
 func (b *Builder) Update(table string) *UpdateBuilder {
 	b.SQL("UPDATE ").SQL(b.Quote).SQL(table).SQL(b.Quote).SQL(" SET ")
 	return &UpdateBuilder{
@@ -161,6 +191,8 @@ func (b *Builder) Update(table string) *UpdateBuilder {
 	}
 }
 
+// Insert starts a new InsertBuilder and sets the table to insert into.
+// Returns the new InsertBuilder.
 func (b *Builder) Insert(table string) *InsertBuilder {
 	return &InsertBuilder{
 		b:      b,
@@ -169,6 +201,9 @@ func (b *Builder) Insert(table string) *InsertBuilder {
 	}
 }
 
+// Select adds a SELECT statement to the current query builder.
+// If no columns are specified, it selects all columns using "*".
+// Returns the current query builder.
 func (b *Builder) Select(table string, columns ...string) *Builder {
 	b.SQL("SELECT")
 
@@ -189,18 +224,23 @@ func (b *Builder) Select(table string, columns ...string) *Builder {
 	return b
 }
 
+// Delete adds a DELETE statement to the current query builder.
+// Returns the current query builder.
 func (b *Builder) Delete(table string) *Builder {
 	b.SQL("DELETE FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
 
 	return b
 }
 
+// On sets the "rotate" input variable to the given shard ID's rotate name.
+// Returns the current query builder.
 func (b *Builder) On(id shardid.ID) *Builder {
 	return b.Input("rotate", id.RotateName())
 }
 
+// sortColumns sorts the columns in the given map and returns them as a slice.
+// It also allows customization of column names using BuilderOptions.
 func sortColumns(m map[string]any, opts ...BuilderOption) []string {
-
 	bo := &BuilderOptions{}
 	for _, opt := range opts {
 		opt(bo)
@@ -209,7 +249,6 @@ func sortColumns(m map[string]any, opts ...BuilderOption) []string {
 	hasCustomizedColumns := len(bo.Columns) > 0
 
 	for n, v := range m {
-
 		name := n
 
 		if bo.ToName != nil {
@@ -217,7 +256,6 @@ func sortColumns(m map[string]any, opts ...BuilderOption) []string {
 			if name != n {
 				m[name] = v
 			}
-
 		}
 
 		if !hasCustomizedColumns {
@@ -230,5 +268,4 @@ func sortColumns(m map[string]any, opts ...BuilderOption) []string {
 	}
 
 	return bo.Columns
-
 }
