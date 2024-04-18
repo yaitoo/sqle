@@ -18,7 +18,7 @@ func (b *Builder) Order(allowedColumns ...string) *OrderByBuilder {
 		allowedColumns: allowedColumns,
 	}
 
-	b.Write(" ORDER BY ")
+	b.SQL(" ORDER BY ")
 
 	return ob
 }
@@ -66,9 +66,9 @@ func (ob *OrderByBuilder) ByAsc(columns ...string) *OrderByBuilder {
 	for _, c := range columns {
 		if ob.isAllowed(c) {
 			if ob.isWritten {
-				ob.Builder.Write(", ").Write(c).Write(" ASC")
+				ob.Builder.SQL(", ").SQL(c).SQL(" ASC")
 			} else {
-				ob.Builder.Write(c).Write(" ASC")
+				ob.Builder.SQL(c).SQL(" ASC")
 				ob.isWritten = true
 			}
 		}
@@ -81,9 +81,9 @@ func (ob *OrderByBuilder) ByDesc(columns ...string) *OrderByBuilder {
 	for _, c := range columns {
 		if ob.isAllowed(c) {
 			if ob.isWritten {
-				ob.Builder.Write(", ").Write(c).Write(" DESC")
+				ob.Builder.SQL(", ").SQL(c).SQL(" DESC")
 			} else {
-				ob.Builder.Write(c).Write(" DESC")
+				ob.Builder.SQL(c).SQL(" DESC")
 				ob.isWritten = true
 			}
 		}

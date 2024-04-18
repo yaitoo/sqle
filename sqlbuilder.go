@@ -90,9 +90,9 @@ func (b *Builder) If(predicate bool) *Builder {
 	return b
 }
 
-// Write appends the given Write command to the Builder's statement.
+// SQL appends the given SQL command to the Builder's statement.
 // If the Builder's shouldSkip flag is set, the command is skipped.
-func (b *Builder) Write(cmd string) *Builder {
+func (b *Builder) SQL(cmd string) *Builder {
 	if b.shouldSkip {
 		b.shouldSkip = false
 		return b
@@ -190,7 +190,7 @@ func (b *Builder) quoteColumn(c string) string {
 // Update starts a new UpdateBuilder and sets the table to update.
 // Returns the new UpdateBuilder.
 func (b *Builder) Update(table string) *UpdateBuilder {
-	b.Write("UPDATE ").Write(b.Quote).Write(table).Write(b.Quote).Write(" SET ")
+	b.SQL("UPDATE ").SQL(b.Quote).SQL(table).SQL(b.Quote).SQL(" SET ")
 	return &UpdateBuilder{
 		Builder: b,
 	}
@@ -210,21 +210,21 @@ func (b *Builder) Insert(table string) *InsertBuilder {
 // If no columns are specified, it selects all columns using "*".
 // Returns the current query builder.
 func (b *Builder) Select(table string, columns ...string) *Builder {
-	b.Write("SELECT")
+	b.SQL("SELECT")
 
 	if columns == nil {
-		b.Write(" *")
+		b.SQL(" *")
 	} else {
 		for i, col := range columns {
 			if i == 0 {
-				b.Write(" ").Write(b.quoteColumn(col))
+				b.SQL(" ").SQL(b.quoteColumn(col))
 			} else {
-				b.Write(" ,").Write(b.quoteColumn(col))
+				b.SQL(" ,").SQL(b.quoteColumn(col))
 			}
 		}
 	}
 
-	b.Write(" FROM ").Write(b.Quote).Write(table).Write(b.Quote)
+	b.SQL(" FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
 
 	return b
 }
@@ -232,7 +232,7 @@ func (b *Builder) Select(table string, columns ...string) *Builder {
 // Delete adds a DELETE statement to the current query builder.
 // Returns the current query builder.
 func (b *Builder) Delete(table string) *Builder {
-	b.Write("DELETE FROM ").Write(b.Quote).Write(table).Write(b.Quote)
+	b.SQL("DELETE FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
 
 	return b
 }

@@ -141,7 +141,7 @@ func (q *MapR[T]) Query(ctx context.Context, tables []string, b *Builder, less f
 func (q *MapR[T]) QueryLimit(ctx context.Context, tables []string, b *Builder, less func(i, j T) bool, limit int) ([]T, error) {
 
 	if limit > 0 {
-		b.Write(" LIMIT " + strconv.Itoa(limit*len(q.dbs)))
+		b.SQL(" LIMIT " + strconv.Itoa(limit*len(q.dbs)))
 	}
 
 	list, err := q.Query(ctx, tables, b, less)

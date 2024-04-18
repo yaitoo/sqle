@@ -73,7 +73,7 @@ func (ib *InsertBuilder) SetMap(m map[string]any, opts ...BuilderOption) *Insert
 }
 
 func (ib *InsertBuilder) End() *Builder {
-	ib.b.Write("INSERT INTO ").Write(ib.b.Quote).Write(ib.table).Write(ib.b.Quote)
+	ib.b.SQL("INSERT INTO ").SQL(ib.b.Quote).SQL(ib.table).SQL(ib.b.Quote)
 
 	cols := " ("
 	values := " VALUES ("
@@ -91,8 +91,8 @@ func (ib *InsertBuilder) End() *Builder {
 		ib.b.Param(n, v)
 	}
 
-	ib.b.Write(cols).Write(")")
-	ib.b.Write(values).Write(")")
+	ib.b.SQL(cols).SQL(")")
+	ib.b.SQL(values).SQL(")")
 	ib.b.Params(ib.values)
 
 	return ib.b
