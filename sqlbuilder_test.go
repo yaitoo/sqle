@@ -161,12 +161,13 @@ func TestBuilder(t *testing.T) {
 		{
 			name: "build_with_where",
 			build: func() *Builder {
-				b := New().Select("orders")
+				b := New().Select("<prefix>orders")
 
 				wb := NewWhere().And("cancelled>={now}").
 					If(true).SQL("AND", "id={order_id}").
 					SQL("AND", "created>={now}")
 
+				wb.Input("prefix", "prefix_")
 				wb.Param("order_id", 123456).Param("now", now)
 
 				b.WithWhere(wb)
@@ -176,7 +177,7 @@ func TestBuilder(t *testing.T) {
 			assert: func(t *testing.T, b *Builder) {
 				s, vars, err := b.Build()
 				require.NoError(t, err)
-				require.Equal(t, "SELECT * FROM `orders` WHERE cancelled>=? AND id=? AND created>=?", s)
+				require.Equal(t, "SELECT * FROM `prefix_orders` WHERE cancelled>=? AND id=? AND created>=?", s)
 				require.Len(t, vars, 3)
 				require.Equal(t, now, vars[0])
 				require.Equal(t, 123456, vars[1])
