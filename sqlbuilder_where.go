@@ -23,17 +23,17 @@ func (wb *WhereBuilder) If(predicate bool) *WhereBuilder {
 
 // And appends an AND operator and a command to the SQL statement.
 func (wb *WhereBuilder) And(cmd string) *WhereBuilder {
-	return wb.SQL("AND", cmd)
+	return wb.Write("AND", cmd)
 }
 
 // Or appends an OR operator and a command to the SQL statement.
 func (wb *WhereBuilder) Or(cmd string) *WhereBuilder {
-	return wb.SQL("OR", cmd)
+	return wb.Write("OR", cmd)
 }
 
-// SQL appends an operator and a command to the SQL statement.
+// Write appends an operator and a command to the Write statement.
 // The operator is only appended if the command is not empty.
-func (wb *WhereBuilder) SQL(op string, cmd string) *WhereBuilder {
+func (wb *WhereBuilder) Write(op string, cmd string) *WhereBuilder {
 	if wb.shouldSkip {
 		wb.shouldSkip = false
 		return wb

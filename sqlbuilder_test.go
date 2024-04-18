@@ -22,7 +22,7 @@ func TestBuilder(t *testing.T) {
 			name: "build_no_token",
 			build: func() *Builder {
 				b := New("SELECT * FROM orders")
-				b.SQL(" WHERE created>=now()")
+				b.Write(" WHERE created>=now()")
 				return b
 			},
 			assert: func(t *testing.T, b *Builder) {
@@ -36,9 +36,9 @@ func TestBuilder(t *testing.T) {
 			name: "build_if",
 			build: func() *Builder {
 				b := New("SELECT * FROM orders")
-				b.SQL(" WHERE created>=now()").
-					If(true).SQL(" LIMIT 5").
-					If(false).SQL(" OFFSET 5")
+				b.Write(" WHERE created>=now()").
+					If(true).Write(" LIMIT 5").
+					If(false).Write(" OFFSET 5")
 				return b
 			},
 			assert: func(t *testing.T, b *Builder) {
@@ -52,7 +52,7 @@ func TestBuilder(t *testing.T) {
 			name: "build_with_input_tokens",
 			build: func() *Builder {
 				b := New("SELECT * FROM", "orders_<yyyyMM> as orders")
-				b.SQL(" WHERE orders.created>=now()")
+				b.Write(" WHERE orders.created>=now()")
 				b.Input("yyyyMM", "202401")
 				return b
 			},
@@ -67,7 +67,7 @@ func TestBuilder(t *testing.T) {
 			name: "build_with_param_tokens",
 			build: func() *Builder {
 				b := New("SELECT * FROM orders")
-				b.SQL(" WHERE cancelled>={now} and id={order_id} and created>={now}")
+				b.Write(" WHERE cancelled>={now} and id={order_id} and created>={now}")
 				b.Param("order_id", 123456)
 				b.Param("now", now)
 				return b
@@ -86,8 +86,8 @@ func TestBuilder(t *testing.T) {
 			name: "build_with_input_param_tokens",
 			build: func() *Builder {
 				b := New("SELECT * FROM orders_<yyyy> as orders LEFT JOIN users_<dbid>")
-				b.SQL(" ON users_<dbid>.id=orders.user_id")
-				b.SQL(" WHERE users_<dbid>.id={user_id} and orders.user_id={user_id} and orders.status={order_status} and orders.created>={now}")
+				b.Write(" ON users_<dbid>.id=orders.user_id")
+				b.Write(" WHERE users_<dbid>.id={user_id} and orders.user_id={user_id} and orders.status={order_status} and orders.created>={now}")
 				b.Inputs(map[string]string{
 					"dbid": "db2",
 					"yyyy": "2024",
@@ -114,8 +114,8 @@ func TestBuilder(t *testing.T) {
 			build: func() *Builder {
 				b := New().Select("orders")
 				b.Where("cancelled>={now}").
-					If(true).SQL("AND", "id={order_id}")
-				b.SQL(" AND created>={now}")
+					If(true).Write("AND", "id={order_id}")
+				b.Write(" AND created>={now}")
 				b.Param("order_id", 123456)
 				b.Param("now", now)
 				return b
@@ -139,8 +139,8 @@ func TestBuilder(t *testing.T) {
 
 				b := New().Select("orders")
 				b.Where().
-					If(orderID > -1).SQL("AND", "id={order_id}").
-					If(cancelledTime != nil).SQL("AND", "cancelled>={cancelled_time}").
+					If(orderID > -1).Write("AND", "id={order_id}").
+					If(cancelledTime != nil).Write("AND", "cancelled>={cancelled_time}").
 					And("created>={now}")
 
 				b.Param("cancelled_time", cancelledTime)
@@ -159,6 +159,31 @@ func TestBuilder(t *testing.T) {
 			},
 		},
 		{
+			name: "build_with_where",
+			build: func() *Builder {
+				b := New().Select("orders")
+
+				wb := NewWhere().And("cancelled>={now}").
+					If(true).Write("AND", "id={order_id}").
+					Write("AND", "created>={now}")
+
+				wb.Param("order_id", 123456).Param("now", now)
+
+				b.WithWhere(wb)
+
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "SELECT * FROM `orders` WHERE cancelled>=? AND id=? AND created>=?", s)
+				require.Len(t, vars, 3)
+				require.Equal(t, now, vars[0])
+				require.Equal(t, 123456, vars[1])
+				require.Equal(t, now, vars[2])
+			},
+		},
+		{
 			name: "build_update",
 			build: func() *Builder {
 				b := New()
@@ -168,9 +193,9 @@ func TestBuilder(t *testing.T) {
 					Set("created_time", now)
 
 				b.Where("cancelled>={now}").
-					If(true).SQL("AND", "id={order_id}")
+					If(true).Write("AND", "id={order_id}")
 
-				b.SQL(" AND created>={now}")
+				b.Write(" AND created>={now}")
 				b.Param("order_id", "order_123456")
 				b.Param("now", now)
 
@@ -199,9 +224,9 @@ func TestBuilder(t *testing.T) {
 					Set("created_time", now)
 
 				b.Where("cancelled>={now}").
-					If(true).SQL("AND", "id={order_id}")
+					If(true).Write("AND", "id={order_id}")
 
-				b.SQL(" AND created>={now}")
+				b.Write(" AND created>={now}")
 				b.Param("order_id", "order_123456")
 				b.Param("now", now)
 
@@ -240,9 +265,9 @@ func TestBuilder(t *testing.T) {
 				b.Update("orders").
 					SetModel(u)
 				b.Where("cancelled>={now}").
-					If(true).SQL("AND", "id={order_id}")
+					If(true).Write("AND", "id={order_id}")
 
-				b.SQL(" AND created_time>={now}")
+				b.Write(" AND created_time>={now}")
 				b.Param("order_id", "order_123456")
 				b.Param("now", now)
 
@@ -275,9 +300,9 @@ func TestBuilder(t *testing.T) {
 				b.Update("orders").
 					SetMap(m, WithToName(strcase.ToSnake), WithAllow("member_id", "amount", "created_time"))
 				b.Where("cancelled>={now}").
-					If(true).SQL("AND", "id={order_id}")
+					If(true).Write("AND", "id={order_id}")
 
-				b.SQL(" AND created_time>={now}")
+				b.Write(" AND created_time>={now}")
 				b.Param("order_id", "order_123456")
 				b.Param("now", now)
 
@@ -307,9 +332,9 @@ func TestBuilder(t *testing.T) {
 					Set("created_time", now)
 
 				b.Where("cancelled>={now}").
-					If(true).SQL("AND", "id={order_id}")
+					If(true).Write("AND", "id={order_id}")
 
-				b.SQL(" AND created>={now}")
+				b.Write(" AND created>={now}")
 				b.Param("order_id", "order_123456")
 				b.Param("now", now)
 

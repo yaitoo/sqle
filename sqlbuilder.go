@@ -10,16 +10,18 @@ import (
 	"github.com/yaitoo/sqle/shardid"
 )
 
-// ErrInvalidParamVariable is an error that is returned when an invalid parameter variable is encountered.
-var ErrInvalidParamVariable = errors.New("sqle: invalid param variable")
+var (
+	// ErrInvalidParamVariable is an error that is returned when an invalid parameter variable is encountered.
+	ErrInvalidParamVariable = errors.New("sqle: invalid param variable")
 
-// DefaultSQLQuote is the default character used to escape column names in UPDATE and INSERT statements.
-var DefaultSQLQuote = "`"
+	// DefaultSQLQuote is the default character used to escape column names in UPDATE and INSERT statements.
+	DefaultSQLQuote = "`"
 
-// DefaultSQLParameterize is the default function used to parameterize values in SQL statements.
-var DefaultSQLParameterize = func(name string, index int) string {
-	return "?"
-}
+	// DefaultSQLParameterize is the default function used to parameterize values in SQL statements.
+	DefaultSQLParameterize = func(name string, index int) string {
+		return "?"
+	}
+)
 
 // Builder is a SQL query builder that allows you to construct SQL statements.
 type Builder struct {
@@ -88,9 +90,9 @@ func (b *Builder) If(predicate bool) *Builder {
 	return b
 }
 
-// SQL appends the given SQL command to the Builder's statement.
+// Write appends the given Write command to the Builder's statement.
 // If the Builder's shouldSkip flag is set, the command is skipped.
-func (b *Builder) SQL(cmd string) *Builder {
+func (b *Builder) Write(cmd string) *Builder {
 	if b.shouldSkip {
 		b.shouldSkip = false
 		return b
@@ -144,6 +146,9 @@ func (b *Builder) Build() (string, []any, error) {
 
 }
 
+// WithWhere adds the input and parameter values from the given WhereBuilder to the current Builder
+// and sets the WHERE clause of the SQL statement to the string representation of the WhereBuilder's statement.
+// It returns the modified WhereBuilder.
 func (b *Builder) WithWhere(wb *WhereBuilder) *WhereBuilder {
 	for k, v := range wb.inputs {
 		b.Input(k, v)
@@ -153,7 +158,7 @@ func (b *Builder) WithWhere(wb *WhereBuilder) *WhereBuilder {
 		b.Param(k, v)
 	}
 
-	return b.Where(wb.stmt.String())
+	return b.Where(strings.TrimSpace(wb.stmt.String()))
 }
 
 // Where starts a new WhereBuilder and adds the given conditions to the current query builder.
@@ -185,7 +190,7 @@ func (b *Builder) quoteColumn(c string) string {
 // Update starts a new UpdateBuilder and sets the table to update.
 // Returns the new UpdateBuilder.
 func (b *Builder) Update(table string) *UpdateBuilder {
-	b.SQL("UPDATE ").SQL(b.Quote).SQL(table).SQL(b.Quote).SQL(" SET ")
+	b.Write("UPDATE ").Write(b.Quote).Write(table).Write(b.Quote).Write(" SET ")
 	return &UpdateBuilder{
 		Builder: b,
 	}
@@ -205,21 +210,21 @@ func (b *Builder) Insert(table string) *InsertBuilder {
 // If no columns are specified, it selects all columns using "*".
 // Returns the current query builder.
 func (b *Builder) Select(table string, columns ...string) *Builder {
-	b.SQL("SELECT")
+	b.Write("SELECT")
 
 	if columns == nil {
-		b.SQL(" *")
+		b.Write(" *")
 	} else {
 		for i, col := range columns {
 			if i == 0 {
-				b.SQL(" ").SQL(b.quoteColumn(col))
+				b.Write(" ").Write(b.quoteColumn(col))
 			} else {
-				b.SQL(" ,").SQL(b.quoteColumn(col))
+				b.Write(" ,").Write(b.quoteColumn(col))
 			}
 		}
 	}
 
-	b.SQL(" FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
+	b.Write(" FROM ").Write(b.Quote).Write(table).Write(b.Quote)
 
 	return b
 }
@@ -227,7 +232,7 @@ func (b *Builder) Select(table string, columns ...string) *Builder {
 // Delete adds a DELETE statement to the current query builder.
 // Returns the current query builder.
 func (b *Builder) Delete(table string) *Builder {
-	b.SQL("DELETE FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
+	b.Write("DELETE FROM ").Write(b.Quote).Write(table).Write(b.Quote)
 
 	return b
 }

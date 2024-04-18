@@ -67,7 +67,7 @@ func (db *DB) Add(dbs ...*sql.DB) {
 	}
 }
 
-// On selects the database context based on the shard ID.
+// On selects the database context based on the shardid ID.
 func (db *DB) On(id shardid.ID) *Context {
 	db.mu.RLock()
 	defer db.mu.RUnlock()

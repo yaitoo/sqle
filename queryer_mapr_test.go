@@ -495,7 +495,7 @@ func TestQuery(t *testing.T) {
 				return q.Query(context.Background(), New().
 					Select("users", "id").
 					Where("id < 4").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				})
 			},
@@ -516,7 +516,7 @@ func TestQuery(t *testing.T) {
 				return q.Query(context.Background(), New().
 					Select("users", "id").
 					Where("id < 24").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				})
 			},
@@ -539,7 +539,7 @@ func TestQuery(t *testing.T) {
 			queryRows: func(q *Query[MRUser]) ([]MRUser, error) {
 				return q.Query(context.Background(), New().
 					Select("users", "id").
-					SQL("ORDER BY id"), func(i, j MRUser) bool {
+					Write("ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				})
 			},
@@ -557,7 +557,7 @@ func TestQuery(t *testing.T) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("( id > 20240200 AND id < 20240204) OR ( id >= 20240300 AND id < 20240305)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				})
 			},
@@ -575,7 +575,7 @@ func TestQuery(t *testing.T) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 20240250 AND id < 20240254) OR ( id >= 20240350 AND id < 20240355)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				})
 			},
@@ -593,7 +593,7 @@ func TestQuery(t *testing.T) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 20240290 AND id < 20240294) OR ( id >= 20240390 AND id < 20240395)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				})
 			},
@@ -611,7 +611,7 @@ func TestQuery(t *testing.T) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 202400500 AND id < 202400504) OR ( id >= 202400600 AND id < 202400604)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				})
 			},
@@ -629,7 +629,7 @@ func TestQuery(t *testing.T) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 202400550 AND id < 202400554) OR ( id >= 202400650 AND id < 202400654)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				})
 			},
@@ -647,7 +647,7 @@ func TestQuery(t *testing.T) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 202400590 AND id < 202400594) OR ( id >= 202400690 AND id < 202400694)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				})
 			},
@@ -665,7 +665,7 @@ func TestQuery(t *testing.T) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 2024020100 AND id < 2024020104) OR ( id > 2024020200 AND id < 2024020204)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				})
 			},
@@ -683,7 +683,7 @@ func TestQuery(t *testing.T) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 2024020150 AND id < 2024020154) OR ( id > 2024020250 AND id < 2024020254)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				})
 			},
@@ -701,7 +701,7 @@ func TestQuery(t *testing.T) {
 				return q.Query(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 2024020190 AND id < 2024020194) OR ( id > 2024020290 AND id < 2024020294)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				})
 			},
@@ -751,7 +751,7 @@ func TestQueryLimit(t *testing.T) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users", "id").
 					Where("id < 4").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				}, limit)
 			},
@@ -782,7 +782,7 @@ func TestQueryLimit(t *testing.T) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users", "id").
 					Where("id < 24").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				}, limit)
 			},
@@ -812,7 +812,7 @@ func TestQueryLimit(t *testing.T) {
 			queryLimit: func(q *Query[MRUser], limit int) ([]MRUser, error) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users", "id").
-					SQL("ORDER BY id DESC"), func(i, j MRUser) bool {
+					Write("ORDER BY id DESC"), func(i, j MRUser) bool {
 					// DESC
 					return j.ID < i.ID
 				}, 16)
@@ -837,7 +837,7 @@ func TestQueryLimit(t *testing.T) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("( id > 20240200 AND id < 20240204) OR ( id >= 20240300 AND id < 20240305)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				}, limit)
 			},
@@ -861,7 +861,7 @@ func TestQueryLimit(t *testing.T) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 20240250 AND id < 20240254) OR ( id >= 20240350 AND id < 20240355)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				}, limit)
 			},
@@ -885,7 +885,7 @@ func TestQueryLimit(t *testing.T) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 20240290 AND id < 20240294) OR ( id >= 20240390 AND id < 20240395)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				}, limit)
 			},
@@ -908,7 +908,7 @@ func TestQueryLimit(t *testing.T) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 202400500 AND id < 202400504) OR ( id >= 202400600 AND id < 202400604)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				}, limit)
 			},
@@ -931,7 +931,7 @@ func TestQueryLimit(t *testing.T) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 202400550 AND id < 202400554) OR ( id >= 202400650 AND id < 202400654)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				}, 5)
 			},
@@ -954,7 +954,7 @@ func TestQueryLimit(t *testing.T) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 202400590 AND id < 202400594) OR ( id >= 202400690 AND id < 202400694)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				}, limit)
 			},
@@ -977,7 +977,7 @@ func TestQueryLimit(t *testing.T) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 2024020100 AND id < 2024020104) OR ( id > 2024020200 AND id < 2024020204)").
-					End().SQL(" ORDER BY id DESC"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id DESC"), func(i, j MRUser) bool {
 					return j.ID < i.ID
 				}, limit)
 			},
@@ -1000,7 +1000,7 @@ func TestQueryLimit(t *testing.T) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 2024020150 AND id < 2024020154) OR ( id > 2024020250 AND id < 2024020254)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				}, 4)
 			},
@@ -1023,7 +1023,7 @@ func TestQueryLimit(t *testing.T) {
 				return q.QueryLimit(context.Background(), New().
 					Select("users<rotate>", "id").
 					Where("(id > 2024020190 AND id < 2024020194) OR ( id > 2024020290 AND id < 2024020294)").
-					End().SQL(" ORDER BY id"), func(i, j MRUser) bool {
+					End().Write(" ORDER BY id"), func(i, j MRUser) bool {
 					return i.ID < j.ID
 				}, limit)
 			},

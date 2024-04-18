@@ -67,11 +67,11 @@ func (ub *UpdateBuilder) SetExpr(cmd string) *UpdateBuilder {
 	}
 
 	if ub.written {
-		ub.SQL(", ")
+		ub.Write(", ")
 	}
 
 	ub.written = true
-	ub.SQL(cmd)
+	ub.Write(cmd)
 
 	return ub
 }
@@ -87,12 +87,12 @@ func (ub *UpdateBuilder) Set(name string, value any) *UpdateBuilder {
 	}
 
 	if ub.written {
-		ub.SQL(", ")
+		ub.Write(", ")
 	}
 
 	ub.written = true
-	ub.SQL(ub.Builder.Quote).SQL(name).SQL(ub.Quote)
-	ub.SQL("={" + name + "}")
+	ub.Write(ub.Builder.Quote).Write(name).Write(ub.Quote)
+	ub.Write("={" + name + "}")
 	ub.Param(name, value)
 
 	return ub
