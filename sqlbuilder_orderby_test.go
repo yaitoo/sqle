@@ -50,7 +50,7 @@ func TestOrderByBuilder(t *testing.T) {
 			wanted: "SELECT * FROM users ORDER BY created_at DESC, id ASC, updated_at ASC",
 		},
 		{
-			name: "with_order_should_work",
+			name: "with_order_by_should_work",
 			build: func() *Builder {
 				b := New("SELECT * FROM users")
 
@@ -62,6 +62,21 @@ func TestOrderByBuilder(t *testing.T) {
 				return b
 			},
 			wanted: "SELECT * FROM users ORDER BY created_at DESC, id ASC, updated_at ASC",
+		},
+		{
+			name: "with_nil_order_by_should_work",
+			build: func() *Builder {
+				b := New("SELECT * FROM users")
+				b.Order("id", "created_at", "updated_at").
+					ByAsc("id", "name").
+					ByDesc("created_at", "unsafe_input").
+					ByAsc("updated_at")
+
+				b.WithOrderBy(nil)
+
+				return b
+			},
+			wanted: "SELECT * FROM users ORDER BY id ASC, created_at DESC, updated_at ASC",
 		},
 	}
 

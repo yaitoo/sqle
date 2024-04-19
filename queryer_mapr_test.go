@@ -303,20 +303,20 @@ func TestCount(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		wanted  int
+		wanted  int64
 		wantErr error
-		query   func() *Query[int]
-		count   func(q *Query[int]) (int, error)
+		query   func() *Query[int64]
+		count   func(q *Query[int64]) (int64, error)
 	}{
 		{
 			name: "1st_db_should_work",
-			query: func() *Query[int] {
-				return NewQuery[int](db, WithQueryer[int](&MapR[int]{
+			query: func() *Query[int64] {
+				return NewQuery[int64](db, WithQueryer[int64](&MapR[int64]{
 					dbs: db.dbs,
 				}))
 			},
 			wanted: 3,
-			count: func(q *Query[int]) (int, error) {
+			count: func(q *Query[int64]) (int64, error) {
 				return q.Count(context.Background(), New().
 					Select("users", "count(id)").
 					Where("id < 4").
@@ -325,11 +325,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "3_dbs_should_work",
-			query: func() *Query[int] {
-				return NewQuery[int](db)
+			query: func() *Query[int64] {
+				return NewQuery[int64](db)
 			},
 			wanted: 11,
-			count: func(q *Query[int]) (int, error) {
+			count: func(q *Query[int64]) (int64, error) {
 				return q.Count(context.Background(), New().
 					Select("users", "count(id)").
 					Where("id < 24").End())
@@ -337,22 +337,22 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "all_dbs_should_work",
-			query: func() *Query[int] {
-				return NewQuery[int](db)
+			query: func() *Query[int64] {
+				return NewQuery[int64](db)
 			},
 			wanted: 40,
-			count: func(q *Query[int]) (int, error) {
+			count: func(q *Query[int64]) (int64, error) {
 				return q.Count(context.Background(), New().
 					Select("users", "count(id)"))
 			},
 		},
 		{
 			name: "month_on_1st_db_should_work",
-			query: func() *Query[int] {
-				return NewQuery[int](db, WithMonths[int](m202402, m202403))
+			query: func() *Query[int64] {
+				return NewQuery[int64](db, WithMonths[int64](m202402, m202403))
 			},
 			wanted: 7,
-			count: func(q *Query[int]) (int, error) {
+			count: func(q *Query[int64]) (int64, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("( id > 20240200 AND id < 20240204) OR ( id >= 20240300 AND id < 20240305)").End())
@@ -360,11 +360,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "month_on_6th_db_should_work",
-			query: func() *Query[int] {
-				return NewQuery[int](db, WithMonths[int](m202402, m202403))
+			query: func() *Query[int64] {
+				return NewQuery[int64](db, WithMonths[int64](m202402, m202403))
 			},
 			wanted: 7,
-			count: func(q *Query[int]) (int, error) {
+			count: func(q *Query[int64]) (int64, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 20240250 AND id < 20240254) OR ( id >= 20240350 AND id < 20240355)").End())
@@ -372,11 +372,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "month_on_last_db_should_work",
-			query: func() *Query[int] {
-				return NewQuery[int](db, WithMonths[int](m202402, m202403))
+			query: func() *Query[int64] {
+				return NewQuery[int64](db, WithMonths[int64](m202402, m202403))
 			},
 			wanted: 7,
-			count: func(q *Query[int]) (int, error) {
+			count: func(q *Query[int64]) (int64, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 20240290 AND id < 20240294) OR ( id >= 20240390 AND id < 20240395)").End())
@@ -384,11 +384,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "week_on_1st_db_should_work",
-			query: func() *Query[int] {
-				return NewQuery[int](db, WithWeeks[int](w20240201, w20240208))
+			query: func() *Query[int64] {
+				return NewQuery[int64](db, WithWeeks[int64](w20240201, w20240208))
 			},
 			wanted: 6,
-			count: func(q *Query[int]) (int, error) {
+			count: func(q *Query[int64]) (int64, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 202400500 AND id < 202400504) OR ( id >= 202400600 AND id < 202400604)").End())
@@ -396,11 +396,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "week_on_5th_db_should_work",
-			query: func() *Query[int] {
-				return NewQuery[int](db, WithWeeks[int](w20240201, w20240208))
+			query: func() *Query[int64] {
+				return NewQuery[int64](db, WithWeeks[int64](w20240201, w20240208))
 			},
 			wanted: 6,
-			count: func(q *Query[int]) (int, error) {
+			count: func(q *Query[int64]) (int64, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 202400550 AND id < 202400554) OR ( id >= 202400650 AND id < 202400654)").End())
@@ -408,11 +408,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "week_on_last_db_should_work",
-			query: func() *Query[int] {
-				return NewQuery[int](db, WithWeeks[int](w20240201, w20240208))
+			query: func() *Query[int64] {
+				return NewQuery[int64](db, WithWeeks[int64](w20240201, w20240208))
 			},
 			wanted: 6,
-			count: func(q *Query[int]) (int, error) {
+			count: func(q *Query[int64]) (int64, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 202400590 AND id < 202400594) OR ( id >= 202400690 AND id < 202400694)").End())
@@ -420,11 +420,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "day_on_1st_db_should_work",
-			query: func() *Query[int] {
-				return NewQuery[int](db, WithDays[int](d20240201, d20240202))
+			query: func() *Query[int64] {
+				return NewQuery[int64](db, WithDays[int64](d20240201, d20240202))
 			},
 			wanted: 6,
-			count: func(q *Query[int]) (int, error) {
+			count: func(q *Query[int64]) (int64, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 2024020100 AND id < 2024020104) OR ( id > 2024020200 AND id < 2024020204)").End())
@@ -432,11 +432,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "day_on_5th_db_should_work",
-			query: func() *Query[int] {
-				return NewQuery[int](db, WithDays[int](d20240201, d20240202))
+			query: func() *Query[int64] {
+				return NewQuery[int64](db, WithDays[int64](d20240201, d20240202))
 			},
 			wanted: 6,
-			count: func(q *Query[int]) (int, error) {
+			count: func(q *Query[int64]) (int64, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 2024020150 AND id < 2024020154) OR ( id > 2024020250 AND id < 2024020254)").End())
@@ -444,11 +444,11 @@ func TestCount(t *testing.T) {
 		},
 		{
 			name: "day_on_last_db_should_work",
-			query: func() *Query[int] {
-				return NewQuery[int](db, WithDays[int](d20240201, d20240202))
+			query: func() *Query[int64] {
+				return NewQuery[int64](db, WithDays[int64](d20240201, d20240202))
 			},
 			wanted: 6,
-			count: func(q *Query[int]) (int, error) {
+			count: func(q *Query[int64]) (int64, error) {
 				return q.Count(context.Background(), New().
 					Select("users<rotate>", "count(id)").
 					Where("(id > 2024020190 AND id < 2024020194) OR ( id > 2024020290 AND id < 2024020294)").End())

@@ -40,6 +40,10 @@ func (b *Builder) Where(criteria ...string) *WhereBuilder {
 // and sets the WHERE clause of the SQL statement to the string representation of the WhereBuilder's statement.
 // It returns the modified WhereBuilder.
 func (b *Builder) WithWhere(wb *WhereBuilder) *WhereBuilder {
+	if wb == nil {
+		return nil
+	}
+
 	for k, v := range wb.inputs {
 		b.Input(k, v)
 	}

@@ -56,7 +56,7 @@ func (q *Query[T]) First(ctx context.Context, b *Builder) (T, error) {
 // Count executes the query and returns the number of results.
 // It takes a context.Context and a *Builder as arguments.
 // It returns the count as an integer and an error, if any.
-func (q *Query[T]) Count(ctx context.Context, b *Builder) (int, error) {
+func (q *Query[T]) Count(ctx context.Context, b *Builder) (int64, error) {
 	return q.queryer.Count(ctx, q.withRotatedTables, b)
 }
 
