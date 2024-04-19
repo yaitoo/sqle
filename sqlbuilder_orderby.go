@@ -25,6 +25,10 @@ func NewOrderBy(allowedColumns ...string) *OrderByBuilder {
 // It also appends the SQL string representation of the OrderByBuilder to the Builder's SQL string.
 // It returns a new instance of the OrderByBuilder.
 func (b *Builder) WithOrderBy(ob *OrderByBuilder) *OrderByBuilder {
+	if ob == nil {
+		return nil
+	}
+
 	n := b.Order(ob.allowedColumns...)
 
 	b.SQL(ob.String())

@@ -185,6 +185,29 @@ func TestBuilder(t *testing.T) {
 			},
 		},
 		{
+			name: "build_with_nil_where",
+			build: func() *Builder {
+				b := New().Select("orders")
+				b.Where("cancelled>={now}").
+					If(true).SQL("AND", "id={order_id}")
+				b.SQL(" AND created>={now}")
+				b.Param("order_id", 123456)
+				b.Param("now", now)
+
+				b.WithWhere(nil)
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "SELECT * FROM `orders` WHERE cancelled>=? AND id=? AND created>=?", s)
+				require.Len(t, vars, 3)
+				require.Equal(t, now, vars[0])
+				require.Equal(t, 123456, vars[1])
+				require.Equal(t, now, vars[2])
+			},
+		},
+		{
 			name: "build_update",
 			build: func() *Builder {
 				b := New()
