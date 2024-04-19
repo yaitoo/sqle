@@ -47,21 +47,21 @@ func (q *MapR[T]) First(ctx context.Context, rotatedTables []string, b *Builder)
 }
 
 // Count executes the query and returns the count of results.
-func (q *MapR[T]) Count(ctx context.Context, rotatedTables []string, b *Builder) (int, error) {
+func (q *MapR[T]) Count(ctx context.Context, rotatedTables []string, b *Builder) (int64, error) {
 	b.Input("rotate", "<rotate>") // lazy replace on async.Wait
 	query, args, err := b.Build()
 	if err != nil {
 		return 0, err
 	}
 
-	w := async.New[int]()
+	w := async.New[int64]()
 
 	for _, r := range rotatedTables {
 		qr := strings.ReplaceAll(query, "<rotate>", r)
 		for _, db := range q.dbs {
-			w.Add(func(db *Context, qr string) func(context.Context) (int, error) {
-				return func(ctx context.Context) (int, error) {
-					var i int
+			w.Add(func(db *Context, qr string) func(context.Context) (int64, error) {
+				return func(ctx context.Context) (int64, error) {
+					var i int64
 					err := db.QueryRowContext(ctx, qr, args...).Scan(&i)
 					if err != nil {
 						return i, err
@@ -79,7 +79,7 @@ func (q *MapR[T]) Count(ctx context.Context, rotatedTables []string, b *Builder)
 		return 0, err
 	}
 
-	var total int
+	var total int64
 
 	for _, it := range items {
 		total += it

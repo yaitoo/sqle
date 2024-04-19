@@ -8,7 +8,7 @@ type Queryer[T any] interface {
 	First(ctx context.Context, rotatedTables []string, b *Builder) (T, error)
 
 	// Count returns the number of results that match the query criteria.
-	Count(ctx context.Context, rotatedTables []string, b *Builder) (int, error)
+	Count(ctx context.Context, rotatedTables []string, b *Builder) (int64, error)
 
 	// Query retrieves all results that match the query criteria and sorts them using less function if it is provided.
 	Query(ctx context.Context, rotatedTables []string, b *Builder, less func(i, j T) bool) ([]T, error)
