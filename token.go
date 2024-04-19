@@ -19,6 +19,7 @@ type Token interface {
 type Text string
 
 // Type returns the type of the token.
+// skipcq: RVV-B0013
 func (t Text) Type() TokenType {
 	return TextToken
 }
@@ -32,6 +33,7 @@ func (t Text) String() string {
 type Input string
 
 // Type returns the type of the token.
+// skipcq: RVV-B0013
 func (t Input) Type() TokenType {
 	return InputToken
 }
@@ -45,6 +47,7 @@ func (t Input) String() string {
 type Param string
 
 // Type returns the type of the token.
+// skipcq: RVV-B0013
 func (t Param) Type() TokenType {
 	return ParamToken
 }
