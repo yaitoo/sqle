@@ -11,6 +11,27 @@ type OrderByBuilder struct {
 	allowedColumns []string
 }
 
+// NewOrderBy creates a new instance of the OrderByBuilder.
+// It takes a variadic parameter `allowedColumns` which specifies the columns that are allowed to be used in the ORDER BY clause.
+func NewOrderBy(allowedColumns ...string) *OrderByBuilder {
+	return &OrderByBuilder{
+		Builder:        New(),
+		allowedColumns: allowedColumns,
+	}
+}
+
+// WithOrderBy sets the order by clause for the SQL query.
+// It takes an instance of the OrderByBuilder and adds the allowed columns to the Builder's order list.
+// It also appends the SQL string representation of the OrderByBuilder to the Builder's SQL string.
+// It returns a new instance of the OrderByBuilder.
+func (b *Builder) WithOrderBy(ob *OrderByBuilder) *OrderByBuilder {
+	n := b.Order(ob.allowedColumns...)
+
+	b.SQL(ob.String())
+
+	return n
+}
+
 // Order create an OrderByBuilder with allowed columns to prevent sql injection. NB: any input is allowed if it is not provided
 func (b *Builder) Order(allowedColumns ...string) *OrderByBuilder {
 	ob := &OrderByBuilder{

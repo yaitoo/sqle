@@ -146,38 +146,6 @@ func (b *Builder) Build() (string, []any, error) {
 
 }
 
-// WithWhere adds the input and parameter values from the given WhereBuilder to the current Builder
-// and sets the WHERE clause of the SQL statement to the string representation of the WhereBuilder's statement.
-// It returns the modified WhereBuilder.
-func (b *Builder) WithWhere(wb *WhereBuilder) *WhereBuilder {
-	for k, v := range wb.inputs {
-		b.Input(k, v)
-	}
-
-	for k, v := range wb.params {
-		b.Param(k, v)
-	}
-
-	return b.Where(strings.TrimSpace(wb.stmt.String()))
-}
-
-// Where starts a new WhereBuilder and adds the given conditions to the current query builder.
-// Returns the new WhereBuilder.
-func (b *Builder) Where(cmd ...string) *WhereBuilder {
-	wb := &WhereBuilder{Builder: b}
-
-	b.stmt.WriteString(" WHERE")
-	for _, it := range cmd {
-		if it != "" {
-			wb.written = true
-			b.stmt.WriteString(" ")
-			b.stmt.WriteString(it)
-		}
-	}
-
-	return wb
-}
-
 // quoteColumn escapes the given column name using the Builder's Quote character.
 func (b *Builder) quoteColumn(c string) string {
 	if strings.ContainsAny(c, "(") || strings.ContainsAny(c, " ") || strings.ContainsAny(c, "as") {
@@ -243,7 +211,8 @@ func (b *Builder) On(id shardid.ID) *Builder {
 	return b.Input("rotate", id.RotateName())
 }
 
-// sortColumns sorts the columns in the given map and returns them as a slice.
+// sortColumns sorts the columns in the given map and returns them as a pre-sorted columns slice.
+// It helps PrepareStmt works with sql statement as less as possible.
 // It also allows customization of column names using BuilderOptions.
 func sortColumns(m map[string]any, opts ...BuilderOption) []string {
 	bo := &BuilderOptions{}

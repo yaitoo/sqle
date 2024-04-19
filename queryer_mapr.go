@@ -9,12 +9,13 @@ import (
 	"github.com/yaitoo/async"
 )
 
-// MapR Map/Reduce Query
+// MapR is a Map/Reduce Query Provider based on databases.
 type MapR[T any] struct {
 	dbs []*Context
 }
 
-func (q *MapR[T]) First(ctx context.Context, tables []string, b *Builder) (T, error) {
+// First executes the query and returns the first result.
+func (q *MapR[T]) First(ctx context.Context, rotatedTables []string, b *Builder) (T, error) {
 	var it T
 	b.Input("rotate", "<rotate>") // lazy replace on async.Wait
 	query, args, err := b.Build()
@@ -24,7 +25,7 @@ func (q *MapR[T]) First(ctx context.Context, tables []string, b *Builder) (T, er
 
 	w := async.New[T]()
 
-	for _, r := range tables {
+	for _, r := range rotatedTables {
 		qr := strings.ReplaceAll(query, "<rotate>", r)
 		for _, db := range q.dbs {
 			w.Add(func(db *Context, qr string) func(context.Context) (T, error) {
@@ -44,7 +45,9 @@ func (q *MapR[T]) First(ctx context.Context, tables []string, b *Builder) (T, er
 	d, _, err := w.WaitAny(ctx)
 	return d, err
 }
-func (q *MapR[T]) Count(ctx context.Context, tables []string, b *Builder) (int, error) {
+
+// Count executes the query and returns the count of results.
+func (q *MapR[T]) Count(ctx context.Context, rotatedTables []string, b *Builder) (int, error) {
 	b.Input("rotate", "<rotate>") // lazy replace on async.Wait
 	query, args, err := b.Build()
 	if err != nil {
@@ -53,7 +56,7 @@ func (q *MapR[T]) Count(ctx context.Context, tables []string, b *Builder) (int, 
 
 	w := async.New[int]()
 
-	for _, r := range tables {
+	for _, r := range rotatedTables {
 		qr := strings.ReplaceAll(query, "<rotate>", r)
 		for _, db := range q.dbs {
 			w.Add(func(db *Context, qr string) func(context.Context) (int, error) {
@@ -84,7 +87,9 @@ func (q *MapR[T]) Count(ctx context.Context, tables []string, b *Builder) (int, 
 
 	return total, nil
 }
-func (q *MapR[T]) Query(ctx context.Context, tables []string, b *Builder, less func(i, j T) bool) ([]T, error) {
+
+// Query executes the query and returns a list of results.
+func (q *MapR[T]) Query(ctx context.Context, rotatedTables []string, b *Builder, less func(i, j T) bool) ([]T, error) {
 
 	b.Input("rotate", "<rotate>") // lazy replace on async.Wait
 	query, args, err := b.Build()
@@ -94,7 +99,7 @@ func (q *MapR[T]) Query(ctx context.Context, tables []string, b *Builder, less f
 
 	w := async.New[[]T]()
 
-	for _, r := range tables {
+	for _, r := range rotatedTables {
 		qr := strings.ReplaceAll(query, "<rotate>", r)
 		for _, db := range q.dbs {
 			w.Add(func(db *Context, qr string) func(context.Context) ([]T, error) {
@@ -138,13 +143,15 @@ func (q *MapR[T]) Query(ctx context.Context, tables []string, b *Builder, less f
 
 	return list, nil
 }
-func (q *MapR[T]) QueryLimit(ctx context.Context, tables []string, b *Builder, less func(i, j T) bool, limit int) ([]T, error) {
+
+// QueryLimit executes the query and returns a limited list of results.
+func (q *MapR[T]) QueryLimit(ctx context.Context, rotatedTables []string, b *Builder, less func(i, j T) bool, limit int) ([]T, error) {
 
 	if limit > 0 {
 		b.SQL(" LIMIT " + strconv.Itoa(limit*len(q.dbs)))
 	}
 
-	list, err := q.Query(ctx, tables, b, less)
+	list, err := q.Query(ctx, rotatedTables, b, less)
 	if err != nil {
 		return nil, err
 	}

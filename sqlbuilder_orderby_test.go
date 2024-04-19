@@ -49,6 +49,20 @@ func TestOrderByBuilder(t *testing.T) {
 			},
 			wanted: "SELECT * FROM users ORDER BY created_at DESC, id ASC, updated_at ASC",
 		},
+		{
+			name: "with_order_should_work",
+			build: func() *Builder {
+				b := New("SELECT * FROM users")
+
+				ob := NewOrderBy("id", "created_at", "updated_at", "age")
+				ob.By("created_at desc, id, name asc, updated_at asc, age invalid_by,  unsafe_asc, unsafe_desc desc")
+
+				b.WithOrderBy(ob)
+
+				return b
+			},
+			wanted: "SELECT * FROM users ORDER BY created_at DESC, id ASC, updated_at ASC",
+		},
 	}
 
 	for _, test := range tests {
