@@ -11,7 +11,7 @@ type QueryOption[T any] func(q *Query[T])
 func WithMonths[T any](start, end time.Time) QueryOption[T] {
 	return func(q *Query[T]) {
 		for t := start; !t.After(end); t = t.AddDate(0, 1, 0) {
-			q.tables = append(q.tables, shardid.FormatMonth(t))
+			q.withRotatedTables = append(q.withRotatedTables, shardid.FormatMonth(t))
 		}
 	}
 }
@@ -19,7 +19,7 @@ func WithMonths[T any](start, end time.Time) QueryOption[T] {
 func WithWeeks[T any](start, end time.Time) QueryOption[T] {
 	return func(q *Query[T]) {
 		for t := start; !t.After(end); t = t.AddDate(0, 0, 7) {
-			q.tables = append(q.tables, shardid.FormatWeek(t))
+			q.withRotatedTables = append(q.withRotatedTables, shardid.FormatWeek(t))
 		}
 	}
 }
@@ -27,7 +27,7 @@ func WithWeeks[T any](start, end time.Time) QueryOption[T] {
 func WithDays[T any](start, end time.Time) QueryOption[T] {
 	return func(q *Query[T]) {
 		for t := start; !t.After(end); t = t.AddDate(0, 0, 1) {
-			q.tables = append(q.tables, shardid.FormatDay(t))
+			q.withRotatedTables = append(q.withRotatedTables, shardid.FormatDay(t))
 		}
 	}
 }
