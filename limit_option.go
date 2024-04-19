@@ -5,8 +5,8 @@ type LimitOption func(q *LimitOptions)
 
 // LimitOptions represents a query with pagination and ordering options.
 type LimitOptions struct {
-	Offset  int64           // PageIndex represents the index of the page to retrieve.
-	Limit   int64           // PageSize represents the number of items per page.
+	Offset  int64           // Offset represents the number of rows to skip before returning the result set.
+	Limit   int64           // Limit represents the maximum number of results to be returned.
 	OrderBy *OrderByBuilder // OrderBy represents the ordering of the query.
 }
 
