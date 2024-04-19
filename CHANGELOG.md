@@ -5,13 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
+## [1.4.5] - 2014-04-19
+### Changed
+- used int64 instead of int in `Queryer.Count` (#37)
 
 ## [1.4.4] - 2014-04-19
 ### Added
 - added `NewWhere` and `WithWhere` (#35)
 - added `NewOrderBy` and `WithOrderBy` (#36)
 - added `LimitResult` and `LimitOption` (#36)
+
 
 ## [1.4.3] - 2014-04-12
 ### Fixes
