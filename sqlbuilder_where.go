@@ -24,10 +24,14 @@ func NewWhere() *WhereBuilder {
 func (b *Builder) Where(criteria ...string) *WhereBuilder {
 	wb := &WhereBuilder{Builder: b}
 
-	b.stmt.WriteString(" WHERE")
 	for _, it := range criteria {
 		if it != "" {
+
+			if !wb.written {
+				b.stmt.WriteString(" WHERE")
+			}
 			wb.written = true
+
 			b.stmt.WriteString(" ")
 			b.stmt.WriteString(it)
 		}
@@ -52,7 +56,7 @@ func (b *Builder) WithWhere(wb *WhereBuilder) *WhereBuilder {
 		b.Param(k, v)
 	}
 
-	return b.Where(strings.TrimSpace(wb.stmt.String()))
+	return b.Where(strings.TrimPrefix(wb.stmt.String(), " WHERE "))
 }
 
 // If sets a condition to skip the subsequent SQL statements.
@@ -84,6 +88,8 @@ func (wb *WhereBuilder) SQL(op string, criteria string) *WhereBuilder {
 		if wb.written {
 			wb.Builder.stmt.WriteString(" ")
 			wb.Builder.stmt.WriteString(op)
+		} else {
+			wb.Builder.stmt.WriteString(" WHERE")
 		}
 
 		wb.written = true

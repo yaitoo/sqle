@@ -208,6 +208,26 @@ func TestBuilder(t *testing.T) {
 			},
 		},
 		{
+			name: "build_with_empty_where",
+			build: func() *Builder {
+				b := New().Select("orders")
+				b.Where().
+					If(false).SQL("AND", "cancelled>={now}").
+					If(false).SQL("AND", "id={order_id}")
+				b.Param("order_id", 123456)
+				b.Param("now", now)
+
+				b.WithWhere(nil)
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "SELECT * FROM `orders`", s)
+				require.Len(t, vars, 0)
+			},
+		},
+		{
 			name: "build_update",
 			build: func() *Builder {
 				b := New()
