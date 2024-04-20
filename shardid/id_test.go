@@ -2,6 +2,7 @@ package shardid
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -97,7 +98,7 @@ func TestID(t *testing.T) {
 	}
 }
 
-func TestSQLDriver(t *testing.T) {
+func TestIDInSQL(t *testing.T) {
 	d, err := sql.Open("sqlite3", "file::memory:")
 	require.NoError(t, err)
 
@@ -126,4 +127,30 @@ func TestSQLDriver(t *testing.T) {
 	require.Equal(t, id.TimeMillis, i.TimeMillis)
 	require.Equal(t, id.WorkerID, i.WorkerID)
 
+}
+
+func TestIdInJSON(t *testing.T) {
+
+	now := time.Now()
+	id := Build(now.UnixMilli(), 1, 2, MonthlyRotate, 3)
+
+	idInt64 := id.Int64
+
+	bufID, err := json.Marshal(id)
+	require.NoError(t, err)
+
+	bufIdInt64, err := json.Marshal(idInt64)
+	require.NoError(t, err)
+
+	require.Equal(t, bufIdInt64, bufID)
+
+	var jsID ID
+	err = json.Unmarshal(bufIdInt64, &jsID)
+	require.NoError(t, err)
+	require.Equal(t, id, jsID)
+
+	var jsIdInt64 int64
+	err = json.Unmarshal(bufID, &jsIdInt64)
+	require.NoError(t, err)
+	require.Equal(t, idInt64, jsIdInt64)
 }
