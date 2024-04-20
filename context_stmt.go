@@ -65,8 +65,11 @@ func (db *Context) closeStaleStmt() {
 }
 
 func (db *Context) checkIdleStmt() {
+	delay := time.NewTicker(db.stmtMaxIdleTime)
+	defer delay.Stop()
+
 	for {
-		<-time.After(db.stmtMaxIdleTime)
+		<-delay.C
 
 		db.closeStaleStmt()
 	}

@@ -27,24 +27,21 @@ type DB struct {
 // Open creates a new DB instance with the provided database connections.
 func Open(dbs ...*sql.DB) *DB {
 	d := &DB{
-		Context: &Context{
-			DB:              dbs[0],
-			stmts:           make(map[string]*Stmt),
-			Index:           0,
-			stmtMaxIdleTime: StmtMaxIdleTime,
-		},
 		dhts: make(map[string]*shardid.DHT),
 	}
 
 	for i, db := range dbs {
 		ctx := &Context{
-			DB:    db,
-			Index: i,
-			stmts: make(map[string]*Stmt),
+			DB:              db,
+			Index:           i,
+			stmts:           make(map[string]*Stmt),
+			stmtMaxIdleTime: StmtMaxIdleTime,
 		}
 		d.dbs = append(d.dbs, ctx)
 		go ctx.checkIdleStmt()
 	}
+
+	d.Context = d.dbs[0]
 
 	return d
 }
@@ -58,9 +55,10 @@ func (db *DB) Add(dbs ...*sql.DB) {
 
 	for i, d := range dbs {
 		ctx := &Context{
-			DB:    d,
-			Index: n + i,
-			stmts: make(map[string]*Stmt),
+			DB:              d,
+			Index:           n + i,
+			stmts:           make(map[string]*Stmt),
+			stmtMaxIdleTime: StmtMaxIdleTime,
 		}
 		db.dbs = append(db.dbs, ctx)
 		go ctx.checkIdleStmt()

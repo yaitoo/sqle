@@ -28,9 +28,11 @@ func TestStmt(t *testing.T) {
 	_, err = d.Exec("INSERT INTO `rows`(`id`) VALUES(4)")
 	require.NoError(t, err)
 
-	db := Open(d)
+	stmtMaxIdleTime := StmtMaxIdleTime
 
-	db.stmtMaxIdleTime = 1 * time.Second
+	StmtMaxIdleTime = 1 * time.Second
+	db := Open(d)
+	StmtMaxIdleTime = stmtMaxIdleTime
 
 	tests := []struct {
 		name string
@@ -123,7 +125,9 @@ func TestStmt(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, int64(1), affected)
 
+				db.stmtsMutex.Lock()
 				s, ok := db.stmts[q]
+				db.stmtsMutex.Unlock()
 				require.True(t, ok)
 				require.False(t, s.isUsing)
 
