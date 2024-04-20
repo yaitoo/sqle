@@ -5,10 +5,12 @@ import (
 	"strings"
 )
 
+// OrderByBuilder represents a SQL ORDER BY clause builder.
+// It is used to construct ORDER BY clauses for SQL queries.
 type OrderByBuilder struct {
-	*Builder
-	isWritten      bool
-	allowedColumns []string
+	*Builder                // The underlying SQL query builder.
+	written        bool     // Indicates if the ORDER BY clause has been written.
+	allowedColumns []string // The list of allowed columns for ordering.
 }
 
 // NewOrderBy creates a new instance of the OrderByBuilder.
@@ -42,8 +44,6 @@ func (b *Builder) Order(allowedColumns ...string) *OrderByBuilder {
 		Builder:        b,
 		allowedColumns: allowedColumns,
 	}
-
-	b.SQL(" ORDER BY ")
 
 	return ob
 }
@@ -89,14 +89,7 @@ func (ob *OrderByBuilder) By(raw string) *OrderByBuilder {
 // ByAsc order by ascending with columns
 func (ob *OrderByBuilder) ByAsc(columns ...string) *OrderByBuilder {
 	for _, c := range columns {
-		if ob.isAllowed(c) {
-			if ob.isWritten {
-				ob.Builder.SQL(", ").SQL(c).SQL(" ASC")
-			} else {
-				ob.Builder.SQL(c).SQL(" ASC")
-				ob.isWritten = true
-			}
-		}
+		ob.add(c, " ASC")
 	}
 	return ob
 }
@@ -104,14 +97,28 @@ func (ob *OrderByBuilder) ByAsc(columns ...string) *OrderByBuilder {
 // ByDesc order by descending with columns
 func (ob *OrderByBuilder) ByDesc(columns ...string) *OrderByBuilder {
 	for _, c := range columns {
-		if ob.isAllowed(c) {
-			if ob.isWritten {
-				ob.Builder.SQL(", ").SQL(c).SQL(" DESC")
-			} else {
-				ob.Builder.SQL(c).SQL(" DESC")
-				ob.isWritten = true
-			}
-		}
+		ob.add(c, " DESC")
 	}
 	return ob
+}
+
+// add adds a column and its sorting direction to the OrderByBuilder.
+// It checks if the column is allowed and appends it to the SQL query.
+// If the column has already been written, it appends a comma before adding the column.
+// If it's the first column being added, it appends "ORDER BY" before adding the column.
+func (ob *OrderByBuilder) add(col, direction string) {
+	if ob.isAllowed(col) {
+		if ob.written {
+			ob.Builder.SQL(", ").SQL(col).SQL(direction)
+		} else {
+			// only write once
+			if !ob.written {
+				ob.Builder.SQL(" ORDER BY ")
+			}
+
+			ob.Builder.SQL(col).SQL(direction)
+
+			ob.written = true
+		}
+	}
 }
