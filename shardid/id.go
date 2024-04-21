@@ -2,8 +2,10 @@ package shardid
 
 import (
 	"database/sql/driver"
-	"encoding/json"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -101,16 +103,19 @@ func (b *ID) Scan(src interface{}) error { // skipcq: GO-W1029
 }
 
 // MarshalJSON implements the json.Marshaler interface
-func (id ID) MarshalJSON() ([]byte, error) { // skipcq: GO-W1029
-	return json.Marshal(id.Int64)
+func (id ID) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf(`"%d"`, id.Int64)), nil
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface
-func (id *ID) UnmarshalJSON(data []byte) error { // skipcq: GO-W1029
-	var value int64
-	if err := json.Unmarshal(data, &value); err != nil {
+func (id *ID) UnmarshalJSON(data []byte) error {
+	s := string(data)
+
+	i, err := strconv.ParseInt(strings.Trim(s, "\""), 10, 64)
+	if err != nil {
 		return err
 	}
-	*id = Parse(value)
+
+	*id = Parse(i)
 	return nil
 }
