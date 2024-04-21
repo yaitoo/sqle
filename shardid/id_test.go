@@ -42,10 +42,10 @@ func TestID(t *testing.T) {
 		{
 			name:        "build_should_work",
 			timeNow:     time.Now(),
-			workerID:    int8(rand.Intn(4)),
-			databaseID:  int16(rand.Intn(1024)),
+			workerID:    int8(rand.Intn(4)),     // skipcq: GSC-G404
+			databaseID:  int16(rand.Intn(1024)), // skipcq: GSC-G404
 			tableRotate: WeeklyRotate,
-			sequence:    int16(rand.Intn(1024)),
+			sequence:    int16(rand.Intn(1024)), // skipcq: GSC-G404
 		},
 		{
 			name:        "id_should_orderable",
