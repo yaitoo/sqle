@@ -103,12 +103,12 @@ func (b *ID) Scan(src interface{}) error { // skipcq: GO-W1029
 }
 
 // MarshalJSON implements the json.Marshaler interface
-func (id ID) MarshalJSON() ([]byte, error) {
+func (id ID) MarshalJSON() ([]byte, error) { // skipcq: GO-W1029
 	return []byte(fmt.Sprintf(`"%d"`, id.Int64)), nil
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface
-func (id *ID) UnmarshalJSON(data []byte) error {
+func (id *ID) UnmarshalJSON(data []byte) error { // skipcq: GO-W1029
 	s := string(data)
 
 	i, err := strconv.ParseInt(strings.Trim(s, "\""), 10, 64)

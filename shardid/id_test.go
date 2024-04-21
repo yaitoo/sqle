@@ -132,7 +132,7 @@ func TestIDInSQL(t *testing.T) {
 func TestIdInJSON(t *testing.T) {
 
 	var v int64 = 89166347069554688
-	var s string = "89166347069554688"
+	var s = "89166347069554688"
 
 	bufStr, err := json.Marshal(s)
 	require.NoError(t, err)
