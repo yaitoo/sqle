@@ -131,26 +131,28 @@ func TestIDInSQL(t *testing.T) {
 
 func TestIdInJSON(t *testing.T) {
 
-	now := time.Now()
-	id := Build(now.UnixMilli(), 1, 2, MonthlyRotate, 3)
+	var v int64 = 89166347069554688
+	var s = "89166347069554688"
 
-	idInt64 := id.Int64
+	bufStr, err := json.Marshal(s)
+	require.NoError(t, err)
+
+	id := Parse(v)
 
 	bufID, err := json.Marshal(id)
 	require.NoError(t, err)
 
-	bufIdInt64, err := json.Marshal(idInt64)
-	require.NoError(t, err)
-
-	require.Equal(t, bufIdInt64, bufID)
+	require.Equal(t, bufStr, bufID)
 
 	var jsID ID
-	err = json.Unmarshal(bufIdInt64, &jsID)
+	// Unmarshal id from string json bytes
+	err = json.Unmarshal(bufStr, &jsID)
 	require.NoError(t, err)
 	require.Equal(t, id, jsID)
 
-	var jsIdInt64 int64
-	err = json.Unmarshal(bufID, &jsIdInt64)
+	var jsString string
+	// Unmarshal string from ID json bytes
+	err = json.Unmarshal(bufID, &jsString)
 	require.NoError(t, err)
-	require.Equal(t, idInt64, jsIdInt64)
+	require.Equal(t, s, jsString)
 }
