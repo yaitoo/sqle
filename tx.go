@@ -40,13 +40,13 @@ func (tx *Tx) Query(query string, args ...any) (*Rows, error) {
 	return tx.QueryContext(context.Background(), query, args...)
 }
 
-func (tx *Tx) QueryBuilder(b *Builder) (*Rows, error) {
+func (tx *Tx) QueryBuilder(ctx context.Context, b *Builder) (*Rows, error) {
 	query, args, err := b.Build()
 	if err != nil {
 		return nil, err
 	}
 
-	return tx.QueryContext(context.TODO(), query, args...)
+	return tx.QueryContext(ctx, query, args...)
 }
 
 func (tx *Tx) QueryContext(ctx context.Context, query string, args ...any) (*Rows, error) {
@@ -76,7 +76,7 @@ func (tx *Tx) QueryRow(query string, args ...any) *Row {
 	return tx.QueryRowContext(context.Background(), query, args...)
 }
 
-func (tx *Tx) QueryRowBuilder(b *Builder) *Row {
+func (tx *Tx) QueryRowBuilder(ctx context.Context, b *Builder) *Row {
 	query, args, err := b.Build()
 	if err != nil {
 		return &Row{
@@ -84,7 +84,7 @@ func (tx *Tx) QueryRowBuilder(b *Builder) *Row {
 		}
 	}
 
-	return tx.QueryRowContext(context.TODO(), query, args...)
+	return tx.QueryRowContext(ctx, query, args...)
 }
 
 func (tx *Tx) QueryRowContext(ctx context.Context, query string, args ...any) *Row {
