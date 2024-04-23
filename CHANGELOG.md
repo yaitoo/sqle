@@ -6,15 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [1.4.6] - 2014-04-21
+## [1.4.6] - 2014-04-23
 ### Changed
-- implements json.Marshaler and json.Unmarshaler on `ID` (#39)
+- implements json.Marshaler and json.Unmarshaler on `ID` (#41)
+- added `context` support in `tx.QueryRowBuilder` and `tx.QueryBuilder` (#42)
 
 ## [1.4.5] - 2014-04-20
-### Changed
-- used int64 instead of int in `Queryer.Count` (#37)
+### Fixes
+- fix(sqlbuilder): fixed WithWhere/WithOrderBy for empty builder (#39)
 - fixed timer performance issue (#38)
 - fixed StmtMaxIdleTime missing issue (#38)
+- used int64 instead of int in `Queryer.Count` (#37)
 
 ## [1.4.4] - 2014-04-19
 ### Added

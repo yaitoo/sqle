@@ -61,7 +61,7 @@ func TestTx(t *testing.T) {
 				require.Equal(t, 3, users[2].ID)
 
 				users2 := make([]user, 0, 3)
-				rows, err = tx.Query("SELECT * FROM users WHERE id<4")
+				rows, err = tx.QueryBuilder(context.Background(), New("SELECT * FROM users WHERE id<{id}").Param("id", 4))
 				require.NoError(t, err)
 				err = rows.Bind(&users2)
 				require.NoError(t, err)
@@ -102,7 +102,7 @@ func TestTx(t *testing.T) {
 				require.Equal(t, "1zzzz", u.Salt)
 
 				var u2 user
-				row2 := tx.QueryRow("SELECT * FROM users WHERE id=?", 2)
+				row2 := tx.QueryRowBuilder(context.Background(), New("SELECT * FROM users WHERE id={id}").Param("id", 2))
 				err = row2.Bind(&u2)
 				require.NoError(t, err)
 
