@@ -1,9 +1,13 @@
 package sqle
 
-import "context"
+import (
+	"context"
+	"database/sql"
+)
 
-// Conn represents a database connection. Context and Tx both implement this interface.
-type Conn interface {
+// Connector represents a database connector that provides methods for executing queries and commands.
+// Context and Tx both implement this interface.
+type Connector interface {
 	// Query executes a query that returns multiple rows.
 	// It takes a query string and optional arguments.
 	// It returns a pointer to a Rows object and an error, if any.
@@ -33,4 +37,19 @@ type Conn interface {
 	// It takes a context, a query string, and optional arguments.
 	// It returns a pointer to a Row object.
 	QueryRowContext(ctx context.Context, query string, args ...any) *Row
+
+	// Exec executes a query that doesn't return any rows.
+	// It takes a query string and optional arguments.
+	// It returns a sql.Result object and an error, if any.
+	Exec(query string, args ...any) (sql.Result, error)
+
+	// ExecContext executes a query that doesn't return any rows using a context.
+	// It takes a context, a query string, and optional arguments.
+	// It returns a sql.Result object and an error, if any.
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+
+	// ExecBuilder executes a query that doesn't return any rows using a Builder object.
+	// It takes a context and a Builder object.
+	// It returns a sql.Result object and an error, if any.
+	ExecBuilder(ctx context.Context, b *Builder) (sql.Result, error)
 }
