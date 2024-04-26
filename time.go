@@ -40,6 +40,8 @@ func (t Time) MarshalJSON() ([]byte, error) { // skipcq: GO-W1029
 // UnmarshalJSON implements the json.Unmarshaler interface
 func (t *Time) UnmarshalJSON(data []byte) error { // skipcq: GO-W1029
 	if data == nil {
+		t.NullTime.Time = time.Time{}
+		t.NullTime.Valid = false
 		return nil
 	}
 
