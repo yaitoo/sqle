@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - added `Connector` interface (#43)
 - added nullable `Time` with better json support (#44)
+  
+### Changed
+- renamed `BitBool` with shorter name `Bool` (#44)
 
 ## [1.4.6] - 2014-04-23
 ### Changed
