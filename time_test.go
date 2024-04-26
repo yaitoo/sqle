@@ -103,7 +103,11 @@ func TestTimeInJSON(t *testing.T) {
 	require.True(t, sysTime.Equal(jsSysTime))
 
 	var nullTime Time
-	err = json.Unmarshal(nil, &nullTime)
+	err = json.Unmarshal([]byte("null"), &nullTime)
 	require.NoError(t, err)
 	require.Equal(t, false, nullTime.Valid)
+
+	bufNull, err := json.Marshal(nullTime)
+	require.NoError(t, err)
+	require.Equal(t, []byte("null"), bufNull)
 }
