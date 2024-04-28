@@ -16,10 +16,10 @@ type DTC struct {
 // session represents a transaction session.
 type session struct {
 	committed bool
-	conn      *Conn
+	client    *Client
 	tx        *Tx
-	exec      []func(ctx context.Context, c Connector) error
-	revert    []func(ctx context.Context, c Connector) error
+	exec      []func(context.Context, Connector) error
+	revert    []func(context.Context, Connector) error
 }
 
 // NewDTC creates a new instance of DTC.
@@ -31,9 +31,9 @@ func NewDTC(ctx context.Context, opts *sql.TxOptions) *DTC {
 }
 
 // Prepare adds a new transaction session to the DTC.
-func (d *DTC) Prepare(conn *Conn, exec func(ctx context.Context, c Connector) error, revert func(ctx context.Context, c Connector) error) {
+func (d *DTC) Prepare(client *Client, exec func(ctx context.Context, conn Connector) error, revert func(ctx context.Context, conn Connector) error) {
 	for _, s := range d.sessions {
-		if s.conn == conn {
+		if s.client == client {
 			s.exec = append(s.exec, exec)
 			s.revert = append(s.revert, revert)
 			return
@@ -42,7 +42,7 @@ func (d *DTC) Prepare(conn *Conn, exec func(ctx context.Context, c Connector) er
 
 	s := &session{
 		committed: false,
-		conn:      conn,
+		client:    client,
 		exec: []func(ctx context.Context, c Connector) error{
 			exec,
 		},
@@ -58,7 +58,7 @@ func (d *DTC) Prepare(conn *Conn, exec func(ctx context.Context, c Connector) er
 // Commit commits all the prepared transactions in the DTC.
 func (d *DTC) Commit() error {
 	for _, s := range d.sessions {
-		tx, err := s.conn.BeginTx(d.ctx, d.opts)
+		tx, err := s.client.BeginTx(d.ctx, d.opts)
 		if err != nil {
 			return err
 		}
@@ -92,7 +92,7 @@ func (d *DTC) Rollback() []error {
 	for _, s := range d.sessions {
 		if s.committed {
 			for _, revert := range s.revert {
-				if err := revert(d.ctx, s.conn); err != nil {
+				if err := revert(d.ctx, s.client); err != nil {
 					errs = append(errs, err)
 				}
 			}
