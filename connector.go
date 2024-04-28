@@ -6,7 +6,7 @@ import (
 )
 
 // Connector represents a database connector that provides methods for executing queries and commands.
-// Context and Tx both implement this interface.
+// Conn and Tx both implement this interface.
 type Connector interface {
 	// Query executes a query that returns multiple rows.
 	// It takes a query string and optional arguments.

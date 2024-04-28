@@ -21,7 +21,7 @@ func (s *Stmt) Reuse() {
 	s.isUsing = false
 }
 
-func (db *Context) prepareStmt(ctx context.Context, query string) (*Stmt, error) {
+func (db *Conn) prepareStmt(ctx context.Context, query string) (*Stmt, error) {
 	db.stmtsMutex.Lock()
 	defer db.stmtsMutex.Unlock()
 	s, ok := db.stmts[query]
@@ -48,7 +48,7 @@ func (db *Context) prepareStmt(ctx context.Context, query string) (*Stmt, error)
 	return s, nil
 }
 
-func (db *Context) closeStaleStmt() {
+func (db *Conn) closeStaleStmt() {
 	db.stmtsMutex.Lock()
 	defer db.stmtsMutex.Unlock()
 
@@ -64,7 +64,7 @@ func (db *Context) closeStaleStmt() {
 
 }
 
-func (db *Context) checkIdleStmt() {
+func (db *Conn) checkIdleStmt() {
 	delay := time.NewTicker(db.stmtMaxIdleTime)
 	defer delay.Stop()
 
