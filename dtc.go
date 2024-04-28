@@ -33,7 +33,7 @@ func NewDTC(ctx context.Context, opts *sql.TxOptions) *DTC {
 // Prepare adds a new transaction session to the DTC.
 func (d *DTC) Prepare(conn *Conn, exec func(ctx context.Context, c Connector) error, revert func(ctx context.Context, c Connector) error) {
 	for _, s := range d.sessions {
-		if s.conn.Index == conn.Index {
+		if s.conn == conn {
 			s.exec = append(s.exec, exec)
 			s.revert = append(s.revert, revert)
 			return
