@@ -16,12 +16,12 @@ var (
 
 // DB represents a database connection pool with sharding support.
 type DB struct {
-	*Context
+	*Client
 	_ noCopy //nolint: unused
 
 	mu   sync.RWMutex
 	dhts map[string]*shardid.DHT
-	dbs  []*Context
+	dbs  []*Client
 }
 
 // Open creates a new DB instance with the provided database connections.
@@ -31,7 +31,7 @@ func Open(dbs ...*sql.DB) *DB {
 	}
 
 	for i, db := range dbs {
-		ctx := &Context{
+		ctx := &Client{
 			DB:              db,
 			Index:           i,
 			stmts:           make(map[string]*Stmt),
@@ -41,7 +41,7 @@ func Open(dbs ...*sql.DB) *DB {
 		go ctx.checkIdleStmt()
 	}
 
-	d.Context = d.dbs[0]
+	d.Client = d.dbs[0]
 
 	return d
 }
@@ -54,7 +54,7 @@ func (db *DB) Add(dbs ...*sql.DB) {
 	n := len(db.dbs)
 
 	for i, d := range dbs {
-		ctx := &Context{
+		ctx := &Client{
 			DB:              d,
 			Index:           n + i,
 			stmts:           make(map[string]*Stmt),
@@ -66,7 +66,7 @@ func (db *DB) Add(dbs ...*sql.DB) {
 }
 
 // On selects the database context based on the shardid ID.
-func (db *DB) On(id shardid.ID) *Context {
+func (db *DB) On(id shardid.ID) *Client {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
@@ -90,7 +90,7 @@ func (db *DB) GetDHT(name string) *shardid.DHT {
 }
 
 // OnDHT selects the database context based on the DHT (Distributed Hash Table) key.
-func (db *DB) OnDHT(key string, names ...string) (*Context, error) {
+func (db *DB) OnDHT(key string, names ...string) (*Client, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 

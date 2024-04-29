@@ -11,7 +11,7 @@ import (
 
 // MapR is a Map/Reduce Query Provider based on databases.
 type MapR[T any] struct {
-	dbs []*Context
+	dbs []*Client
 }
 
 // First executes the query and returns the first result.
@@ -28,7 +28,7 @@ func (q *MapR[T]) First(ctx context.Context, rotatedTables []string, b *Builder)
 	for _, r := range rotatedTables {
 		qr := strings.ReplaceAll(query, "<rotate>", r)
 		for _, db := range q.dbs {
-			w.Add(func(db *Context, qr string) func(context.Context) (T, error) {
+			w.Add(func(db *Client, qr string) func(context.Context) (T, error) {
 				return func(ctx context.Context) (T, error) {
 					var t T
 					err := db.QueryRowContext(ctx, qr, args...).Bind(&t)
@@ -59,7 +59,7 @@ func (q *MapR[T]) Count(ctx context.Context, rotatedTables []string, b *Builder)
 	for _, r := range rotatedTables {
 		qr := strings.ReplaceAll(query, "<rotate>", r)
 		for _, db := range q.dbs {
-			w.Add(func(db *Context, qr string) func(context.Context) (int64, error) {
+			w.Add(func(db *Client, qr string) func(context.Context) (int64, error) {
 				return func(ctx context.Context) (int64, error) {
 					var i int64
 					err := db.QueryRowContext(ctx, qr, args...).Scan(&i)
@@ -102,7 +102,7 @@ func (q *MapR[T]) Query(ctx context.Context, rotatedTables []string, b *Builder,
 	for _, r := range rotatedTables {
 		qr := strings.ReplaceAll(query, "<rotate>", r)
 		for _, db := range q.dbs {
-			w.Add(func(db *Context, qr string) func(context.Context) ([]T, error) {
+			w.Add(func(db *Client, qr string) func(context.Context) ([]T, error) {
 				return func(context.Context) ([]T, error) {
 					var t []T
 					rows, err := db.QueryContext(ctx, qr, args...)
