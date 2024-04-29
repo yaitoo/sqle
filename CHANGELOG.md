@@ -7,15 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.5.0]
 ### Changed
-- renamed `Context` with `Conn` (#44)
+- !renamed `Context` with `Client` (#45)
   
 ### Added
 - added `Connector` interface (#43)
 - added nullable `Time` with better json support (#44)
-- added `DistributedTransactions` (#44)
+- added `DTC` (#45)
   
 ### Changed
-- renamed `BitBool` with shorter name `Bool` (#44)
+- !renamed `BitBool` with shorter name `Bool` (#44)
 
 ## [1.4.6] - 2014-04-23
 ### Changed
