@@ -3,6 +3,7 @@ package sqle
 import (
 	"testing"
 
+	"github.com/iancoleman/strcase"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,51 +24,51 @@ func TestOrderByBuilder(t *testing.T) {
 
 				return b
 			},
-			wanted: "SELECT * FROM users ORDER BY created_at DESC, id ASC, name ASC, updated_at ASC",
+			wanted: "SELECT * FROM users ORDER BY `created_at` DESC, `id` ASC, `name` ASC, `updated_at` ASC",
 		},
 		{
 			name: "safe_columns_should_work",
 			build: func() *Builder {
 				b := New("SELECT * FROM users")
-				b.Order("id", "created_at", "updated_at").
+				b.Order(WithAllow("id", "created_at", "updated_at")).
 					ByAsc("id", "name").
 					ByDesc("created_at", "unsafe_input").
 					ByAsc("updated_at")
 
 				return b
 			},
-			wanted: "SELECT * FROM users ORDER BY id ASC, created_at DESC, updated_at ASC",
+			wanted: "SELECT * FROM users ORDER BY `id` ASC, `created_at` DESC, `updated_at` ASC",
 		},
 		{
 			name: "order_by_raw_sql_should_work",
 			build: func() *Builder {
 				b := New("SELECT * FROM users")
-				b.Order("id", "created_at", "updated_at", "age").
+				b.Order(WithAllow("id", "created_at", "updated_at", "age")).
 					By("created_at desc, id, name asc, updated_at asc, age invalid_by,  unsafe_asc, unsafe_desc desc")
 
 				return b
 			},
-			wanted: "SELECT * FROM users ORDER BY created_at DESC, id ASC, updated_at ASC",
+			wanted: "SELECT * FROM users ORDER BY `created_at` DESC, `id` ASC, `updated_at` ASC",
 		},
 		{
 			name: "with_order_by_should_work",
 			build: func() *Builder {
 				b := New("SELECT * FROM users")
 
-				ob := NewOrderBy("id", "created_at", "updated_at", "age")
+				ob := NewOrderBy(WithAllow("id", "created_at", "updated_at", "age"))
 				ob.By("created_at desc, id, name asc, updated_at asc, age invalid_by,  unsafe_asc, unsafe_desc desc")
 
 				b.WithOrderBy(ob)
 
 				return b
 			},
-			wanted: "SELECT * FROM users ORDER BY created_at DESC, id ASC, updated_at ASC",
+			wanted: "SELECT * FROM users ORDER BY `created_at` DESC, `id` ASC, `updated_at` ASC",
 		},
 		{
 			name: "with_nil_order_by_should_work",
 			build: func() *Builder {
 				b := New("SELECT * FROM users")
-				b.Order("id", "created_at", "updated_at").
+				b.Order(WithAllow("id", "created_at", "updated_at")).
 					ByAsc("id", "name").
 					ByDesc("created_at", "unsafe_input").
 					ByAsc("updated_at")
@@ -76,14 +77,14 @@ func TestOrderByBuilder(t *testing.T) {
 
 				return b
 			},
-			wanted: "SELECT * FROM users ORDER BY id ASC, created_at DESC, updated_at ASC",
+			wanted: "SELECT * FROM users ORDER BY `id` ASC, `created_at` DESC, `updated_at` ASC",
 		},
 		{
 			name: "with_empty_order_by_should_work",
 			build: func() *Builder {
 				b := New("SELECT * FROM users")
 
-				ob := NewOrderBy("age").
+				ob := NewOrderBy(WithAllow("age")).
 					ByAsc("id", "name").
 					ByDesc("created_at", "unsafe_input").
 					ByAsc("updated_at")
@@ -93,6 +94,22 @@ func TestOrderByBuilder(t *testing.T) {
 				return b
 			},
 			wanted: "SELECT * FROM users",
+		},
+		{
+			name: "with_to_name_order_by_should_work",
+			build: func() *Builder {
+				b := New("SELECT * FROM users")
+
+				ob := NewOrderBy(WithToName(strcase.ToSnake), WithAllow("created_at")).
+					ByAsc("id", "name").
+					ByDesc("createdAt", "unsafe_input").
+					ByAsc("updated_at")
+
+				b.WithOrderBy(ob)
+
+				return b
+			},
+			wanted: "SELECT * FROM users ORDER BY `created_at` DESC",
 		},
 	}
 

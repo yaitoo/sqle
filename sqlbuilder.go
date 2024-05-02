@@ -148,7 +148,7 @@ func (b *Builder) Build() (string, []any, error) {
 
 // quoteColumn escapes the given column name using the Builder's Quote character.
 func (b *Builder) quoteColumn(c string) string {
-	if strings.ContainsAny(c, "(") || strings.ContainsAny(c, " ") || strings.ContainsAny(c, "as") {
+	if strings.ContainsAny(c, "(") || strings.ContainsAny(c, " ") {
 		return c
 	} else {
 		return b.Quote + c + b.Quote
