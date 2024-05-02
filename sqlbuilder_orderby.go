@@ -1,25 +1,30 @@
 package sqle
 
 import (
-	"slices"
 	"strings"
 )
 
 // OrderByBuilder represents a SQL ORDER BY clause builder.
 // It is used to construct ORDER BY clauses for SQL queries.
 type OrderByBuilder struct {
-	*Builder                // The underlying SQL query builder.
-	written        bool     // Indicates if the ORDER BY clause has been written.
-	allowedColumns []string // The list of allowed columns for ordering.
+	*Builder                 // The underlying SQL query builder.
+	written  bool            // Indicates if the ORDER BY clause has been written.
+	options  *BuilderOptions // The list of allowed columns for ordering.
 }
 
 // NewOrderBy creates a new instance of the OrderByBuilder.
 // It takes a variadic parameter `allowedColumns` which specifies the columns that are allowed to be used in the ORDER BY clause.
-func NewOrderBy(allowedColumns ...string) *OrderByBuilder {
-	return &OrderByBuilder{
-		Builder:        New(),
-		allowedColumns: allowedColumns,
+func NewOrderBy(opts ...BuilderOption) *OrderByBuilder {
+	ob := &OrderByBuilder{
+		Builder: New(),
+		options: &BuilderOptions{},
 	}
+
+	for _, o := range opts {
+		o(ob.options)
+	}
+
+	return ob
 }
 
 // WithOrderBy sets the order by clause for the SQL query.
@@ -31,7 +36,7 @@ func (b *Builder) WithOrderBy(ob *OrderByBuilder) *OrderByBuilder {
 		return nil
 	}
 
-	n := b.Order(ob.allowedColumns...)
+	n := b.Order()
 
 	b.SQL(ob.String())
 
@@ -39,24 +44,37 @@ func (b *Builder) WithOrderBy(ob *OrderByBuilder) *OrderByBuilder {
 }
 
 // Order create an OrderByBuilder with allowed columns to prevent sql injection. NB: any input is allowed if it is not provided
-func (b *Builder) Order(allowedColumns ...string) *OrderByBuilder {
+func (b *Builder) Order(opts ...BuilderOption) *OrderByBuilder {
 	ob := &OrderByBuilder{
-		Builder:        b,
-		allowedColumns: allowedColumns,
+		Builder: b,
+		options: &BuilderOptions{},
+	}
+
+	for _, o := range opts {
+		o(ob.options)
 	}
 
 	return ob
 }
 
 // isAllowed check if column is included in allowed columns. It will remove any untrust input from client
-func (ob *OrderByBuilder) isAllowed(col string) bool {
-	if ob.allowedColumns == nil {
-		return true
+func (ob *OrderByBuilder) getColumn(col string) (string, bool) {
+	if ob.options.Columns == nil {
+		return col, true
 	}
 
-	return slices.ContainsFunc(ob.allowedColumns, func(c string) bool {
-		return strings.EqualFold(c, col)
-	})
+	if ob.options.ToName != nil {
+		col = ob.options.ToName(col)
+	}
+
+	for _, c := range ob.options.Columns {
+		if strings.EqualFold(c, col) {
+			return c, true
+		}
+	}
+
+	return "", false
+
 }
 
 // By order by raw sql. eg By("a asc, b desc")
@@ -107,16 +125,19 @@ func (ob *OrderByBuilder) ByDesc(columns ...string) *OrderByBuilder {
 // If the column has already been written, it appends a comma before adding the column.
 // If it's the first column being added, it appends "ORDER BY" before adding the column.
 func (ob *OrderByBuilder) add(col, direction string) {
-	if ob.isAllowed(col) {
+	c, ok := ob.getColumn(col)
+
+	if ok {
 		if ob.written {
-			ob.Builder.SQL(", ").SQL(col).SQL(direction)
+
+			ob.Builder.SQL(", ").SQL(ob.quoteColumn(c)).SQL(direction)
 		} else {
 			// only write once
 			if !ob.written {
 				ob.Builder.SQL(" ORDER BY ")
 			}
 
-			ob.Builder.SQL(col).SQL(direction)
+			ob.Builder.SQL(ob.quoteColumn(c)).SQL(direction)
 
 			ob.written = true
 		}
