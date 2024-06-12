@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.5.1] 
 - !fix(orderby): use BuildOption instead of allowedColumns (#46)
+- feat(string): added nullable String for sql/json (#47)
 
 ## [1.5.0] - 2024-04-30
 ### Changed
