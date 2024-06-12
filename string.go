@@ -1,38 +1,37 @@
 package sqle
 
 import (
-	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 )
 
 type String struct {
-	sql.NullString
+	Null[string]
 }
 
 func NewString(s string) String {
-	return String{NullString: sql.NullString{String: s, Valid: true}}
+	return String{Null: NewNull(s, true)}
 }
 
 // Scan implements the [sql.Scanner] interface.
 func (t *String) Scan(value any) error { // skipcq: GO-W1029
-	return t.NullString.Scan(value)
+	return t.Null.Scan(value)
 }
 
 // Value implements the [driver.Valuer] interface.
 func (t String) Value() (driver.Value, error) { // skipcq: GO-W1029
-	return t.NullString.Value()
+	return t.Null.Value()
 }
 
 // Time returns the underlying time.Time value of the Time struct.
 func (t *String) String() string { // skipcq: GO-W1029
-	return t.NullString.String
+	return t.TValue()
 }
 
 // MarshalJSON implements the json.Marshaler interface
 func (t String) MarshalJSON() ([]byte, error) { // skipcq: GO-W1029
 	if t.Valid {
-		return json.Marshal(t.NullString.String)
+		return json.Marshal(t.TValue())
 	}
 	return nullJsonBytes, nil
 }
@@ -40,7 +39,7 @@ func (t String) MarshalJSON() ([]byte, error) { // skipcq: GO-W1029
 // UnmarshalJSON implements the json.Unmarshaler interface
 func (t *String) UnmarshalJSON(data []byte) error { // skipcq: GO-W1029
 	if len(data) == 0 || string(data) == nullJson {
-		t.NullString.Valid = false
+		t.Null.Valid = false
 		return nil
 	}
 
@@ -50,8 +49,8 @@ func (t *String) UnmarshalJSON(data []byte) error { // skipcq: GO-W1029
 		return err
 	}
 
-	t.NullString.String = v
-	t.NullString.Valid = true
+	t.Null.V = v
+	t.Null.Valid = true
 
 	return nil
 }
