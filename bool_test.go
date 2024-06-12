@@ -11,7 +11,7 @@ func TestBool(t *testing.T) {
 	d, err := sql.Open("sqlite3", "file::memory:")
 	require.NoError(t, err)
 
-	_, err = d.Exec("CREATE TABLE `users` (`id` id NOT NULL,`status` BIT(1), PRIMARY KEY (`id`))")
+	_, err = d.Exec("CREATE TABLE `users` (`id` int NOT NULL,`status` BIT(1), PRIMARY KEY (`id`))")
 	require.NoError(t, err)
 
 	result, err := d.Exec("INSERT INTO `users`(`id`, `status`) VALUES(?, ?)", 10, Bool(true))
