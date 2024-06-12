@@ -7,10 +7,6 @@ import (
 	"time"
 )
 
-var nullTimeJsonBytes = []byte("null")
-
-const nullTimeJson = "null"
-
 // Time represents a nullable time value.
 type Time struct {
 	sql.NullTime
@@ -41,12 +37,12 @@ func (t Time) MarshalJSON() ([]byte, error) { // skipcq: GO-W1029
 	if t.Valid {
 		return json.Marshal(t.NullTime.Time)
 	}
-	return nullTimeJsonBytes, nil
+	return nullJsonBytes, nil
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface
 func (t *Time) UnmarshalJSON(data []byte) error { // skipcq: GO-W1029
-	if len(data) == 0 || string(data) == nullTimeJson {
+	if len(data) == 0 || string(data) == nullJson {
 		t.NullTime.Time = time.Time{}
 		t.NullTime.Valid = false
 		return nil
