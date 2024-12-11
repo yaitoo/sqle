@@ -48,22 +48,21 @@ func TestRowsBind(t *testing.T) {
 				var id int
 				var email string
 
-				for rows.Next() {
-					err = rows.Scan(&id, &email)
-					require.NoError(t, err)
-					require.Equal(t, 1, id)
-					require.Equal(t, "test1@mail.com", email)
-
-					err = rows.Scan(&id, &email)
-					require.NoError(t, err)
-					require.Equal(t, 2, id)
-					require.Equal(t, "test2@mail.com", email)
-
-					err = rows.Scan(&id, &email)
-					require.NoError(t, err)
-					require.Equal(t, 3, id)
-					require.Equal(t, "test3@mail.com", email)
-				}
+				rows.Next()
+				err = rows.Scan(&id, &email)
+				require.NoError(t, err)
+				require.Equal(t, 1, id)
+				require.Equal(t, "test1@mail.com", email)
+				rows.Next()
+				err = rows.Scan(&id, &email)
+				require.NoError(t, err)
+				require.Equal(t, 2, id)
+				require.Equal(t, "test2@mail.com", email)
+				rows.Next()
+				err = rows.Scan(&id, &email)
+				require.NoError(t, err)
+				require.Equal(t, 3, id)
+				require.Equal(t, "test3@mail.com", email)
 			},
 		},
 		{
