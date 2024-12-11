@@ -37,6 +37,40 @@ func TestRowsBind(t *testing.T) {
 		run  func(t *testing.T)
 	}{
 		{
+			name: "scan_on_rows_should_work",
+			run: func(t *testing.T) {
+				type user struct {
+					ID      int
+					Status  int
+					Email   string
+					Passwd  string
+					Salt    string
+					Created *time.Time
+				}
+				rows, err := db.Query("SELECT id,email FROM rows WHERE id<4")
+				require.NoError(t, err)
+
+				var id int
+				var email string
+
+				err = rows.Scan(&id, &email)
+				require.NoError(t, err)
+				require.Equal(t, 1, id)
+				require.Equal(t, "test1@mail.com", email)
+
+				err = rows.Scan(&id, &email)
+				require.NoError(t, err)
+				require.Equal(t, 2, id)
+				require.Equal(t, "test2@mail.com", email)
+
+				err = rows.Scan(&id, &email)
+				require.NoError(t, err)
+				require.Equal(t, 3, id)
+				require.Equal(t, "test3@mail.com", email)
+
+			},
+		},
+		{
 			name: "bind_slice_of_struct_should_work",
 			run: func(t *testing.T) {
 				type user struct {

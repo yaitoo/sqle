@@ -24,7 +24,6 @@ func (r *Rows) Close() error {
 }
 
 func (r *Rows) Scan(dest ...any) error {
-	defer r.Close()
 	return r.Rows.Scan(dest...)
 }
 
