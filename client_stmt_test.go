@@ -12,20 +12,20 @@ func TestStmt(t *testing.T) {
 	d, err := sql.Open("sqlite3", "file::memory:")
 	require.NoError(t, err)
 
-	_, err = d.Exec("CREATE TABLE `rows` (`id` int , `status` tinyint,`email` varchar(50),`passwd` varchar(120), `salt` varchar(45), `created` DATETIME, PRIMARY KEY (`id`))")
+	_, err = d.Exec("CREATE TABLE `rows_stmt` (`id` int , `status` tinyint,`email` varchar(50),`passwd` varchar(120), `salt` varchar(45), `created` DATETIME, PRIMARY KEY (`id`))")
 	require.NoError(t, err)
 
 	now := time.Now()
 
-	_, err = d.Exec("INSERT INTO `rows`(`id`,`status`,`email`,`passwd`,`salt`,`created`) VALUES(1, 1,'test1@mail.com','1xxxx','1zzzz', ?)", now)
+	_, err = d.Exec("INSERT INTO `rows_stmt`(`id`,`status`,`email`,`passwd`,`salt`,`created`) VALUES(1, 1,'test1@mail.com','1xxxx','1zzzz', ?)", now)
 	require.NoError(t, err)
-	_, err = d.Exec("INSERT INTO `rows`(`id`,`status`,`email`,`passwd`,`salt`) VALUES(2, 2,'test2@mail.com','2xxxx','2zzzz')")
-	require.NoError(t, err)
-
-	_, err = d.Exec("INSERT INTO `rows`(`id`,`status`,`email`,`passwd`,`salt`) VALUES(3, 3,'test3@mail.com','3xxxx','3zzzz')")
+	_, err = d.Exec("INSERT INTO `rows_stmt`(`id`,`status`,`email`,`passwd`,`salt`) VALUES(2, 2,'test2@mail.com','2xxxx','2zzzz')")
 	require.NoError(t, err)
 
-	_, err = d.Exec("INSERT INTO `rows`(`id`) VALUES(4)")
+	_, err = d.Exec("INSERT INTO `rows_stmt`(`id`,`status`,`email`,`passwd`,`salt`) VALUES(3, 3,'test3@mail.com','3xxxx','3zzzz')")
+	require.NoError(t, err)
+
+	_, err = d.Exec("INSERT INTO `rows_stmt`(`id`) VALUES(4)")
 	require.NoError(t, err)
 
 	stmtMaxIdleTime := StmtMaxIdleTime
@@ -51,7 +51,7 @@ func TestStmt(t *testing.T) {
 				}
 
 				for i := 0; i < 100; i++ {
-					rows, err := db.Query("SELECT * FROM rows WHERE id<?", 4)
+					rows, err := db.Query("SELECT * FROM rows_stmt WHERE id<?", 4)
 					require.NoError(t, err)
 					var users []user
 					err = rows.Bind(&users)
@@ -78,7 +78,7 @@ func TestStmt(t *testing.T) {
 
 				for i := 0; i < 100; i++ {
 
-					row := db.QueryRow("SELECT * FROM rows WHERE id=?", 1)
+					row := db.QueryRow("SELECT * FROM rows_stmt WHERE id=?", 1)
 					require.NoError(t, row.err)
 					var user user
 					err = row.Bind(&user)
@@ -95,14 +95,14 @@ func TestStmt(t *testing.T) {
 			run: func(t *testing.T) {
 				for i := 0; i < 100; i++ {
 
-					result, err := db.Exec("INSERT INTO `rows`(`id`) VALUES(?)", i+100)
+					result, err := db.Exec("INSERT INTO `rows_stmt`(`id`) VALUES(?)", i+100)
 					require.NoError(t, err)
 					rows, err := result.RowsAffected()
 					require.NoError(t, err)
 					require.Equal(t, int64(1), rows)
 				}
 
-				rows, err := db.Query("SELECT id FROM rows WHERE id>=100 order by id")
+				rows, err := db.Query("SELECT id FROM rows_stmt WHERE id>=100 order by id")
 				require.NoError(t, err)
 				var list [][]int
 				err = rows.Bind(&list)
@@ -117,7 +117,7 @@ func TestStmt(t *testing.T) {
 		{
 			name: "stmt_reuse_should_work_in_exec",
 			run: func(t *testing.T) {
-				q := "INSERT INTO `rows`(`id`,`status`) VALUES(?, ?)"
+				q := "INSERT INTO `rows_stmt`(`id`,`status`) VALUES(?, ?)"
 
 				result, err := db.Exec(q, 200, 0)
 				require.NoError(t, err)
@@ -147,7 +147,7 @@ func TestStmt(t *testing.T) {
 			name: "stmt_reuse_should_work_in_rows_scan",
 			run: func(t *testing.T) {
 				var id int
-				q := "SELECT id, 'rows_scan' as reuse FROM rows WHERE id = ?"
+				q := "SELECT id, 'rows_scan' as reuse FROM rows_stmt WHERE id = ?"
 				rows, err := db.Query(q, 200)
 				require.NoError(t, err)
 
@@ -164,6 +164,8 @@ func TestStmt(t *testing.T) {
 				require.True(t, s.isUsing)
 
 				rows.Scan(&id) // nolint: errcheck
+				require.True(t, s.isUsing)
+				rows.Close()
 				require.False(t, s.isUsing)
 
 				db.closeStaleStmt()
@@ -181,7 +183,7 @@ func TestStmt(t *testing.T) {
 					ID int
 				}
 
-				q := "SELECT id, 'rows_bind' as reuse FROM rows WHERE id = ?"
+				q := "SELECT id, 'rows_bind' as reuse FROM rows_stmt WHERE id = ?"
 				rows, err := db.Query(q, 200)
 				require.NoError(t, err)
 
@@ -212,7 +214,7 @@ func TestStmt(t *testing.T) {
 			name: "stmt_reuse_should_work_in_row_scan",
 			run: func(t *testing.T) {
 				var id int
-				q := "SELECT id, 'row_scan' as reuse FROM rows WHERE id = ?"
+				q := "SELECT id, 'row_scan' as reuse FROM rows_stmt WHERE id = ?"
 				row := db.QueryRow(q, 200)
 				require.NoError(t, err)
 
@@ -245,7 +247,7 @@ func TestStmt(t *testing.T) {
 				var r struct {
 					ID int
 				}
-				q := "SELECT id, 'row_bind' as reuse FROM rows WHERE id = ?"
+				q := "SELECT id, 'row_bind' as reuse FROM rows_stmt WHERE id = ?"
 				row, err := db.Query(q, 200)
 				require.NoError(t, err)
 

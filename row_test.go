@@ -64,7 +64,7 @@ func (cb *customBinder) Bind(_ reflect.Value, columns []string) []any {
 	return values
 }
 
-func TestRowBind(t *testing.T) {
+func TestRow(t *testing.T) {
 
 	d, err := sql.Open("sqlite3", "file::memory:?cache=shared")
 	require.NoError(t, err)
@@ -91,6 +91,29 @@ func TestRowBind(t *testing.T) {
 		name string
 		run  func(t *testing.T)
 	}{
+		{
+			name: "close_should_always_work",
+			run: func(*testing.T) {
+				var row *Row
+				row.Close()
+				row = &Row{}
+				row.Close()
+			},
+		},
+		{
+			name: "bind_only_work_with_non_nil_pointer",
+			run: func(t *testing.T) {
+
+				row := &Row{}
+				var dest int
+				err := row.Bind(dest)
+				require.ErrorIs(t, err, ErrMustPointer)
+
+				var dest2 *int
+				err = row.Bind(dest2)
+				require.ErrorIs(t, err, ErrMustNotNilPointer)
+			},
+		},
 		{
 			name: "full_columns_should_work",
 			run: func(t *testing.T) {
