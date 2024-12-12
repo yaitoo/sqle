@@ -38,7 +38,7 @@ func TestRows(t *testing.T) {
 	}{
 		{
 			name: "close_should_always_work",
-			run: func(t *testing.T) {
+			run: func(*testing.T) {
 
 				rows := &Rows{}
 				rows.Close()
