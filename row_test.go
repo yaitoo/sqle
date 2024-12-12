@@ -94,22 +94,23 @@ func TestRow(t *testing.T) {
 		{
 			name: "close_should_always_work",
 			run: func(*testing.T) {
-
-				rows := &Row{}
-				rows.Close()
+				var row *Row
+				row.Close()
+				row = &Row{}
+				row.Close()
 			},
 		},
 		{
 			name: "bind_only_work_with_non_nil_pointer",
 			run: func(t *testing.T) {
 
-				rows := &Row{}
+				row := &Row{}
 				var dest int
-				err := rows.Bind(dest)
+				err := row.Bind(dest)
 				require.ErrorIs(t, err, ErrMustPointer)
 
 				var dest2 *int
-				err = rows.Bind(dest2)
+				err = row.Bind(dest2)
 				require.ErrorIs(t, err, ErrMustNotNilPointer)
 			},
 		},

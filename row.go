@@ -77,13 +77,6 @@ func (r *Row) Bind(dest any) error {
 		return r.err
 	}
 
-	if !r.rows.Next() {
-		if err := r.rows.Err(); err != nil {
-			return err
-		}
-		return sql.ErrNoRows
-	}
-
 	v := reflect.ValueOf(dest)
 
 	if v.Kind() != reflect.Pointer {
@@ -95,6 +88,13 @@ func (r *Row) Bind(dest any) error {
 	}
 
 	var err error
+	if !r.rows.Next() {
+		err = r.rows.Err()
+		if err != nil {
+			return err
+		}
+		return sql.ErrNoRows
+	}
 
 	cols, err := getColumns(r.query, r.rows)
 	if err != nil {
