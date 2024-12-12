@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRowsBind(t *testing.T) {
+func TestRows(t *testing.T) {
 
 	d, err := sql.Open("sqlite3", "file::memory:")
 	require.NoError(t, err)
@@ -36,6 +36,28 @@ func TestRowsBind(t *testing.T) {
 		name string
 		run  func(t *testing.T)
 	}{
+		{
+			name: "close_should_always_work",
+			run: func(t *testing.T) {
+
+				rows := &Rows{}
+				rows.Close()
+			},
+		},
+		{
+			name: "bind_only_work_with_non_nil_pointer",
+			run: func(t *testing.T) {
+
+				rows := &Rows{}
+				var dest int
+				err := rows.Bind(dest)
+				require.ErrorIs(t, err, ErrMustPointer)
+
+				var dest2 *int
+				err = rows.Bind(dest2)
+				require.ErrorIs(t, err, ErrMustNotNilPointer)
+			},
+		},
 		{
 			name: "scan_on_rows_should_work",
 			run: func(t *testing.T) {
