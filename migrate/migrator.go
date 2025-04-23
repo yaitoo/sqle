@@ -23,22 +23,22 @@ var (
 )
 
 const TABLE_MIGRATIONS = "CREATE TABLE IF NOT EXISTS sqle_migrations(" +
-	"`checksum` varchar(32) NOT NULL," +
-	"`module` varchar(45) NOT NULL," +
-	"`version` varchar(45) NOT NULL," +
-	"`name` varchar(45) NOT NULL," +
-	"`rank` int NOT NULL DEFAULT '0'," +
-	"`migrated_on` datetime NOT NULL," +
-	"`execution_time` varchar(25) NOT NULL," +
-	"`scripts` text NOT NULL," +
+	"checksum varchar(32) NOT NULL," +
+	"module varchar(45) NOT NULL," +
+	"version varchar(45) NOT NULL," +
+	"name varchar(45) NOT NULL," +
+	"rank int NOT NULL DEFAULT '0'," +
+	"migrated_on datetime NOT NULL," +
+	"execution_time varchar(25) NOT NULL," +
+	"scripts text NOT NULL," +
 	"PRIMARY KEY (checksum));"
 
 const TABLE_ROTATIONS = "CREATE TABLE IF NOT EXISTS sqle_rotations(" +
-	"`checksum` varchar(32) NOT NULL," +
-	"`rotated_name` varchar(8) NOT NULL," +
-	"`name` varchar(45) NOT NULL," +
-	"`rotated_on` datetime NOT NULL," +
-	"`execution_time` varchar(25) NOT NULL," +
+	"checksum varchar(32) NOT NULL," +
+	"rotated_name varchar(8) NOT NULL," +
+	"name varchar(45) NOT NULL," +
+	"rotated_on datetime NOT NULL," +
+	"execution_time varchar(25) NOT NULL," +
 	"PRIMARY KEY (checksum, rotated_name));"
 
 type Migrator struct {
@@ -311,7 +311,7 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 
 func (*Migrator) isMigrated(tx *sqle.Tx, s Migration) (bool, error) {
 	var checksum string
-	err := tx.QueryRow("SELECT `checksum` FROM `sqle_migrations` WHERE `checksum` = ?", s.Checksum).Scan(&checksum)
+	err := tx.QueryRow("SELECT checksum FROM sqle_migrations WHERE checksum = ?", s.Checksum).Scan(&checksum)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil
@@ -407,7 +407,7 @@ func startRotate(ctx context.Context, db *sqle.DB, rotatedNames []string, rotati
 			log.Printf("┌─[ %s ]\n", r.Name)
 
 			for i, rn := range rotatedNames {
-				err = tx.QueryRow("SELECT `checksum` FROM `sqle_rotations` WHERE `checksum` = ? and `rotated_name` = ?", r.Checksum, rn).Scan(&checksum)
+				err = tx.QueryRow("SELECT checksum FROM sqle_rotations WHERE checksum = ? and rotated_name = ?", r.Checksum, rn).Scan(&checksum)
 				if err != nil {
 					if !errors.Is(err, sql.ErrNoRows) {
 						return err
