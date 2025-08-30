@@ -37,12 +37,12 @@ You’ll find the SQLE package useful if you’re not a fan of full-featured ORM
 
 ### Install SQLE
 - install latest commit from `main` branch
-```
+```sh
 go get github.com/yaitoo/sqle@main
 ```
 
 - install latest release
-```
+```sh
 go get github.com/yaitoo/sqle@latest
 ```
 
@@ -512,7 +512,7 @@ and database can be migrated in code
 ```
 see more [examples](./migrate/migrator_test.go?L40)
 
-if a table has been rotated, and migration should be started with `/* rotate: monthly=20240201-20240401*/` as first line. so the migration is applied automatically on the table and all it's rotated tables from 20240201 to 20240401.
+if a table has been rotated, and migration should be started with `/* rotate: monthly=20240201-20240401*/` as first line. so the migration is applied automatically on the table and all its rotated tables from 20240201 to 20240401.
 ```sql
 /* rotate: monthly = 20240201 - 20240401 */
 CREATE TABLE IF NOT EXISTS monthly_logs<rotate> (
