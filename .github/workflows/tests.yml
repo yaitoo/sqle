@@ -5,7 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  push: 
+  push:
     branches:
       - main
       - dev
@@ -28,6 +28,7 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.61
+          only-new-issues: true
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -41,7 +42,7 @@ jobs:
       - name: Unit Tests
         run: |
           make unit-tests
-          
+
       - name: Codecov
         uses: codecov/codecov-action@v4
         with:
