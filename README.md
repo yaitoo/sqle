@@ -23,32 +23,32 @@ You’ll find the SQLE package useful if you’re not a fan of full-featured ORM
 - [SQLBuilder](sqlbuilder_test.go)
 - 100% compatible drop-in replacement of "database/sql". Code is really easy to migrate from `database/sql` to `SQLE`. see [examples](row_test.go)
 - [ShardID](shardid/README.md) is a `snowflakes-like` distributed unique identifier with extended metadata : worker, table rotation and database sharding, and sortable by time
-- Table AutoRotation 
+- Table AutoRotation
 - Database AutoSharding
 - MapR Query
 - [Migration](migrate/migrator_test.go): migrate database with sql files organized in filesystem. it supports to migrate table and multiple rotated tables on all sharding database instances.
 
 ## Tutorials
-> All examples on https://go.dev/doc/tutorial/database-access can directly work with `sqle.DB` instance. 
+> All examples on https://go.dev/doc/tutorial/database-access can directly work with `sqle.DB` instance.
 >
 
 > See full examples on https://github.com/yaitoo/auth
-> 
+>
 
 ### Install SQLE
 - install latest commit from `main` branch
-```
+```sh
 go get github.com/yaitoo/sqle@main
 ```
 
 - install latest release
-```
+```sh
 go get github.com/yaitoo/sqle@latest
 ```
 
 ### Connecting to a Database
-SQLE directly connects to a database by `sql.DB` instance. 
-```
+SQLE directly connects to a database by `sql.DB` instance.
+```go
     driver := viper.GetString("db.driver")
     dsn := viper.GetString("db.dsn")
 
@@ -71,11 +71,11 @@ SQLE directly connects to a database by `sql.DB` instance.
             }
 
             db = sqle.Open(sqldb)
-        
+
         default:
             panic(fmt.Sprintf("db: driver %s is not supported yet", driver))
     }
-    
+
     if  err := db.Ping(); err == nil {
         panic("db: database is unreachable")
     }
@@ -83,7 +83,7 @@ SQLE directly connects to a database by `sql.DB` instance.
 
 ### Create
 - create album by sql
-```
+```go
 func addAlbum(alb Album) (int64, error) {
     result, err := db.Exec("INSERT INTO album (title, artist, price) VALUES (?, ?, ?)", alb.Title, alb.Artist, alb.Price)
     if err != nil {
@@ -97,7 +97,7 @@ func addAlbum(alb Album) (int64, error) {
 }
 ```
 - create album by named sql statement
-```
+```go
 func addAlbum(alb Album) (int64, error) {
     cmd := sqle.New("INSERT INTO album (title, artist, price) VALUES ({title}, {artist}, {price}").
       Param("title", alb.Title).
@@ -116,7 +116,7 @@ func addAlbum(alb Album) (int64, error) {
 }
 ```
 - create album by `InsertBuilder` feature
-```
+```go
 func addAlbum(alb Album) (int64, error) {
     cmd := sqle.New().Insert("album").
       Set("title", alb.Title).
@@ -136,7 +136,7 @@ func addAlbum(alb Album) (int64, error) {
 }
 ```
 - create album by `map` object
-```
+```go
 func addAlbum(alb Album) (int64, error) {
     inputs := map[string]any{
       "title":alb.Title,
@@ -160,7 +160,7 @@ func addAlbum(alb Album) (int64, error) {
 }
 ```
 - create album by ORM-like feature
-```
+```go
 func addAlbum(alb Album) (int64, error) {
     cmd := sqle.New().Insert("album").
       SetModel(alb).
@@ -181,7 +181,7 @@ func addAlbum(alb Album) (int64, error) {
 ### Query
 #### query for multiple rows
 - query albums by sql
-```
+```go
 func albumsByArtist(name string) ([]Album, error) {
     // An albums slice to hold data from returned rows.
     var albums []Album
@@ -206,7 +206,7 @@ func albumsByArtist(name string) ([]Album, error) {
 }
 ```
 - query albums by named sql statement
-```
+```go
 func albumsByArtist(name string) ([]Album, error) {
     // An albums slice to hold data from returned rows.
     var albums []Album
@@ -234,7 +234,7 @@ func albumsByArtist(name string) ([]Album, error) {
 }
 ```
 - query albums by `WhereBuilder` feature
-```
+```go
 func albumsByArtist(name string) ([]Album, error) {
     // An albums slice to hold data from returned rows.
     var albums []Album
@@ -246,13 +246,13 @@ func albumsByArtist(name string) ([]Album, error) {
     if err != nil {
         return nil, fmt.Errorf("albumsByArtist %q: %v", name, err)
     }
-    
+
     return albums, nil
 }
 ```
 
 - query albums by ORM-like feature
-```
+```go
 func albumsByArtist(name string) ([]Album, error) {
     // An albums slice to hold data from returned rows.
     var albums []Album
@@ -265,14 +265,14 @@ func albumsByArtist(name string) ([]Album, error) {
     if err != nil {
         return nil, fmt.Errorf("albumsByArtist %q: %v", name, err)
     }
-    
+
     return albums, nil
 }
 ```
 
 #### query for a single row
 - query album by sql
-```
+```go
 func albumByID(id int64) (Album, error) {
     // An album to hold data from the returned row.
     var alb Album
@@ -289,7 +289,7 @@ func albumByID(id int64) (Album, error) {
 ```
 
 - query album by named sql statement
-```
+```go
 func albumByID(id int64) (Album, error) {
     // An album to hold data from the returned row.
     var alb Album
@@ -309,7 +309,7 @@ func albumByID(id int64) (Album, error) {
 ```
 
 - query album by ORM-like feature
-```
+```go
 func albumByID(id int64) (Album, error) {
     // An album to hold data from the returned row.
     var alb Album
@@ -330,7 +330,7 @@ func albumByID(id int64) (Album, error) {
 
 ### Update
 - update album by sql
-```
+```go
 func updateAlbum(alb Album) error {
     _, err := db.Exec("UPDATE album SET title=?, artist=?, price=? WHERE id=?", alb.Title, alb.Artist, alb.Price, alb.ID)
     if err != nil {
@@ -341,7 +341,7 @@ func updateAlbum(alb Album) error {
 ```
 
 - update album by named sql statement
-```
+```go
 func updateAlbum(alb Album) error {
     cmd := sqle.New("UPDATE album SET title={title}, artist={artist}, price={price} WHERE id={id}").
         Param("title", alb.Title).
@@ -353,13 +353,13 @@ func updateAlbum(alb Album) error {
     if err != nil {
         return 0, fmt.Errorf("addAlbum: %v", err)
     }
-   
+
     return err
 }
 ```
 
 - update album by `UpdateBuilder` feature
-```
+```go
 func updateAlbum(alb Album) error {
     cmd := sqle.New().Update("album").
         Set("title", alb.Title).
@@ -372,13 +372,13 @@ func updateAlbum(alb Album) error {
     if err != nil {
         return 0, fmt.Errorf("addAlbum: %v", err)
     }
-   
+
     return err
 }
 ```
 
 - update album by ORM-like feature
-```
+```go
 func updateAlbum(alb Album) error {
     cmd := sqle.New().Update("album").
         SetModel(alb).
@@ -388,33 +388,33 @@ func updateAlbum(alb Album) error {
     if err != nil {
         return 0, fmt.Errorf("addAlbum: %v", err)
     }
-   
+
     return err
 }
 ```
 
 ### Delete
 - delete album by sql
-```
+```go
 func deleteAlbumByID(id int64) error {
     _, err := db.Exec("DELETE FROM album WHERE id = ?", id)
 
-    return err 
+    return err
 }
 ```
 - delete album by named sql statement
-```
+```go
 func deleteAlbumByID(id int64) error {
     _, err := db.ExecBuilder(context.TODO(), sqle.New().Delete("album").Where("id = {id}").
         Param("id",id))
 
-    return err 
+    return err
 }
 ```
 
 ### Transaction
 perform a set of operations within a transaction
-```
+```go
 func deleteAlbums(ids []int64) error {
 
     return db.Transaction(ctx, &sql.TxOptions{}, func(ctx context.Context,tx *sqle.Tx) error {
@@ -433,7 +433,7 @@ func deleteAlbums(ids []int64) error {
 ## Table Rotation
 use `shardid.ID` to enable rotate feature for a table based on option (NoRotate/MonthlyRotate/WeeklyRotate/DailyRotate)
 
-```
+```go
 gen := shardid.New(shardid.WithMonthlyRotate())
 id := gen.Next()
 
@@ -451,7 +451,7 @@ see more [examples](sqlbuilder_test.go#L490)
 
 ## Database Sharding
 use `shardid.ID` to enable sharding feature for any sql
-```
+```go
 gen := shardid.New(WithDatabase(10)) // 10 database instances
 id := gen.Next()
 
@@ -490,7 +490,7 @@ the files should be organized as
 │       ├── 2_logs.sql
 ```
 and database can be migrated in code
-```
+```go
     //go:embed db
 	var migrations embed.FS
 
@@ -510,10 +510,10 @@ and database can be migrated in code
 		panic(" db: migrate " + err.Error())
 	}
 ```
-see more [examples](./migrate/migrator_test.go?L40) 
+see more [examples](./migrate/migrator_test.go?L40)
 
-if a table has been rotated, and migration should be started with `/* rotate: monthly=20240201-20240401*/` as first line. so the migration is applied automatically on the table and all it's rotated tables from 20240201 to 20240401.
-```
+if a table has been rotated, and migration should be started with `/* rotate: monthly=20240201-20240401*/` as first line. so the migration is applied automatically on the table and all its rotated tables from 20240201 to 20240401.
+```sql
 /* rotate: monthly = 20240201 - 20240401 */
 CREATE TABLE IF NOT EXISTS monthly_logs<rotate> (
     id int NOT NULL,
@@ -524,9 +524,9 @@ CREATE TABLE IF NOT EXISTS monthly_logs<rotate> (
 
 `monthly_logs`, `monthly_logs_202402`, `monthly_logs_202403` and `monthly_logs_202404` will be migrated automatically.
 
-see more [examples](./migrate/migrator_test.go?L360) 
+see more [examples](./migrate/migrator_test.go?L360)
 
-if rotate is enabled for any table, rotate should be executed periodically in a cron job. so rotated tables will be created periodically. 
+if rotate is enabled for any table, rotate should be executed periodically in a cron job. so rotated tables will be created periodically.
 ```
 ├── db
 │   └── monthly
@@ -536,12 +536,12 @@ if rotate is enabled for any table, rotate should be executed periodically in a 
 │   └── daily
 │       ├── logs.sql
 ```
-see more [examples](./migrate/migrator_test.go?L581) 
+see more [examples](./migrate/migrator_test.go?L581)
 
 ## Security: SQL Injection
 SQLE uses the database/sql‘s argument placeholders to build parameterized SQL statement, which will automatically escape arguments to avoid SQL injection. eg if it is PostgreSQL, please apply [UsePostgres](use.go#L5) on SQLBuilder or change [DefaultSQLQuote](sqlbuilder.go?L16) and [DefaultSQLParameterize](sqlbuilder.go?L17) to update parameterization options.
 
-```
+```go
 func UsePostgres(b *Builder) {
 	b.Quote = "`"
 	b.Parameterize = func(name string, index int) string {
