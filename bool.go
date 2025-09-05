@@ -35,7 +35,7 @@ func (b *Bool) Scan(src interface{}) error { // skipcq: GO-W1029
 			*b = false
 		}
 	default:
-		return errors.New("bad []byte type assertion")
+		return errors.New("unsupported type for Bool scanning")
 	}
 
 	return nil
