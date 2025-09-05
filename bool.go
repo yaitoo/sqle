@@ -3,6 +3,7 @@ package sqle
 import (
 	"database/sql/driver"
 	"errors"
+	"strings"
 )
 
 // Bool is an implementation of a bool for the MySQL type BIT(1).
@@ -29,7 +30,7 @@ func (b *Bool) Scan(src interface{}) error { // skipcq: GO-W1029
 	case bool:
 		*b = Bool(v)
 	case string:
-		if v == "1" || v == "t" || v == "T" || v == "true" || v == "TRUE" || v == "True" {
+		if v == "1" || strings.EqualFold(v, "t") || strings.EqualFold(v, "true") {
 			*b = true
 		} else {
 			*b = false
