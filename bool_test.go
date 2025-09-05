@@ -93,7 +93,7 @@ func TestBool(t *testing.T) {
 	_, err = d.Exec("INSERT INTO `users`(`id`, `status_int`) VALUES(?, ?)", 16, 1)
 	require.NoError(t, err)
 
-	result, err = d.Exec("INSERT INTO `users`(`id`, `status_int`) VALUES(?, ?)", 17, 0)
+	_, err = d.Exec("INSERT INTO `users`(`id`, `status_int`) VALUES(?, ?)", 17, 0)
 	require.NoError(t, err)
 
 	var b7 Bool
