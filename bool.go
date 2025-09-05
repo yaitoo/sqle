@@ -11,11 +11,7 @@ type Bool bool
 // Value implements the driver.Valuer interface,
 // and turns the BitBool into a bit field (BIT(1)) for MySQL storage.
 func (b Bool) Value() (driver.Value, error) { // skipcq: GO-W1029
-	if b {
-		return []byte{1}, nil
-	} else {
-		return []byte{0}, nil
-	}
+	return bool(b), nil
 }
 
 // Scan implements the sql.Scanner interface,
@@ -30,6 +26,14 @@ func (b *Bool) Scan(src interface{}) error { // skipcq: GO-W1029
 		*b = v[0] == 1
 	case int64:
 		*b = v == 1
+	case bool:
+		*b = Bool(v)
+	case string:
+		if v == "1" || v == "t" || v == "T" || v == "true" || v == "TRUE" || v == "True" {
+			*b = true
+		} else {
+			*b = false
+		}
 	default:
 		return errors.New("bad []byte type assertion")
 	}

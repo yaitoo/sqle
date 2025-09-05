@@ -48,6 +48,11 @@ func TestBool(t *testing.T) {
 
 	require.EqualValues(t, true, b1)
 
+	err = d.QueryRow("SELECT `status` FROM `users` WHERE id=? AND status=1", 10).Scan(&b1)
+	require.NoError(t, err)
+
+	require.EqualValues(t, true, b1)
+
 	var b2 Bool
 	err = d.QueryRow("SELECT `status` FROM `users` WHERE id=?", 11).Scan(&b2)
 	require.NoError(t, err)
