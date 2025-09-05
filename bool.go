@@ -2,7 +2,6 @@ package sqle
 
 import (
 	"database/sql/driver"
-	"errors"
 	"strings"
 )
 
@@ -35,8 +34,6 @@ func (b *Bool) Scan(src interface{}) error { // skipcq: GO-W1029
 		} else {
 			*b = false
 		}
-	default:
-		return errors.New("unsupported type for Bool scanning")
 	}
 
 	return nil
