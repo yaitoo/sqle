@@ -1,8 +1,8 @@
-# SQLE Agents Guide (xun-compatible)
+# SQLE Agents Guide
 
-Audience: AI agents that need to read, modify, or extend this repository with minimal code reading.
+Audience: AI agents that need to integrate and use the SQLE library without reading the entire codebase.
 
-Goal: Provide a concise, task-oriented mental model and safe extension points.
+Goal: Provide a concise, task-oriented overview of SQLE features and safe usage patterns for calling its APIs.
 
 
 ## 1) Mental model in 60 seconds
@@ -13,6 +13,28 @@ Goal: Provide a concise, task-oriented mental model and safe extension points.
   - Shard/rotate aware DB and Query abstractions (Map/Reduce queryer, shardid integration).
   - Prepared statement caching on Client/Tx with idle eviction.
   - Migration + rotation utilities (migrate/).
+
+
+## Quickstart
+- Connect and select
+```
+sqldb, _ := sql.Open("mysql", dsn)
+db := sqle.Open(sqldb)
+b := sqle.New().Select("users").Where("id={id}").Param("id", 1)
+var u User
+_ = db.QueryRowBuilder(ctx, b).Bind(&u)
+```
+- Insert
+```
+b = sqle.New().Insert("users").Set("email", email).Set("name", name).End()
+_, _ = db.ExecBuilder(ctx, b)
+```
+- With Postgres placeholders
+```
+b := sqle.New("SELECT * FROM users WHERE id={id}")
+sqle.UsePostgres(b)
+_, _, _ = b.Build() // uses $1, $2 ...
+```
 
 
 ## 2) Repo map (what to read when)
@@ -152,8 +174,8 @@ Order/Where
 - Migration: migrate/*
 
 
-## 17) Notes for xun agents
-- Keep diffs minimal and localized.
-- Prefer adding small helper functions over changing core behavior, unless explicitly required.
+## 17) Notes for AI agents
+- Keep changes minimal and localized when proposing edits.
+- Prefer adding small helpers over altering core behavior, unless required.
 - Maintain backward compatibility of public APIs.
-- Update README/AGENTS.md only when behavior changes.
+- Update README/AGENTS.md when behavior changes.
