@@ -35,7 +35,331 @@ b := sqle.New("SELECT * FROM users WHERE id={id}")
 sqle.UsePostgres(b)
 _, _, _ = b.Build() // uses $1, $2 ...
 ```
+- Configure statement cache and multi-DB
+```
+sqle.StmtMaxIdleTime = 2 * time.Minute
+sqldb1, _ := sql.Open("mysql", dsn1)
+sqldb2, _ := sql.Open("mysql", dsn2)
+db := sqle.Open(sqldb1, sqldb2) // two shards
+// later scale out
+sqldb3, _ := sql.Open("mysql", dsn3)
+db.Add(sqldb3)
+```
 
+
+
+
+## Cookbook: feature coverage
+
+- Update and Delete
+```
+// Update
+b := sqle.New().Update("users").
+    Set("name", name).
+    Where("id={id}").Param("id", id)
+_, _ = db.ExecBuilder(ctx, b)
+
+// Delete
+b = sqle.New().Delete("users").Where("id={id}").Param("id", id)
+_, _ = db.ExecBuilder(ctx, b)
+```
+
+- Conditional WHERE and ORDER BY (safe)
+```
+b := sqle.New().Select("users").Where().
+    If(q.Name != "").And("name={name}").Param("name", q.Name).
+    If(q.Email != "").And("email={email}").Param("email", q.Email).
+    End()
+// Restrict allowed columns
+ob := b.Order(sqle.WithAllow("created_at","name"))
+- Insert from map and model
+```
+inputs := map[string]any{"email": email, "name": name}
+b := sqle.New().Insert("users").SetMap(inputs).End()
+_, _ = db.ExecBuilder(ctx, b)
+
+// ORM-like: from struct
+b = sqle.New().Insert("users").SetModel(user).End()
+_, _ = db.ExecBuilder(ctx, b)
+- Update: SetExpr and SetMap
+```
+// Expression update
+b := sqle.New().Update("users").SetExpr("last_login = NOW()")
+// Mixed with params
+b.Set("name", name).Where("id={id}").Param("id", id)
+_, _ = db.ExecBuilder(ctx, b)
+
+// Map update (allow-list columns)
+changes := map[string]any{"name": name, "email": email, "role": role}
+b = sqle.New().Update("users").SetMap(changes, sqle.WithAllow("name","email"))
+b.Where("id={id}").Param("id", id)
+_, _ = db.ExecBuilder(ctx, b)
+```
+
+```
+
+- Order builder reuse
+```
+base := sqle.New().Select("users").Where().End()
+ob := base.Order(sqle.WithAllow("created_at","name"))
+ob.ByDesc("created_at")
+base.WithOrderBy(ob)
+rows, _ := db.QueryBuilder(ctx, base)
+```
+
+ob.ByDesc("created_at").ByAsc("name")
+// Pagination
+b.SQL(" LIMIT {limit} OFFSET {offset}").Param("limit", q.Limit).Param("offset", q.Offset)
+rows, _ := db.QueryBuilder(ctx, b)
+var users []User
+_ = rows.Bind(&users)
+```
+
+- Binding variations
+```
+// Single primitive
+var n int64
+_ = db.QueryRow("SELECT COUNT(*) FROM users").Scan(&n)
+
+// Single struct
+var u User
+_ = db.QueryRowBuilder(ctx, sqle.New().Select("users").Where("id={id}").Param("id", id)).Bind(&u)
+
+// Slice of structs
+var list []User
+_ = db.QueryBuilder(ctx, sqle.New().Select("users")).Bind(&list)
+
+// Slice of maps
+var items []map[string]any
+_ = db.QueryBuilder(ctx, sqle.New().Select("users")).Bind(&items)
+```
+
+- Transactions
+```
+_ = db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.Tx) error {
+    if _, err := tx.Exec("UPDATE accounts SET balance=balance-? WHERE id=?", amt, from); err != nil { return err }
+    if _, err := tx.Exec("UPDATE accounts SET balance=balance+? WHERE id=?", amt, to); err != nil { return err }
+    // Read within tx
+    var u User
+    if err := tx.QueryRowBuilder(ctx, sqle.New().Select("users").Where("id={id}").Param("id", to)).Bind(&u); err != nil { return err }
+    return nil
+})
+```
+
+- Distributed transactions (DTC)
+```
+dtc := sqle.NewDTC(ctx, nil)
+dtc.Prepare(db1, func(ctx context.Context, c sqle.Connector) error {
+    _, err := c.Exec("INSERT INTO a(id,val) VALUES(?,?)", id, v); return err
+}, func(ctx context.Context, c sqle.Connector) error {
+    _, err := c.Exec("DELETE FROM a WHERE id=?", id); return err
+})
+- QueryLimit across shards
+```
+q := sqle.NewQuery[User](db)
+- Error examples
+```
+_, _, err := sqle.New("SELECT * FROM t WHERE a={a}").Build() // missing Param("a", ...)
+if errors.Is(err, sqle.ErrInvalidParamVariable) { /* handle */ }
+
+var m map[int]any
+err = db.QueryBuilder(ctx, sqle.New().Select("t")).Bind(&m)
+// -> ErrMustStringKey because map key must be string
+```
+
+b := sqle.New().Select("users").Where("role={r}").Param("r", "admin")
+list, _ := q.QueryLimit(ctx, b, func(i, j User) bool { return i.ID < j.ID }, 20)
+```
+
+dtc.Prepare(db2, func(ctx context.Context, c sqle.Connector) error {
+    _, err := c.Exec("INSERT INTO b(id,val) VALUES(?,?)", id, v); return err
+}, func(ctx context.Context, c sqle.Connector) error {
+    _, err := c.Exec("DELETE FROM b WHERE id=?", id); return err
+})
+if err := dtc.Commit(); err != nil { _ = dtc.Rollback() }
+```
+
+- Sharding + table rotation with shardid
+```
+// Configure generator: 4 databases, monthly rotation
+gen := shardid.New(shardid.WithDatabase(4), shardid.WithMonthlyRotate())
+id := gen.Next()
+
+// Write to rotated table on selected DB
+b := sqle.New().On(id).Insert("orders<rotate>").
+    Set("order_id", oid).Set("amount", amt).End()
+_, _ = db.On(id).ExecBuilder(ctx, b)
+
+// Query across sharded DBs for a time window using MapR
+- MapR Query with custom Queryer
+```
+// Implement a custom Queryer[T] if needed and inject
+var my Queryer[User] = &MyQueryer{}
+q := sqle.NewQuery[User](db, sqle.WithQueryer(my))
+users, _ := q.Query(ctx, sqle.New().Select("users"), nil)
+```
+
+q := sqle.NewQuery[Order](db, sqle.WithMonths(start, end))
+b = sqle.New().Select("orders<rotate>").Where("member_id={mid}").Param("mid", mid)
+list, _ := q.Query(ctx, b, func(i, j Order) bool { return i.CreatedAt.After(j.CreatedAt) })
+```
+
+- DHT-based sharding (consistent hashing)
+```
+db.NewDHT("users", 0,1,2,3)
+c, _ := db.OnDHT(email, "users")
+_ = c.QueryRowBuilder(ctx, sqle.New().Select("profiles").Where("email={email}").Param("email", email)).Bind(&u)
+```
+
+- Map/Reduce querying helpers
+```
+// Count across rotations and shards
+qb := sqle.New("SELECT COUNT(*) FROM logs<rotate> WHERE level={lv}").Param("lv", "warn")
+q := sqle.NewQuery[int64](db, sqle.WithDays(start, end))
+_, _ = q.Count(ctx, qb)
+
+// First returns fastest shard/rotation result
+var one Log
+one, _ = sqle.NewQuery[Log](db, sqle.WithWeeks(w1, w2)).First(ctx, sqle.New().Select("logs<rotate>").Where("id={id}").Param("id", lid))
+```
+
+- Migration and rotation
+```
+//go:embed db
+var migrations embed.FS
+m := migrate.New(db)
+_ = m.Discover(migrations, migrate.WithModule("service"))
+_ = m.Init(ctx)
+_ = m.Migrate(ctx) // apply semver directories
+_ = m.Rotate(ctx)  // create rotated tables for current/next periods
+```
+
+- Driver parameter styles
+```
+b := sqle.New("SELECT * FROM t WHERE a={a} AND b={b}").Param("a",1).Param("b",2)
+sqle.UsePostgres(b) // $1, $2 ...
+// sqle.UseOracle(b) // :a, :b
+// sqle.UseMySQL(b)  // ? (default)
+```
+
+- Nullable/time/duration/bool helpers
+```
+
+- Limited queries (LimitOptions/LimitResult)
+```
+// Define allowed order columns and page size
+ob := sqle.New().Order(sqle.WithAllow("created_at","id"))
+ob.ByDesc("created_at")
+
+opts := &sqle.LimitOptions{Offset: (page-1)*size, Limit: size, OrderBy: ob}
+
+// Build base query then apply order/limit
+b := sqle.New().Select("users").Where().
+    If(filter != "").And("name LIKE {kw}").Param("kw", "%"+filter+"%").End()
+if opts.OrderBy != nil {
+    b.WithOrderBy(opts.OrderBy)
+}
+if opts.Limit > 0 { b.SQL(" LIMIT {limit}").Param("limit", opts.Limit) }
+if opts.Offset > 0 { b.SQL(" OFFSET {offset}").Param("offset", opts.Offset) }
+
+// Fetch items and total
+rows, _ := db.QueryBuilder(ctx, b)
+var items []User
+_ = rows.Bind(&items)
+
+var total int64
+_ = db.QueryRowBuilder(ctx, sqle.New("SELECT COUNT(*) FROM users")).Scan(&total)
+
+res := sqle.LimitResult[User]{Items: items, Total: total}
+```
+
+var s sqle.String = sqle.NewString("v")
+var t sqle.Time = sqle.NewTime(time.Now(), true)
+var d sqle.Duration = sqle.Duration(5*time.Minute)
+var bflag sqle.Bool = sqle.Bool(true)
+_, _ = db.Exec("INSERT INTO x(s,t,d,b) VALUES(?,?,?,?)", s, t, d, bflag)
+```
+
+
+## Cookbook: comprehensive feature coverage
+
+- Update with SetModel
+```
+b := sqle.New().Update("users").SetModel(user).Where("id={id}").Param("id", user.ID)
+_, _ = db.ExecBuilder(ctx, b)
+```
+
+- WhereBuilder reuse via WithWhere
+```
+wb := sqle.NewWhere().And("status={st}").And("role={r}").
+    Param("st", "active").Param("r", "admin")
+base := sqle.New().Select("users").WithWhere(wb).Where("org_id={org}").Param("org", orgID)
+rows, _ := db.QueryBuilder(ctx, base)
+```
+
+- Inputs and Params (raw inputs vs bound params)
+```
+// Trusted identifier/table name via Input (ensure validated!)
+b := sqle.New("SELECT * FROM <tbl> WHERE id={id}").
+    Input("tbl", "`users`").Param("id", 1)
+_, _, _ = b.Build()
+```
+
+- Params and Params(map)
+```
+b := sqle.New("UPDATE t SET a={a}, b={b} WHERE id={id}").
+    Params(map[string]any{"a":1, "b":2, "id": id})
+_, _ = db.ExecBuilder(ctx, b)
+```
+
+- Column name transform with WithToName
+```
+changes := map[string]any{"UserName": name, "CreatedAt": createdAt}
+b := sqle.New().Insert("users").SetMap(changes, sqle.WithToName(strcase.ToSnake)).End()
+_, _ = db.ExecBuilder(ctx, b)
+```
+
+- OrderBy via NewOrderBy builder
+```
+ob := sqle.NewOrderBy(sqle.WithAllow("created_at","name")).ByDesc("created_at").ByAsc("name")
+b := sqle.New().Select("users")
+b.WithOrderBy(ob)
+rows, _ := db.QueryBuilder(ctx, b)
+```
+
+- Explicit transaction with BeginTx
+```
+tx, _ := db.BeginTx(ctx, &sql.TxOptions{})
+defer tx.Rollback()
+_, _ = tx.ExecContext(ctx, "UPDATE t SET v=? WHERE id=?", v, id)
+if err := tx.Commit(); err != nil { /* handle */ }
+```
+
+- OnDHT error handling
+```
+_, err := db.OnDHT(email, "users")
+if errors.Is(err, sqle.ErrMissingDHT) {
+    db.NewDHT("users", 0,1,2,3)
+}
+c, _ := db.OnDHT(email, "users")
+_ = c.QueryRow("SELECT 1").Err()
+```
+
+- Generic Null[T] and JSON
+```
+var n sqle.Null[int64] = sqle.NewNull[int64](123, true)
+buf, _ := json.Marshal(n)   // => 123
+_ = n.UnmarshalJSON([]byte("null")) // sets Valid=false
+```
+
+- Migration: rotated script header
+```
+/* rotate: monthly = 20240201 - 20240401 */
+CREATE TABLE IF NOT EXISTS monthly_logs<rotate> (
+  id BIGINT PRIMARY KEY,
+  msg VARCHAR(64) NOT NULL
+);
+```
 
 ## 2) Repo map (what to read when)
 - High level API: db.go, client.go, tx.go, connector.go, query.go, queryer.go, queryer_mapr.go
