@@ -41,6 +41,14 @@ const TABLE_ROTATIONS = "CREATE TABLE IF NOT EXISTS sqle_rotations(" +
 	"execution_time varchar(25) NOT NULL," +
 	"PRIMARY KEY (checksum, rotated_name));"
 
+type MigrationStatus int
+
+const (
+	MigrationStatusNew      MigrationStatus = iota // new migration, needs to be executed
+	MigrationStatusExecuted                        // already executed, checksum matches
+	MigrationStatusModified                        // already executed but checksum changed
+)
+
 type Migrator struct {
 	dbs    []*sqle.DB
 	suffix string
@@ -238,13 +246,18 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 		err = db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.Tx) error {
 
 			for i, s := range v.Migrations {
-				yes, err := m.isMigrated(tx, s)
+				status, err := m.getMigrationStatus(tx, v.Name, s)
 				if err != nil {
 					return err
 				}
 
-				if yes {
+				if status == MigrationStatusExecuted {
 					log.Printf("│ »[%*d/%d] %-35s %-10s [✔]", w, i+1, n, s.Name, "")
+					continue
+				}
+
+				if status == MigrationStatusModified {
+					log.Printf("│ »[%*d/%d] %-35s %-10s [!]", w, i+1, n, s.Name, "")
 					continue
 				}
 
@@ -309,18 +322,32 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 	return nil
 }
 
-func (*Migrator) isMigrated(tx *sqle.Tx, s Migration) (bool, error) {
+func (m *Migrator) getMigrationStatus(tx *sqle.Tx, version string, s Migration) (MigrationStatus, error) {
+	// First check if checksum already exists (most common case: script already executed)
 	var checksum string
-	err := tx.QueryRow("SELECT checksum FROM sqle_migrations WHERE checksum = ?", s.Checksum).Scan(&checksum)
+	err := tx.QueryRow("SELECT checksum FROM sqle_migrations WHERE checksum = ?",
+		s.Checksum).Scan(&checksum)
+	if err == nil {
+		// Checksum exists, meaning a script with same content was already executed
+		return MigrationStatusExecuted, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return MigrationStatusNew, err
+	}
+
+	// Checksum doesn't exist, check if a script with same name and rank was modified
+	err = tx.QueryRow("SELECT checksum FROM sqle_migrations WHERE module = ? AND version = ? AND name = ? AND rank = ?",
+		m.module, version, s.Name, s.Rank).Scan(&checksum)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
+			// No record with same name and rank exists, it's a new script
+			return MigrationStatusNew, nil
 		}
-
-		return false, err
-
+		return MigrationStatusNew, err
 	}
-	return checksum != "", nil
+
+	// Record with same name and rank exists but checksum is different, script content was modified
+	return MigrationStatusModified, nil
 }
 
 func (*Migrator) buildRotations(r shardid.TableRotate, begin, end time.Time) []string {

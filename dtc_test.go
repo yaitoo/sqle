@@ -10,9 +10,12 @@ import (
 )
 
 func TestDTCWithDB(t *testing.T) {
-	os.Remove("dtc_db.db")
+	os.Remove("dtc_1.db")
 
 	d, err := sql.Open("sqlite3", "file:dtc_1.db?cache=shared&mode=rwc")
+	require.NoError(t, err)
+
+	_, err = d.Exec("DROP TABLE IF EXISTS `dtc_1`")
 	require.NoError(t, err)
 
 	_, err = d.Exec("CREATE TABLE `dtc_1` (`id` int , `email` varchar(50),`created_at` DATETIME, PRIMARY KEY (`id`))")
