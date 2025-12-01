@@ -25,7 +25,9 @@ func newStructBinder(t reflect.Type, v reflect.Value) Binder {
 		}
 
 		if tagName != "" {
-			sb.fieldIndexes[tagName] = i
+			// Normalize tag name to match column name processing: remove underscores and lowercase
+			normalizedTag := strings.ToLower(strings.ReplaceAll(tagName, "_", ""))
+			sb.fieldIndexes[normalizedTag] = i
 			sb.fieldColumnNames = append(sb.fieldColumnNames, tagName)
 			continue
 
