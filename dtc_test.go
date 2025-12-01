@@ -33,19 +33,19 @@ func TestDTCWithDB(t *testing.T) {
 			setup: func() *DTC {
 				dtc := NewDTC(context.Background(), nil)
 
-				dtc.Prepare(db.dbs[0], func(ctx context.Context, conn Connector) error {
+				dtc.Prepare(db.dbs[0], func(_ context.Context, conn Connector) error {
 					_, err := conn.Exec("INSERT INTO `dtc_1`(`id`,`email`) VALUES(?,?)", 1, "1@mail.com")
 
 					return err
 				}, nil)
 
-				dtc.Prepare(db.dbs[0], func(ctx context.Context, conn Connector) error {
+				dtc.Prepare(db.dbs[0], func(_ context.Context, conn Connector) error {
 					_, err := conn.Exec("INSERT INTO `dtc_1`(`id`,`email`) VALUES(?,?)", 2, "2@mail.com")
 
 					return err
 				}, nil)
 
-				dtc.Prepare(db.dbs[0], func(ctx context.Context, conn Connector) error {
+				dtc.Prepare(db.dbs[0], func(_ context.Context, conn Connector) error {
 					_, err := conn.Exec("INSERT INTO `dtc_1`(`id`,`email`) VALUES(?,?)", 3, "3@mail.com")
 
 					return err
@@ -72,19 +72,19 @@ func TestDTCWithDB(t *testing.T) {
 			name: "multiple_txs_rollback_should_work",
 			setup: func() *DTC {
 				dtc := NewDTC(context.Background(), nil)
-				dtc.Prepare(db.dbs[0], func(ctx context.Context, conn Connector) error {
+				dtc.Prepare(db.dbs[0], func(_ context.Context, conn Connector) error {
 					_, err := conn.Exec("INSERT INTO `dtc_1`(`id`,`email`) VALUES(?,?)", 11, "1@mail.com")
 
 					return err
 				}, nil)
 
-				dtc.Prepare(db.dbs[0], func(ctx context.Context, conn Connector) error {
+				dtc.Prepare(db.dbs[0], func(_ context.Context, conn Connector) error {
 					_, err := conn.Exec("INSERT INTO `dtc_1`(`id`,`email`) VALUES(?,?)", 12, "2@mail.com")
 
 					return err
 				}, nil)
 
-				dtc.Prepare(db.dbs[0], func(ctx context.Context, conn Connector) error {
+				dtc.Prepare(db.dbs[0], func(_ context.Context, conn Connector) error {
 					_, err := conn.Exec("INSERT INTO `dtc_1`(`id`,`email`) VALUES(?,?)", 13)
 
 					return err
@@ -157,19 +157,19 @@ func TestDTCWithDBs(t *testing.T) {
 			setup: func() *DTC {
 				dtc := NewDTC(context.Background(), nil)
 
-				dtc.Prepare(db1.dbs[0], func(ctx context.Context, conn Connector) error {
+				dtc.Prepare(db1.dbs[0], func(_ context.Context, conn Connector) error {
 					_, err := conn.Exec("INSERT INTO `dtc_1` (`id`,`email`) VALUES(?,?)", 1, "1@mail.com")
 
 					return err
 				}, nil)
 
-				dtc.Prepare(db2.dbs[0], func(ctx context.Context, conn Connector) error {
+				dtc.Prepare(db2.dbs[0], func(_ context.Context, conn Connector) error {
 					_, err := conn.Exec("INSERT INTO `dtc_2` (`id`,`email`) VALUES(?,?)", 2, "2@mail.com")
 
 					return err
 				}, nil)
 
-				dtc.Prepare(db3.dbs[0], func(ctx context.Context, conn Connector) error {
+				dtc.Prepare(db3.dbs[0], func(_ context.Context, conn Connector) error {
 					_, err := conn.Exec("INSERT INTO `dtc_3` (`id`,`email`) VALUES(?,?)", 3, "3@mail.com")
 
 					return err
@@ -196,19 +196,19 @@ func TestDTCWithDBs(t *testing.T) {
 			name: "multiple_txs_rollback_should_work",
 			setup: func() *DTC {
 				dtc := NewDTC(context.Background(), nil)
-				dtc.Prepare(db1.dbs[0], func(ctx context.Context, conn Connector) error {
+				dtc.Prepare(db1.dbs[0], func(_ context.Context, conn Connector) error {
 					_, err := conn.Exec("INSERT INTO `dtc_1`(`id`,`email`) VALUES(?,?)", 11, "1@mail.com")
 
 					return err
 				}, nil)
 
-				dtc.Prepare(db2.dbs[0], func(ctx context.Context, conn Connector) error {
+				dtc.Prepare(db2.dbs[0], func(_ context.Context, conn Connector) error {
 					_, err := conn.Exec("INSERT INTO `dtc_2`(`id`,`email`) VALUES(?,?)", 12, "2@mail.com")
 
 					return err
 				}, nil)
 
-				dtc.Prepare(db3.dbs[0], func(ctx context.Context, conn Connector) error {
+				dtc.Prepare(db3.dbs[0], func(_ context.Context, conn Connector) error {
 					_, err := conn.Exec("INSERT INTO `dtc_3`(`id`,`email`) VALUES(?,?)", 13)
 
 					return err
@@ -273,28 +273,28 @@ func TestDTCRevert(t *testing.T) {
 
 	dtc := NewDTC(context.Background(), nil)
 
-	dtc.Prepare(db1.dbs[0], func(ctx context.Context, conn Connector) error {
+	dtc.Prepare(db1.dbs[0], func(_ context.Context, conn Connector) error {
 		_, err := conn.Exec("INSERT INTO `dtc_1` (`id`,`email`) VALUES(?,?)", 1, "1@mail.com")
 		return err
-	}, func(ctx context.Context, c Connector) error {
+	}, func(_ context.Context, c Connector) error {
 		_, err := c.Exec("DELETE FROM `dtc_1` WHERE id=?", 1)
 		return err
 	})
 
-	dtc.Prepare(db2.dbs[0], func(ctx context.Context, conn Connector) error {
+	dtc.Prepare(db2.dbs[0], func(_ context.Context, conn Connector) error {
 		_, err := conn.Exec("INSERT INTO `dtc_2` (`id`,`email`) VALUES(?,?)", 2, "2@mail.com")
 
 		return err
-	}, func(ctx context.Context, c Connector) error {
+	}, func(_ context.Context, c Connector) error {
 		_, err := c.Exec("DELETE FROM `dtc_2` WHERE id=?", 2)
 		return err
 	})
 
-	dtc.Prepare(db3.dbs[0], func(ctx context.Context, conn Connector) error {
+	dtc.Prepare(db3.dbs[0], func(_ context.Context, conn Connector) error {
 		_, err := conn.Exec("INSERT INTO `dtc_3` (`id`,`email`) VALUES(?,?)", 3, "3@mail.com")
 
 		return err
-	}, func(ctx context.Context, c Connector) error {
+	}, func(_ context.Context, c Connector) error {
 		_, err := c.Exec("DELETE FROM `dtc_3` WHERE id=?", 3)
 		return err
 	})
