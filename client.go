@@ -197,21 +197,21 @@ func (db *Client) ExecContext(ctx context.Context, query string, args ...any) (s
 	return db.DB.ExecContext(context.Background(), query, args...)
 }
 
-func (db *Client) Begin(opts *sql.TxOptions) (*Tx, error) {
+func (db *Client) Begin(opts *sql.TxOptions) (*Transaction, error) {
 	return db.BeginTx(context.TODO(), opts)
 
 }
 
-func (db *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
+func (db *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Transaction, error) {
 	tx, err := db.DB.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Tx{Tx: tx, stmts: make(map[string]*sql.Stmt)}, nil
+	return &Transaction{Tx: tx, stmts: make(map[string]*sql.Stmt)}, nil
 }
 
-func (db *Client) Transaction(ctx context.Context, opts *sql.TxOptions, fn func(ctx context.Context, tx *Tx) error) error {
+func (db *Client) Transaction(ctx context.Context, opts *sql.TxOptions, fn func(ctx context.Context, tx *Transaction) error) error {
 	tx, err := db.BeginTx(ctx, opts)
 	if err != nil {
 		return err

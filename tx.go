@@ -5,13 +5,27 @@ import (
 	"database/sql"
 )
 
-type Tx struct {
-	*sql.Tx
-	noCopy //nolint
-	stmts  map[string]*sql.Stmt
+// Transaction wraps a Tx interface with a per-transaction prepared
+// statement cache. It is the concrete type returned by Client.BeginTx
+// and Client.Transaction so callers can use the cached prepared
+// statements via the Query/Exec/QueryBuilder/ExecBuilder methods.
+//
+// Transaction's own Query/Exec/Commit/Rollback methods take precedence
+// over the embedded Tx interface methods: its Query*/Exec* methods
+// return sqle's *Rows/*Row (which add binding), and its Commit/Rollback
+// also close the prepared statement cache. The embedded Tx is still
+// reachable as the `Tx` field for raw access (e.g. tx.Tx.QueryContext).
+//
+// Note: Transaction is *not* a Tx itself because its Query*/Exec* method
+// signatures differ from the Tx interface (sqle's *Rows/*Row vs. the
+// standard library's *sql.Rows/*sql.Row).
+type Transaction struct {
+	Tx // embedded Tx interface (the underlying transaction)
+	noCopy
+	stmts map[string]*sql.Stmt
 }
 
-func (tx *Tx) prepareStmt(ctx context.Context, query string) (*sql.Stmt, error) {
+func (tx *Transaction) prepareStmt(ctx context.Context, query string) (*sql.Stmt, error) {
 	if tx.stmts == nil {
 		tx.stmts = make(map[string]*sql.Stmt)
 	}
@@ -30,17 +44,17 @@ func (tx *Tx) prepareStmt(ctx context.Context, query string) (*sql.Stmt, error) 
 	return s, nil
 }
 
-func (tx *Tx) closeStmts() {
+func (tx *Transaction) closeStmts() {
 	for _, stmt := range tx.stmts {
 		stmt.Close()
 	}
 }
 
-func (tx *Tx) Query(query string, args ...any) (*Rows, error) {
+func (tx *Transaction) Query(query string, args ...any) (*Rows, error) {
 	return tx.QueryContext(context.Background(), query, args...)
 }
 
-func (tx *Tx) QueryBuilder(ctx context.Context, b *Builder) (*Rows, error) {
+func (tx *Transaction) QueryBuilder(ctx context.Context, b *Builder) (*Rows, error) {
 	query, args, err := b.Build()
 	if err != nil {
 		return nil, err
@@ -49,7 +63,7 @@ func (tx *Tx) QueryBuilder(ctx context.Context, b *Builder) (*Rows, error) {
 	return tx.QueryContext(ctx, query, args...)
 }
 
-func (tx *Tx) QueryContext(ctx context.Context, query string, args ...any) (*Rows, error) {
+func (tx *Transaction) QueryContext(ctx context.Context, query string, args ...any) (*Rows, error) {
 
 	if len(args) > 0 {
 		stmt, err := tx.prepareStmt(ctx, query)
@@ -72,11 +86,11 @@ func (tx *Tx) QueryContext(ctx context.Context, query string, args ...any) (*Row
 	return &Rows{Rows: rows, query: query}, nil
 }
 
-func (tx *Tx) QueryRow(query string, args ...any) *Row {
+func (tx *Transaction) QueryRow(query string, args ...any) *Row {
 	return tx.QueryRowContext(context.Background(), query, args...)
 }
 
-func (tx *Tx) QueryRowBuilder(ctx context.Context, b *Builder) *Row {
+func (tx *Transaction) QueryRowBuilder(ctx context.Context, b *Builder) *Row {
 	query, args, err := b.Build()
 	if err != nil {
 		return &Row{
@@ -87,7 +101,7 @@ func (tx *Tx) QueryRowBuilder(ctx context.Context, b *Builder) *Row {
 	return tx.QueryRowContext(ctx, query, args...)
 }
 
-func (tx *Tx) QueryRowContext(ctx context.Context, query string, args ...any) *Row {
+func (tx *Transaction) QueryRowContext(ctx context.Context, query string, args ...any) *Row {
 
 	if len(args) > 0 {
 		stmt, err := tx.prepareStmt(ctx, query)
@@ -120,11 +134,11 @@ func (tx *Tx) QueryRowContext(ctx context.Context, query string, args ...any) *R
 	}
 }
 
-func (tx *Tx) Exec(query string, args ...any) (sql.Result, error) {
+func (tx *Transaction) Exec(query string, args ...any) (sql.Result, error) {
 	return tx.ExecContext(context.Background(), query, args...)
 }
 
-func (tx *Tx) ExecBuilder(ctx context.Context, b *Builder) (sql.Result, error) {
+func (tx *Transaction) ExecBuilder(ctx context.Context, b *Builder) (sql.Result, error) {
 	query, args, err := b.Build()
 	if err != nil {
 		return nil, err
@@ -132,7 +146,7 @@ func (tx *Tx) ExecBuilder(ctx context.Context, b *Builder) (sql.Result, error) {
 	return tx.ExecContext(ctx, query, args...)
 }
 
-func (tx *Tx) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+func (tx *Transaction) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 
 	if len(args) > 0 {
 		stmt, err := tx.prepareStmt(ctx, query)
@@ -146,12 +160,12 @@ func (tx *Tx) ExecContext(ctx context.Context, query string, args ...any) (sql.R
 	return tx.Tx.ExecContext(context.Background(), query, args...)
 }
 
-func (tx *Tx) Rollback() error {
+func (tx *Transaction) Rollback() error {
 	defer tx.closeStmts()
 	return tx.Tx.Rollback()
 }
 
-func (tx *Tx) Commit() error {
+func (tx *Transaction) Commit() error {
 	defer tx.closeStmts()
 	return tx.Tx.Commit()
 }

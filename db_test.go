@@ -45,7 +45,7 @@ func TestOn(t *testing.T) {
 		dbs = append(dbs, db3)
 	}
 
-	db := Open(dbs...)
+	db := OpenDB(dbs...)
 	gen := shardid.New(shardid.WithDatabase(10))
 
 	ids := make([]shardid.ID, 10)
@@ -99,7 +99,7 @@ func TestDHT(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 0, ctx.Index)
 
-	db.Add(createSQLite3())
+	db.AddDB(createSQLite3())
 	db.GetDHT("").Add(1)
 	db.GetDHT("").Done()
 
@@ -124,7 +124,7 @@ func TestOnDHT(t *testing.T) {
 		dbs = append(dbs, db3)
 	}
 
-	db := Open(dbs...)
+	db := OpenDB(dbs...)
 
 	//	2 dbs   ->   3 dbs  -> data
 	//  -> 2439456            1149
@@ -210,7 +210,7 @@ func TestDHTScaling(t *testing.T) {
 		dbs = append(dbs, db3)
 	}
 
-	db := Open(dbs...)
+	db := OpenDB(dbs...)
 
 	//	2 dbs   ->   3 dbs  -> data
 	//  -> 2439456            1149

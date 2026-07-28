@@ -1,7 +1,9 @@
 package sqle
 
 import (
+	"database/sql"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -24,11 +26,30 @@ type DB struct {
 }
 
 // Open creates a new DB instance with the provided database connections.
-// Any value satisfying the Database interface is accepted; *sql.DB
-// satisfies it out of the box. The type parameter lets callers pass
-// a `[]*sql.DB` (or any other Database-conforming type) slice directly
-// via `Open(dbs...)`.
-func Open[T Database](dbs ...T) *DB {
+// Each argument must be either a Database implementation (custom
+// middleware, tracing, mocks, etc.) or a *sql.DB (which is wrapped
+// internally via sqlDBWrapper so it satisfies the Database interface).
+//
+// *sql.DB values are detected at runtime and wrapped automatically —
+// callers using the standard library do not need to wrap them manually.
+func Open(dbArgs ...any) *DB {
+	dbs := make([]Database, len(dbArgs))
+	for i, arg := range dbArgs {
+		switch v := arg.(type) {
+		case Database:
+			dbs[i] = v
+		case *sql.DB:
+			dbs[i] = &sqlDBWrapper{DB: v}
+		default:
+			panic(fmt.Sprintf("sqle: Open argument %d has unsupported type %T", i, arg))
+		}
+	}
+
+	return openDatabases(dbs...)
+}
+
+// openDatabases is the internal constructor used by Open and OpenDB.
+func openDatabases(dbs ...Database) *DB {
 	d := &DB{
 		dhts: make(map[string]*shardid.DHT),
 	}
@@ -49,12 +70,20 @@ func Open[T Database](dbs ...T) *DB {
 	return d
 }
 
-// Add dynamically scales out the DB with new databases. Go does not
-// allow type parameters on methods of non-generic types, so callers
-// passing a []*sql.DB slice must convert it via a small helper (or use
-// individual arguments). For typical scale-out patterns this is not a
-// friction point; the primary entry point that benefits from generic
-// variadic is Open.
+// OpenDB is the type-safe convenience for callers using *sql.DB
+// directly. It applies sqlDBWrapper to each *sql.DB so they satisfy
+// the Database interface, then delegates to openDatabases.
+func OpenDB(dbs ...*sql.DB) *DB {
+	wrapped := make([]Database, len(dbs))
+	for i, db := range dbs {
+		wrapped[i] = &sqlDBWrapper{DB: db}
+	}
+	return openDatabases(wrapped...)
+}
+
+// Add dynamically scales out the DB with new databases. Each value
+// must satisfy the Database interface; callers passing *sql.DB should
+// wrap each one with sqlDBWrapper (or use AddDB as a convenience).
 func (db *DB) Add(dbs ...Database) {
 	db.Lock()
 	defer db.Unlock()
@@ -71,6 +100,25 @@ func (db *DB) Add(dbs ...Database) {
 		db.dbs = append(db.dbs, ctx)
 		go ctx.checkIdleStmt()
 	}
+}
+
+// AddDB is the type-safe convenience for callers using *sql.DB slices
+// with Add. It applies sqlDBWrapper to each *sql.DB so they satisfy
+// the Database interface, then delegates to Add.
+func (db *DB) AddDB(dbs ...*sql.DB) {
+	wrapped := make([]Database, len(dbs))
+	for i, d := range dbs {
+		wrapped[i] = &sqlDBWrapper{DB: d}
+	}
+	db.Add(wrapped...)
+}
+
+// WrapSQLDB adapts an *sql.DB to the Database interface, applying the
+// same internal sqlDBWrapper used by Open/AddDB/OpenDB. It is exported
+// for callers that need to convert individual *sql.DB values (e.g. for
+// mixed Database slices) without going through the variadic helpers.
+func WrapSQLDB(db *sql.DB) Database {
+	return &sqlDBWrapper{DB: db}
 }
 
 // On selects the database context based on the shardid ID.
