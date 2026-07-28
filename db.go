@@ -1,7 +1,6 @@
 package sqle
 
 import (
-	"database/sql"
 	"errors"
 	"sync"
 	"time"
@@ -25,7 +24,11 @@ type DB struct {
 }
 
 // Open creates a new DB instance with the provided database connections.
-func Open(dbs ...*sql.DB) *DB {
+// Any value satisfying the Database interface is accepted; *sql.DB
+// satisfies it out of the box. The type parameter lets callers pass
+// a `[]*sql.DB` (or any other Database-conforming type) slice directly
+// via `Open(dbs...)`.
+func Open[T Database](dbs ...T) *DB {
 	d := &DB{
 		dhts: make(map[string]*shardid.DHT),
 	}
@@ -46,8 +49,13 @@ func Open(dbs ...*sql.DB) *DB {
 	return d
 }
 
-// Add dynamically scales out the DB with new databases.
-func (db *DB) Add(dbs ...*sql.DB) {
+// Add dynamically scales out the DB with new databases. Go does not
+// allow type parameters on methods of non-generic types, so callers
+// passing a []*sql.DB slice must convert it via a small helper (or use
+// individual arguments). For typical scale-out patterns this is not a
+// friction point; the primary entry point that benefits from generic
+// variadic is Open.
+func (db *DB) Add(dbs ...Database) {
 	db.Lock()
 	defer db.Unlock()
 

@@ -373,8 +373,8 @@ CREATE TABLE IF NOT EXISTS monthly_logs<rotate> (
 
 
 ## 3) Core types and flows
-- DB: sharding-aware wrapper over multiple Client instances; Open(*sql.DB...), Add, On(shardid.ID), NewDHT/GetDHT/OnDHT.
-- Client: wraps *sql.DB and caches prepared statements (Stmt). Provides Query/Exec and *Builder variants.
+- DB: sharding-aware wrapper over multiple Client instances; `Open[T Database](dbs ...T) *DB` (generic so `Open(dbs...)` works directly for `[]*sql.DB` or any custom Database slice), `Add(dbs ...Database)`, `On(shardid.ID)`, `NewDHT/GetDHT/OnDHT`.
+- Client: wraps a Database (anything that satisfies the Database interface; *sql.DB satisfies it by default) and caches prepared statements (Stmt). Provides Query/Exec and *Builder variants; Ping/PingContext/Close/Prepare/PrepareContext/Conn/Driver/Stats/SetMaxOpenConns/SetMaxIdleConns/SetConnMaxLifetime/SetConnMaxIdleTime forward to the wrapped Database so *DB keeps the same promoted API as before.
 - Tx: wraps *sql.Tx with local prepared statement cache.
 - Query[T]: high-level query facade over Queryer[T] (default MapR[T]). Supports First/Count/Query/QueryLimit and rotation window options.
 - Queryer[T]: interface to implement backends. Default MapR[T] fans out over dbs and rotated tables, merges and sorts.
@@ -491,7 +491,7 @@ Order/Where
 ## 16) File references (quick jump)
 - Builders: sqlbuilder.go, sqlbuilder_insert.go, sqlbuilder_update.go, sqlbuilder_where.go, sqlbuilder_orderby.go, sqlbuilder_option.go, use.go
 - Query: query.go, queryer.go, queryer_mapr.go, query_option.go
-- DB/Client/Tx: db.go, client.go, tx.go, client_stmt.go
+- DB/Client/Tx: database.go (Database interface), db.go, client.go, tx.go, client_stmt.go
 - Binding: binder.go, binder_struct.go, binder_map.go, scan.go, row.go, rows.go
 - Types: null.go, time.go, string.go, duration.go, bool.go
 - Sharding: shardid/*, db.go (On, DHT)
