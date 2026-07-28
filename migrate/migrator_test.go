@@ -514,6 +514,46 @@ func TestMigrate(t *testing.T) {
 			},
 		},
 		{
+			name: "semicolons_in_comments_should_not_split_statements",
+			setup: func(db *sql.DB) (*Migrator, error) {
+
+				m := New(sqle.Open(db))
+
+				err := m.Discover(fstest.MapFS{
+					"0.1.0/1_create_with_comments.sql": &fstest.MapFile{
+						Data: []byte(`-- TODO: drop foo; keep bar;
+CREATE TABLE IF NOT EXISTS foo (
+	id int NOT NULL,
+	PRIMARY KEY (id)
+);
+/* a block comment; with a semicolon */
+CREATE TABLE IF NOT EXISTS bar (
+	id int NOT NULL,
+	PRIMARY KEY (id)
+);`),
+					},
+				})
+
+				if err != nil {
+					return nil, err
+				}
+
+				return m, nil
+
+			},
+			assert: func(t *testing.T, m *Migrator) {
+				err := m.dbs[0].QueryRow("SELECT id FROM foo WHERE id=?", 0).Bind(&struct {
+					ID int
+				}{})
+				require.ErrorIs(t, err, sql.ErrNoRows)
+
+				err = m.dbs[0].QueryRow("SELECT id FROM bar WHERE id=?", 0).Bind(&struct {
+					ID int
+				}{})
+				require.ErrorIs(t, err, sql.ErrNoRows)
+			},
+		},
+		{
 			name: "with_invalid_rotate_should_be_skipped",
 			setup: func(db *sql.DB) (*Migrator, error) {
 
