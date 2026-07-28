@@ -243,7 +243,7 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 		n := len(v.Migrations)
 		w := len(strconv.Itoa(n))
 		log.Printf("┌─[ v%s ]\n", v.Name)
-		err = db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.TxContext) error {
+		err = db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.RawTx) error {
 
 			for i, s := range v.Migrations {
 				status, err := m.getMigrationStatus(tx, v.Name, s)
@@ -322,7 +322,7 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 	return nil
 }
 
-func (m *Migrator) getMigrationStatus(tx *sqle.TxContext, version string, s Migration) (MigrationStatus, error) {
+func (m *Migrator) getMigrationStatus(tx *sqle.RawTx, version string, s Migration) (MigrationStatus, error) {
 	// First check if checksum already exists (most common case: script already executed)
 	var checksum string
 	err := tx.QueryRow("SELECT checksum FROM sqle_migrations WHERE checksum = ?",
@@ -428,7 +428,7 @@ func startRotate(ctx context.Context, db *sqle.DB, rotatedNames []string, rotati
 	var w int
 	var checksum string
 	for _, r := range rotations {
-		err = db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.TxContext) error {
+		err = db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.RawTx) error {
 			n = len(rotatedNames)
 			w = len(strconv.Itoa(n))
 			log.Printf("┌─[ %s ]\n", r.Name)

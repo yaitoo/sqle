@@ -17,7 +17,7 @@ type DTC struct {
 type session struct {
 	committed bool
 	client    *Client
-	tx        *TxContext
+	tx        *RawTx
 	exec      []func(context.Context, Connector) error
 	revert    []func(context.Context, Connector) error
 }

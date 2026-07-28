@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 - !feat(tx): introduce `Tx` interface mirroring the `Database` interface for custom transaction implementations
-- !refactor: rename `Tx` struct to `TxContext` so the `Tx` interface can coexist; `*sql.Tx` is wrapped via `sqlDBWrapper`/`OpenDB` for backward compatibility
+- !refactor: rename `Tx` struct to `RawTx` so the `Tx` interface can coexist; `*sql.Tx` is wrapped via `sqlDBWrapper`/`OpenDB` for backward compatibility
 - !refactor: change `Open` to accept `...any` (runtime-adapts `*sql.DB` and `Database`); add `OpenDB(...*sql.DB)` as a type-safe convenience
 
 ## [1.5.2] - 2024-12-12
