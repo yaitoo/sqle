@@ -264,7 +264,7 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 				rotations := m.buildRotations(s.Rotate, s.RotateBegin, s.RotateEnd)
 
 				now := time.Now()
-				for _, it := range strings.Split(s.Scripts, ";") {
+				for _, it := range strings.Split(stripSQLComments(s.Scripts), ";") {
 					it := strings.TrimSpace(it)
 					if it != "" {
 						for _, rt := range rotations {
