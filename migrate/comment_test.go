@@ -240,6 +240,30 @@ func TestStripSQLComments(t *testing.T) {
 			want: `SELECT "a\"b" FROM t;`,
 		},
 		{
+			name: "double_quoted_string_with_doubled_quote_escape",
+			in:   `SELECT "a""b" FROM t;`,
+			want: `SELECT "a""b" FROM t;`,
+		},
+		{
+			name: "double_quoted_string_with_only_doubled_quote",
+			in:   `SELECT "" FROM t;`,
+			want: `SELECT "" FROM t;`,
+		},
+		{
+			name: "backtick_inside_double_quoted_preserved",
+			// backtick inside a "..." literal must not close the
+			// double-quoted string.
+			in:   "SELECT \"a`b\" FROM t;",
+			want: "SELECT \"a`b\" FROM t;",
+		},
+		{
+			name: "double_quoted_containing_backtick_and_semicolon",
+			// a backtick and a semicolon inside "..." must not end
+			// the string nor be misread as a statement separator.
+			in:   "SELECT \"a`; SELECT 2\" FROM t;",
+			want: "SELECT \"a`; SELECT 2\" FROM t;",
+		},
+		{
 			name: "unterminated_double_quoted_string",
 			in:   `SELECT "never closes`,
 			want: `SELECT "never closes`,
@@ -267,9 +291,38 @@ func TestStripSQLComments(t *testing.T) {
 			want: "SELECT `a\\`b` FROM t;",
 		},
 		{
+			name: "backtick_string_with_doubled_backtick_escape",
+			// MySQL lets you escape a backtick inside a backtick
+			// identifier by doubling it.
+			in:   "SELECT `a``b` FROM t;",
+			want: "SELECT `a``b` FROM t;",
+		},
+		{
 			name: "unterminated_backtick_string",
 			in:   "SELECT `never closes",
 			want: "SELECT `never closes",
+		},
+		{
+			name: "double_quote_inside_backtick_preserved",
+			// a " inside a `...` literal must not close the
+			// backtick string, and any subsequent text must remain
+			// inside the literal.
+			in:   "SELECT `a\"b` FROM t;",
+			want: "SELECT `a\"b` FROM t;",
+		},
+		{
+			name: "backtick_string_containing_double_quote_and_semicolon",
+			in:   "SELECT `a\"; SELECT 2` FROM t;",
+			want: "SELECT `a\"; SELECT 2` FROM t;",
+		},
+		{
+			name: "real_comment_after_backtick_with_double_quote_inside",
+			// a real `--` comment after a backtick string that
+			// itself contains a `"` must be stripped. The previous
+			// (buggy) implementation left it untouched because it
+			// thought the `"` inside the literal had closed it.
+			in:   "SELECT `a\"b` -- real comment\nFROM t;",
+			want: "SELECT `a\"b` \nFROM t;",
 		},
 
 		// --- combined end-to-end scripts ---

@@ -10,11 +10,16 @@ import "strings"
 // String literals are recognised so that `--` or `/*` inside a
 // literal is left alone:
 //   - '…' single-quoted strings, with the standard '' escape
-//   - "…" double-quoted strings (e.g. MySQL with ANSI_QUOTES off)
-//   - `…` backtick-quoted strings (MySQL identifiers), with \ escapes
+//   - "…" double-quoted strings, with "" and \" escapes
+//   - `…` backtick-quoted strings, with `` and \ escapes
 //
-// `--` is only treated as the start of a comment when it appears at a
-// real token boundary — the start of the script, after whitespace,
+// For double-quoted and backtick-quoted literals we remember which
+// delimiter opened the literal and only close it on the same
+// character, so a backtick inside a double-quoted string (or vice
+// versa) is not mistaken for the closing delimiter.
+//
+// `--` is only treated as the start of a comment when it appears at
+// a real token boundary — the start of the script, after whitespace,
 // or after a delimiter such as `; ( ) , ' " \`` — so that constructs
 // like `5--3` are not silently mutated. `/*` has no such ambiguity
 // in SQL and is always treated as the start of a block comment.
@@ -24,10 +29,11 @@ func stripSQLComments(scripts string) string {
 
 	n := len(scripts)
 
-	inLine := false    // inside a -- ... \n comment
-	inBlock := false   // inside a /* ... */ comment
-	inString := false  // inside a '...' string literal
-	inQString := false // inside a "..." or `...` quoted identifier/string
+	inLine := false   // inside a -- ... \n comment
+	inBlock := false  // inside a /* ... */ comment
+	inString := false // inside a '...' string literal
+	qDelim := byte(0) // 0 when not inside a "..." or `...` literal;
+	// otherwise the opening quote ('"' or '`')
 
 	for i := 0; i < n; i++ {
 		c := scripts[i]
@@ -62,16 +68,24 @@ func stripSQLComments(scripts string) string {
 			continue
 		}
 
-		if inQString {
+		if qDelim != 0 {
 			b.WriteByte(c)
 			if c == '\\' && i+1 < n {
-				// Backslash escape for " or ` (MySQL).
+				// Backslash escape (MySQL).
 				b.WriteByte(scripts[i+1])
 				i++
 				continue
 			}
-			if c == '"' || c == '`' {
-				inQString = false
+			// Doubled-delimiter escape (SQL standard): "" inside "",
+			// `` inside ``. This is the only way to embed the same
+			// delimiter inside a quoted literal without using \.
+			if c == qDelim && i+1 < n && scripts[i+1] == qDelim {
+				b.WriteByte(scripts[i+1])
+				i++
+				continue
+			}
+			if c == qDelim {
+				qDelim = 0
 			}
 			continue
 		}
@@ -83,7 +97,7 @@ func stripSQLComments(scripts string) string {
 		}
 
 		if c == '"' || c == '`' {
-			inQString = true
+			qDelim = c
 			b.WriteByte(c)
 			continue
 		}
