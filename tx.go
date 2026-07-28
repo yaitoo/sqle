@@ -10,10 +10,15 @@ import (
 // and Client.Transaction so callers can use the cached prepared
 // statements via the Query/Exec/QueryBuilder/ExecBuilder methods.
 //
-// TxContext implements the Tx interface implicitly — its own Query/Exec
-// methods return sqle's *Rows/*Row (which add binding) and take
-// precedence over the embedded Tx interface methods that return the
-// raw *sql.Rows/*sql.Row.
+// TxContext's own Query/Exec/Commit/Rollback methods take precedence
+// over the embedded Tx interface methods: its Query*/Exec* methods
+// return sqle's *Rows/*Row (which add binding), and its Commit/Rollback
+// also close the prepared statement cache. The embedded Tx is still
+// reachable as the `Tx` field for raw access (e.g. tx.Tx.QueryContext).
+//
+// Note: TxContext is *not* a Tx itself because its Query*/Exec* method
+// signatures differ from the Tx interface (sqle's *Rows/*Row vs. the
+// standard library's *sql.Rows/*sql.Row).
 type TxContext struct {
 	Tx // embedded Tx interface (the underlying transaction)
 	noCopy

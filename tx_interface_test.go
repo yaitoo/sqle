@@ -63,10 +63,18 @@ func TestCustomTxCommitHook(t *testing.T) {
 	tx, err := db.Begin(nil)
 	require.NoError(t, err)
 
+	// Reach through TxContext.Tx to grab the underlying customTx so we
+	// can assert on the hook counters.
+	custom, ok := tx.Tx.(*customTx)
+	require.True(t, ok, "expected *customTx, got %T", tx.Tx)
+	require.Equal(t, int32(0), custom.commitCalls.Load())
+
 	_, err = tx.Exec("INSERT INTO `t` (`v`) VALUES (1)")
 	require.NoError(t, err)
 
 	require.NoError(t, tx.Commit())
+	require.Equal(t, int32(1), custom.commitCalls.Load(),
+		"customTx.Commit hook should fire through TxContext.Commit")
 
 	// Pull the row back to verify the commit went through.
 	var v int
@@ -85,13 +93,24 @@ func TestCustomTxRollbackHook(t *testing.T) {
 	wrapped := &customDB{DB: raw}
 	db := Open(wrapped)
 
+	var underlying *customTx
 	sentinel := errors.New("nope")
 	err = db.Transaction(context.Background(), nil, func(ctx context.Context, tx *TxContext) error {
+		// Capture the underlying customTx for the post-transaction
+		// assertion on rollbackCalls.
+		custom, ok := tx.Tx.(*customTx)
+		require.True(t, ok, "expected *customTx, got %T", tx.Tx)
+		underlying = custom
+		require.Equal(t, int32(0), underlying.rollbackCalls.Load())
+
 		_, err := tx.Exec("INSERT INTO `t` (`v`) VALUES (1)")
 		require.NoError(t, err)
 		return sentinel
 	})
 	require.ErrorIs(t, err, sentinel)
+	require.NotNil(t, underlying)
+	require.Equal(t, int32(1), underlying.rollbackCalls.Load(),
+		"customTx.Rollback hook should fire when Transaction aborts")
 
 	// The row should not be visible (transaction rolled back).
 	var count int

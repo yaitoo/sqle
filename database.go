@@ -95,5 +95,12 @@ func (db *sqlDBWrapper) BeginTx(ctx context.Context, opts *sql.TxOptions) (Tx, e
 	return db.DB.BeginTx(ctx, opts)
 }
 
-// Compile-time assertion that *sql.Tx satisfies Tx.
-var _ Tx = (*sql.Tx)(nil)
+// Compile-time assertions:
+//   - *sql.Tx must continue to satisfy Tx so Open/Add/OpenDB paths
+//     keep working without a wrapper for transactions.
+//   - *sqlDBWrapper must satisfy Database so the auto-wrap used by
+//     Open/OpenDB/AddDB/WrapSQLDB keeps type-checking.
+var (
+	_ Tx       = (*sql.Tx)(nil)
+	_ Database = (*sqlDBWrapper)(nil)
+)

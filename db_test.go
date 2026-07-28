@@ -99,7 +99,7 @@ func TestDHT(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 0, ctx.Index)
 
-	db.Add(&sqlDBWrapper{DB: createSQLite3()})
+	db.AddDB(createSQLite3())
 	db.GetDHT("").Add(1)
 	db.GetDHT("").Done()
 

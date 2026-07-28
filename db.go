@@ -83,7 +83,7 @@ func OpenDB(dbs ...*sql.DB) *DB {
 
 // Add dynamically scales out the DB with new databases. Each value
 // must satisfy the Database interface; callers passing *sql.DB should
-// wrap each one with sqlDBWrapper (or define a custom Database type).
+// wrap each one with sqlDBWrapper (or use AddDB as a convenience).
 func (db *DB) Add(dbs ...Database) {
 	db.Lock()
 	defer db.Unlock()
@@ -100,6 +100,25 @@ func (db *DB) Add(dbs ...Database) {
 		db.dbs = append(db.dbs, ctx)
 		go ctx.checkIdleStmt()
 	}
+}
+
+// AddDB is the type-safe convenience for callers using *sql.DB slices
+// with Add. It applies sqlDBWrapper to each *sql.DB so they satisfy
+// the Database interface, then delegates to Add.
+func (db *DB) AddDB(dbs ...*sql.DB) {
+	wrapped := make([]Database, len(dbs))
+	for i, d := range dbs {
+		wrapped[i] = &sqlDBWrapper{DB: d}
+	}
+	db.Add(wrapped...)
+}
+
+// WrapSQLDB adapts an *sql.DB to the Database interface, applying the
+// same internal sqlDBWrapper used by Open/AddDB/OpenDB. It is exported
+// for callers that need to convert individual *sql.DB values (e.g. for
+// mixed Database slices) without going through the variadic helpers.
+func WrapSQLDB(db *sql.DB) Database {
+	return &sqlDBWrapper{DB: db}
 }
 
 // On selects the database context based on the shardid ID.
