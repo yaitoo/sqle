@@ -114,7 +114,7 @@ func TestFirst(t *testing.T) {
 	dbs, clean := createSQLites()
 	defer clean()
 
-	db := Open(dbs...)
+	db := OpenDB(dbs...)
 
 	tests := []struct {
 		name    string
@@ -299,7 +299,7 @@ func TestCount(t *testing.T) {
 	dbs, clean := createSQLites()
 	defer clean()
 
-	db := Open(dbs...)
+	db := OpenDB(dbs...)
 
 	tests := []struct {
 		name    string
@@ -471,7 +471,7 @@ func TestQuery(t *testing.T) {
 	dbs, clean := createSQLites()
 	defer clean()
 
-	db := Open(dbs...)
+	db := OpenDB(dbs...)
 
 	tests := []struct {
 		name      string
@@ -724,7 +724,7 @@ func TestQueryLimit(t *testing.T) {
 	dbs, clean := createSQLites()
 	defer clean()
 
-	db := Open(dbs...)
+	db := OpenDB(dbs...)
 
 	tests := []struct {
 		name       string

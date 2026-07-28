@@ -16,13 +16,23 @@ type wrapperDB struct {
 	*sql.DB
 }
 
+// Begin satisfies Database by adapting *sql.DB.Begin to the Tx interface.
+func (db *wrapperDB) Begin() (Tx, error) {
+	return db.DB.Begin()
+}
+
+// BeginTx satisfies Database by adapting *sql.DB.BeginTx to the Tx interface.
+func (db *wrapperDB) BeginTx(ctx context.Context, opts *sql.TxOptions) (Tx, error) {
+	return db.DB.BeginTx(ctx, opts)
+}
+
 // TestOpenGenericSlice verifies that the generic Open signature accepts
 // a []*sql.DB slice directly (no manual conversion needed) thanks to
 // the type parameter constrained by Database.
 func TestOpenGenericSlice(t *testing.T) {
 	dbs := []*sql.DB{createSQLite3(), createSQLite3()}
 
-	db := Open(dbs...)
+	db := OpenDB(dbs...)
 	require.NotNil(t, db)
 	require.Equal(t, 0, db.On(shardid.ID{DatabaseID: 0}).Index)
 }

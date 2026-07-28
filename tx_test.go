@@ -160,7 +160,7 @@ func TestTx(t *testing.T) {
 					Email string
 				}
 
-				err := db.Transaction(context.TODO(), nil, func(ctx context.Context, tx *Tx) error {
+				err := db.Transaction(context.TODO(), nil, func(ctx context.Context, tx *TxContext) error {
 
 					for i := 100; i < 110; i++ {
 						_, err := tx.ExecBuilder(ctx, New().
