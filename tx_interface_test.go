@@ -13,7 +13,7 @@ import (
 
 // customTx is a transaction wrapper that counts Commit/Rollback calls
 // so we can verify that custom Tx implementations flow through the
-// sqle.RawTx wrapper correctly.
+// sqle.Transaction wrapper correctly.
 type customTx struct {
 	*sql.Tx
 	commitCalls   atomic.Int32
@@ -51,7 +51,7 @@ func (db *customDB) BeginTx(ctx context.Context, opts *sql.TxOptions) (Tx, error
 
 // TestCustomTxCommitHook proves that a custom Tx implementation
 // (here, customTx) reaches Commit/Rollback when used through
-// *sqle.RawTx.
+// *sqle.Transaction.
 func TestCustomTxCommitHook(t *testing.T) {
 	raw := createSQLite3()
 	_, err := raw.Exec("CREATE TABLE `t` (`v` int)")
@@ -63,7 +63,7 @@ func TestCustomTxCommitHook(t *testing.T) {
 	tx, err := db.Begin(nil)
 	require.NoError(t, err)
 
-	// Reach through RawTx.Tx to grab the underlying customTx so we
+	// Reach through Transaction.Tx to grab the underlying customTx so we
 	// can assert on the hook counters.
 	custom, ok := tx.Tx.(*customTx)
 	require.True(t, ok, "expected *customTx, got %T", tx.Tx)
@@ -74,7 +74,7 @@ func TestCustomTxCommitHook(t *testing.T) {
 
 	require.NoError(t, tx.Commit())
 	require.Equal(t, int32(1), custom.commitCalls.Load(),
-		"customTx.Commit hook should fire through RawTx.Commit")
+		"customTx.Commit hook should fire through Transaction.Commit")
 
 	// Pull the row back to verify the commit went through.
 	var v int
@@ -95,7 +95,7 @@ func TestCustomTxRollbackHook(t *testing.T) {
 
 	var underlying *customTx
 	sentinel := errors.New("nope")
-	err = db.Transaction(context.Background(), nil, func(ctx context.Context, tx *RawTx) error {
+	err = db.Transaction(context.Background(), nil, func(ctx context.Context, tx *Transaction) error {
 		// Capture the underlying customTx for the post-transaction
 		// assertion on rollbackCalls.
 		custom, ok := tx.Tx.(*customTx)
@@ -120,7 +120,7 @@ func TestCustomTxRollbackHook(t *testing.T) {
 }
 
 // TestCustomTxBeginReturnsInterface proves that Client.BeginTx returns
-// the *RawTx wrapper regardless of the underlying Tx concrete type.
+// the *Transaction wrapper regardless of the underlying Tx concrete type.
 func TestCustomTxBeginReturnsInterface(t *testing.T) {
 	raw := createSQLite3()
 	wrapped := &customDB{DB: raw}
@@ -130,7 +130,7 @@ func TestCustomTxBeginReturnsInterface(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = ctx.Rollback() }()
 
-	// RawTx wraps the Tx interface, so the embedded Tx
+	// Transaction wraps the Tx interface, so the embedded Tx
 	// must be the customTx instance returned by customDB.BeginTx.
 	custom, ok := ctx.Tx.(*customTx)
 	require.True(t, ok, "expected *customTx, got %T", ctx.Tx)
