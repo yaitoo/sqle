@@ -269,7 +269,7 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 					if it != "" {
 						for _, rt := range rotations {
 							s := strings.ReplaceAll(it, "<rotate>", rt)
-							_, err = tx.Exec(s + ";")
+							_, err = tx.ExecContext(ctx, s + ";")
 							if err != nil {
 								return err
 							}
@@ -448,7 +448,7 @@ func startRotate(ctx context.Context, db *sqle.DB, rotatedNames []string, rotati
 
 				now := time.Now()
 
-				_, err = tx.Exec(strings.ReplaceAll(r.Script, "<rotate>", rn) + ";")
+				_, err = tx.ExecContext(ctx, strings.ReplaceAll(r.Script, "<rotate>", rn) + ";")
 				if err != nil {
 					return err
 				}

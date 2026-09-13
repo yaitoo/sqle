@@ -36,6 +36,9 @@ func (tx *Tx) closeStmts() {
 	}
 }
 
+// Query is an intentionally ctx-less wrapper around QueryContext that mirrors
+// the database/sql.Tx.Query signature. Cancellation and timeouts cannot be
+// propagated through this method; callers that need them must use QueryContext.
 func (tx *Tx) Query(query string, args ...any) (*Rows, error) {
 	return tx.QueryContext(context.Background(), query, args...)
 }
@@ -72,6 +75,10 @@ func (tx *Tx) QueryContext(ctx context.Context, query string, args ...any) (*Row
 	return &Rows{Rows: rows, query: query}, nil
 }
 
+// QueryRow is an intentionally ctx-less wrapper around QueryRowContext that
+// mirrors the database/sql.Tx.QueryRow signature. Cancellation and timeouts
+// cannot be propagated through this method; callers that need them must use
+// QueryRowContext.
 func (tx *Tx) QueryRow(query string, args ...any) *Row {
 	return tx.QueryRowContext(context.Background(), query, args...)
 }
@@ -120,6 +127,9 @@ func (tx *Tx) QueryRowContext(ctx context.Context, query string, args ...any) *R
 	}
 }
 
+// Exec is an intentionally ctx-less wrapper around ExecContext that mirrors
+// the database/sql.Tx.Exec signature. Cancellation and timeouts cannot be
+// propagated through this method; callers that need them must use ExecContext.
 func (tx *Tx) Exec(query string, args ...any) (sql.Result, error) {
 	return tx.ExecContext(context.Background(), query, args...)
 }
@@ -143,7 +153,7 @@ func (tx *Tx) ExecContext(ctx context.Context, query string, args ...any) (sql.R
 		return stmt.ExecContext(ctx, args...)
 	}
 
-	return tx.Tx.ExecContext(context.Background(), query, args...)
+	return tx.Tx.ExecContext(ctx, query, args...)
 }
 
 func (tx *Tx) Rollback() error {
