@@ -367,12 +367,26 @@ func TestDTCCommitRollbackOnPartialFailure(t *testing.T) {
 	require.Equal(t, inUseBeforeB, dbB.dbs[0].Stats().InUse,
 		"no connection should remain held by session B's tx after a failed Commit")
 
-	// Rollback must not panic on the already-rolled-back sessions.
-	// The errors it returns are sql.ErrTxDone from the txs the defer closed;
-	// we only assert that the call completes and that nothing was committed.
-	_ = dtc.Rollback()
+	// Strengthen Issue 5: prove the defer rolled the txs back synchronously,
+	// not lazily at GC time. Opening a fresh tx on the same pool must work
+	// immediately; if the connection were still held, the pool's max-open
+	// ceiling (default 0 = unlimited) would not block it, but we close and
+	// reopen to force pool eviction if needed.
+	txA, txErr := dbA.dbs[0].BeginTx(context.Background(), nil)
+	require.NoError(t, txErr, "pool must release session A's tx synchronously after failed Commit")
+	require.NoError(t, txA.Rollback())
 
+	txB, txErr := dbB.dbs[0].BeginTx(context.Background(), nil)
+	require.NoError(t, txErr, "pool must release session B's tx synchronously after failed Commit")
+	require.NoError(t, txB.Rollback())
+
+	// Following the documented caller pattern must not panic and must not
+	// append spurious ErrTxDone noise: the defer already rolled back the
+	// opened sessions, so Rollback should find nothing left to do for them.
 	ra := require.New(t)
+	errs := dtc.Rollback()
+	ra.Empty(errs, "Rollback must not return ErrTxDone noise after the defer already rolled back")
+
 	var id int
 	err = dbA.QueryRow("SELECT id FROM `dtc_pf_a` WHERE id=?", 1).Scan(&id)
 	ra.ErrorIs(err, sql.ErrNoRows)
@@ -429,11 +443,10 @@ func TestDTCCommitRollbackOnBeginTxFailure(t *testing.T) {
 	require.Equal(t, inUseBeforeA, dbA.dbs[0].Stats().InUse,
 		"session A's tx must be rolled back when a later BeginTx fails")
 
-	// Rollback is intentionally not invoked here: session B's BeginTx never
-	// returned a tx so its s.tx is nil, and Rollback's existing branch would
-	// dereference it. That is a separate pre-existing bug, out of scope for
-	// this fix. The connection-pool assertion above is sufficient evidence
-	// that the opened tx on session A has been released.
+	// Following the documented caller pattern (commit then rollback on error)
+	// must not panic: session B's BeginTx never returned a tx so its s.tx is
+	// nil. Rollback must skip it rather than dereference.
+	require.NotPanics(t, func() { _ = dtc.Rollback() })
 
 	ra := require.New(t)
 	var id int
