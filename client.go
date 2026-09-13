@@ -170,6 +170,9 @@ func (db *Client) QueryRowContext(ctx context.Context, query string, args ...any
 	}
 }
 
+// Exec is an intentionally ctx-less wrapper around ExecContext that mirrors
+// the database/sql.DB.Exec signature. Cancellation and timeouts cannot be
+// propagated through this method; callers that need them must use ExecContext.
 func (db *Client) Exec(query string, args ...any) (sql.Result, error) {
 	return db.ExecContext(context.Background(), query, args...)
 }
@@ -194,7 +197,7 @@ func (db *Client) ExecContext(ctx context.Context, query string, args ...any) (s
 
 		return stmt.ExecContext(ctx, args...)
 	}
-	return db.DB.ExecContext(context.Background(), query, args...)
+	return db.DB.ExecContext(ctx, query, args...)
 }
 
 func (db *Client) Begin(opts *sql.TxOptions) (*Tx, error) {
