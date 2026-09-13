@@ -36,6 +36,9 @@ func (tx *Tx) closeStmts() {
 	}
 }
 
+// Query is an intentionally ctx-less wrapper around QueryContext that mirrors
+// the database/sql.Tx.Query signature. Cancellation and timeouts cannot be
+// propagated through this method; callers that need them must use QueryContext.
 func (tx *Tx) Query(query string, args ...any) (*Rows, error) {
 	return tx.QueryContext(context.Background(), query, args...)
 }
@@ -72,6 +75,10 @@ func (tx *Tx) QueryContext(ctx context.Context, query string, args ...any) (*Row
 	return &Rows{Rows: rows, query: query}, nil
 }
 
+// QueryRow is an intentionally ctx-less wrapper around QueryRowContext that
+// mirrors the database/sql.Tx.QueryRow signature. Cancellation and timeouts
+// cannot be propagated through this method; callers that need them must use
+// QueryRowContext.
 func (tx *Tx) QueryRow(query string, args ...any) *Row {
 	return tx.QueryRowContext(context.Background(), query, args...)
 }

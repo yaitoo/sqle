@@ -82,6 +82,9 @@ func (db *Client) Stats() sql.DBStats {
 	return db.DB.Stats()
 }
 
+// Query is an intentionally ctx-less wrapper around QueryContext that mirrors
+// the database/sql.DB.Query signature. Cancellation and timeouts cannot be
+// propagated through this method; callers that need them must use QueryContext.
 func (db *Client) Query(query string, args ...any) (*Rows, error) {
 	return db.QueryContext(context.Background(), query, args...)
 }
@@ -121,6 +124,10 @@ func (db *Client) QueryContext(ctx context.Context, query string, args ...any) (
 	return &Rows{Rows: rows, stmt: stmt, query: query}, nil
 }
 
+// QueryRow is an intentionally ctx-less wrapper around QueryRowContext that
+// mirrors the database/sql.DB.QueryRow signature. Cancellation and timeouts
+// cannot be propagated through this method; callers that need them must use
+// QueryRowContext.
 func (db *Client) QueryRow(query string, args ...any) *Row {
 	return db.QueryRowContext(context.Background(), query, args...)
 }
@@ -200,6 +207,9 @@ func (db *Client) ExecContext(ctx context.Context, query string, args ...any) (s
 	return db.DB.ExecContext(ctx, query, args...)
 }
 
+// Begin is an intentionally ctx-less wrapper around BeginTx that mirrors the
+// database/sql.DB.Begin signature. Cancellation and timeouts cannot be
+// propagated through this method; callers that need them must use BeginTx.
 func (db *Client) Begin(opts *sql.TxOptions) (*Tx, error) {
 	return db.BeginTx(context.TODO(), opts)
 

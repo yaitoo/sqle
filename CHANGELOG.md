@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Fixed
+- fix(exec): forward caller ctx in `Client.ExecContext` and `Tx.ExecContext`
+  empty-args branches instead of silently substituting `context.Background()`
+  (#59). Callers that passed a `context.WithTimeout` / `context.WithCancel`
+  to `ExecContext` on argument-less calls (e.g. DDL like `CREATE TABLE`)
+  previously had their cancellation and deadline dropped; they are now
+  honoured. This is a bug fix, but it is observable: a call that returned
+  `(Result, nil)` for a pre-cancelled ctx will now return
+  `context.Canceled`. No in-repo caller relied on the discarded-ctx
+  behaviour.
+
+### Fixed
+- fix(migrate): propagate caller ctx to `tx.ExecContext` inside
+  `db.Transaction(ctx, ...)` blocks (#59). Previously the migrator's
+  per-statement Exec calls used the ctx-less wrapper and silently dropped
+  the outer cancellation/timeout.
+
 ## [1.5.2] - 2024-12-12
 - fix(rows): don't close rows in rows.Scan (#49)
 
