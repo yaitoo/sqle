@@ -33,12 +33,12 @@ func (r *Row) Close() error {
 	var err error
 	// Close the underlying *sql.Rows *before* releasing the Stmt ref. This
 	// closes the race window where closeStaleStmt could observe
-	// !isUsing on the Stmt while a *sql.Rows is still open, which would
-	// surface as "sql: statement is closed" on later rows.Next / rows.Scan.
-	// We intentionally do *not* nil r.rows: a subsequent Bind/Scan on the
-	// same wrapper must still observe a non-nil *sql.Rows whose Next()
-	// returns false (driver's "Rows are closed" state) instead of
-	// dereferencing nil.
+	// refCount == 0 on the Stmt while a *sql.Rows is still open, which
+	// would surface as "sql: statement is closed" on later rows.Next /
+	// rows.Scan. We intentionally do *not* nil r.rows: a subsequent
+	// Scan/Bind on the same wrapper must still observe a non-nil
+	// *sql.Rows whose Next() returns false (driver's "Rows are closed"
+	// state) instead of dereferencing nil.
 	if r.rows != nil {
 		err = r.rows.Close()
 	}
