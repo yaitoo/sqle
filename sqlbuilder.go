@@ -146,6 +146,32 @@ func (b *Builder) Build() (string, []any, error) {
 
 }
 
+// clone returns a deep copy of b. It is used by callers that need to mutate
+// the builder (e.g. to inject <rotate>) without touching the caller's
+// *Builder. inputs and params are shallow-copied — their values are stored by
+// interface, so aliasing is safe. stmt is rebuilt from the current SQL string
+// so that further mutations on the clone do not affect the original builder.
+func (b *Builder) clone() *Builder {
+	s := b.stmt.String()
+	nb := &Builder{
+		stmt:         strings.Builder{},
+		inputs:       make(map[string]string, len(b.inputs)),
+		params:       make(map[string]any, len(b.params)),
+		shouldSkip:   b.shouldSkip,
+		Quote:        b.Quote,
+		Parameterize: b.Parameterize,
+	}
+	nb.stmt.Grow(len(s))
+	nb.stmt.WriteString(s)
+	for n, v := range b.inputs {
+		nb.inputs[n] = v
+	}
+	for n, v := range b.params {
+		nb.params[n] = v
+	}
+	return nb
+}
+
 // quoteColumn escapes the given column name using the Builder's Quote character.
 func (b *Builder) quoteColumn(c string) string {
 	if strings.ContainsAny(c, "(") || strings.ContainsAny(c, " ") {

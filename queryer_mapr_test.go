@@ -1041,3 +1041,118 @@ func TestQueryLimit(t *testing.T) {
 		})
 	}
 }
+
+// TestMapRDoesNotMutateCallerBuilder verifies that none of MapR's
+// First/Count/Query/QueryLimit methods mutate the *Builder passed in by the
+// caller. The previous behaviour injected rotate into the caller's inputs map
+// and (for QueryLimit) appended SQL to the caller's stmt, breaking repeated
+// or concurrent use of the same builder.
+//
+// Two builder shapes are exercised:
+//   - "failing": {id} is left without a matching Param("id", ...), so
+//     Build() returns ErrInvalidParamVariable and the MapR method returns
+//     before any DB query. This path covers the early return without
+//     depending on async fan-out results.
+//   - "succeeding": {id} has a matching Param, so Build() succeeds and the
+//     full async fan-out runs.
+func TestMapRDoesNotMutateCallerBuilder(t *testing.T) {
+	dbs, clean := createSQLites()
+	defer clean()
+	db := Open(dbs...)
+
+	failing := func() *Builder {
+		return New("SELECT id FROM users<rotate> WHERE id={id}")
+	}
+	succeeding := func() *Builder {
+		return New("SELECT id FROM users<rotate> WHERE id={id}").Param("id", 1)
+	}
+
+	snapshot := func(b *Builder) (string, map[string]string, map[string]any) {
+		stmt := b.stmt.String()
+		inputs := make(map[string]string, len(b.inputs))
+		for k, v := range b.inputs {
+			inputs[k] = v
+		}
+		params := make(map[string]any, len(b.params))
+		for k, v := range b.params {
+			params[k] = v
+		}
+		return stmt, inputs, params
+	}
+
+	cases := []struct {
+		name    string
+		builder func() *Builder
+		call    func(b *Builder)
+	}{
+		{
+			name:    "First_succeeding",
+			builder: succeeding,
+			call: func(b *Builder) {
+				_, _ = (&MapR[MRUser]{dbs: db.dbs}).First(context.Background(), []string{""}, b)
+			},
+		},
+		{
+			name:    "First_failing",
+			builder: failing,
+			call: func(b *Builder) {
+				_, _ = (&MapR[MRUser]{dbs: db.dbs}).First(context.Background(), []string{""}, b)
+			},
+		},
+		{
+			name:    "Count_succeeding",
+			builder: succeeding,
+			call: func(b *Builder) {
+				_, _ = (&MapR[int64]{dbs: db.dbs}).Count(context.Background(), []string{""}, b)
+			},
+		},
+		{
+			name:    "Count_failing",
+			builder: failing,
+			call: func(b *Builder) {
+				_, _ = (&MapR[int64]{dbs: db.dbs}).Count(context.Background(), []string{""}, b)
+			},
+		},
+		{
+			name:    "Query_succeeding",
+			builder: succeeding,
+			call: func(b *Builder) {
+				_, _ = (&MapR[MRUser]{dbs: db.dbs}).Query(context.Background(), []string{""}, b, nil)
+			},
+		},
+		{
+			name:    "Query_failing",
+			builder: failing,
+			call: func(b *Builder) {
+				_, _ = (&MapR[MRUser]{dbs: db.dbs}).Query(context.Background(), []string{""}, b, nil)
+			},
+		},
+		{
+			name:    "QueryLimit_succeeding",
+			builder: succeeding,
+			call: func(b *Builder) {
+				_, _ = (&MapR[MRUser]{dbs: db.dbs}).QueryLimit(context.Background(), []string{""}, b, nil, 5)
+			},
+		},
+		{
+			name:    "QueryLimit_failing",
+			builder: failing,
+			call: func(b *Builder) {
+				_, _ = (&MapR[MRUser]{dbs: db.dbs}).QueryLimit(context.Background(), []string{""}, b, nil, 5)
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			b := c.builder()
+			stmtBefore, inputsBefore, paramsBefore := snapshot(b)
+
+			c.call(b)
+
+			require.Equal(t, stmtBefore, b.stmt.String(), "stmt was mutated by MapR")
+			require.Equal(t, inputsBefore, b.inputs, "inputs were mutated by MapR")
+			require.Equal(t, paramsBefore, b.params, "params were mutated by MapR")
+		})
+	}
+}
