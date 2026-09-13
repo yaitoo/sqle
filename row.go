@@ -18,24 +18,29 @@ var (
 type Row struct {
 	rows *sql.Rows
 
-	stmt  *Stmt
-	err   error
-	query string
+	stmt   *Stmt
+	err    error
+	query  string
+	closed bool
 }
 
 func (r *Row) Close() error {
-	if r == nil {
+	if r == nil || r.closed {
 		return nil
 	}
+	r.closed = true
 
 	var err error
 	// Close the underlying *sql.Rows *before* releasing the Stmt ref. This
 	// closes the race window where closeStaleStmt could observe
 	// !isUsing on the Stmt while a *sql.Rows is still open, which would
 	// surface as "sql: statement is closed" on later rows.Next / rows.Scan.
+	// We intentionally do *not* nil r.rows: a subsequent Bind/Scan on the
+	// same wrapper must still observe a non-nil *sql.Rows whose Next()
+	// returns false (driver's "Rows are closed" state) instead of
+	// dereferencing nil.
 	if r.rows != nil {
 		err = r.rows.Close()
-		r.rows = nil
 	}
 
 	if r.stmt != nil {
@@ -70,11 +75,12 @@ func (r *Row) Scan(dest ...any) error {
 		return err
 	}
 	// Make sure the query can be processed to completion with no errors.
-	// Nil r.rows before returning so the deferred Row.Close is a no-op
-	// rather than a second close of the same *sql.Rows.
-	err = r.rows.Close()
-	r.rows = nil
-	return err
+	// The deferred Row.Close sees r.closed == false on its first entry,
+	// does its own *sql.Rows.Close (idempotent at the driver level for
+	// sqlite3), and releases the Stmt ref. The r.rows reference is kept
+	// intact so a later Scan/Bind can detect the closed-cursor state
+	// via r.rows.Next() instead of dereferencing nil.
+	return r.rows.Close()
 }
 
 func (r *Row) Err() error {
@@ -137,9 +143,10 @@ func (r *Row) Bind(dest any) error {
 	}
 
 	// Make sure the query can be processed to completion with no errors.
-	// Nil r.rows before returning so the deferred Row.Close is a no-op
-	// rather than a second close of the same *sql.Rows.
-	err = r.rows.Close()
-	r.rows = nil
-	return err
+	// The deferred Row.Close sees r.closed == false on its first entry,
+	// does its own *sql.Rows.Close (idempotent at the driver level for
+	// sqlite3), and releases the Stmt ref. The r.rows reference is kept
+	// intact so a later Scan/Bind can detect the closed-cursor state
+	// via r.rows.Next() instead of dereferencing nil.
+	return r.rows.Close()
 }
