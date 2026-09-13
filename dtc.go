@@ -56,7 +56,23 @@ func (d *DTC) Prepare(client *Client, exec func(ctx context.Context, conn Connec
 }
 
 // Commit commits all the prepared transactions in the DTC.
-func (d *DTC) Commit() error {
+//
+// On any error returned from BeginTx or any exec callback, Commit rolls back
+// every transaction it has already begun in this call before returning. This
+// prevents leaking half-open transactions whose rows would otherwise remain
+// uncommitted and whose connections would be held until GC.
+func (d *DTC) Commit() (err error) {
+	opened := make([]*session, 0, len(d.sessions))
+	defer func() {
+		if err != nil {
+			for _, s := range opened {
+				if !s.committed {
+					_ = s.tx.Rollback()
+				}
+			}
+		}
+	}()
+
 	for _, s := range d.sessions {
 		tx, err := s.client.BeginTx(d.ctx, d.opts)
 		if err != nil {
@@ -64,6 +80,7 @@ func (d *DTC) Commit() error {
 		}
 
 		s.tx = tx
+		opened = append(opened, s)
 
 		for _, exec := range s.exec {
 			err = exec(d.ctx, tx)
