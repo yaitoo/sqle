@@ -12,15 +12,22 @@ type Rows struct {
 }
 
 func (r *Rows) Close() error {
+	var err error
+	// Close the underlying *sql.Rows *before* releasing the Stmt ref. This
+	// closes the race window where closeStaleStmt could observe
+	// !isUsing on the Stmt while a *sql.Rows is still open, which would
+	// surface as "sql: statement is closed" on later rows.Next / rows.Scan.
+	if r.Rows != nil {
+		err = r.Rows.Close()
+		r.Rows = nil
+	}
+
 	if r.stmt != nil {
 		r.stmt.Reuse()
+		r.stmt = nil
 	}
 
-	if r.Rows == nil {
-		return nil
-	}
-
-	return r.Rows.Close()
+	return err
 }
 
 func (r *Rows) Scan(dest ...any) error {
@@ -97,5 +104,9 @@ func (r *Rows) Bind(dest any) error {
 	v.Elem().Set(list)
 
 	// Make sure the query can be processed to completion with no errors.
-	return r.Rows.Close()
+	// Nil r.Rows before returning so the deferred Rows.Close is a no-op
+	// rather than a second close of the same *sql.Rows.
+	err = r.Rows.Close()
+	r.Rows = nil
+	return err
 }

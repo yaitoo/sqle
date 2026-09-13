@@ -28,15 +28,22 @@ func (r *Row) Close() error {
 		return nil
 	}
 
+	var err error
+	// Close the underlying *sql.Rows *before* releasing the Stmt ref. This
+	// closes the race window where closeStaleStmt could observe
+	// !isUsing on the Stmt while a *sql.Rows is still open, which would
+	// surface as "sql: statement is closed" on later rows.Next / rows.Scan.
+	if r.rows != nil {
+		err = r.rows.Close()
+		r.rows = nil
+	}
+
 	if r.stmt != nil {
 		r.stmt.Reuse()
+		r.stmt = nil
 	}
 
-	if r.rows == nil {
-		return nil
-	}
-
-	return r.rows.Close()
+	return err
 }
 
 func (r *Row) Scan(dest ...any) error {
@@ -63,7 +70,11 @@ func (r *Row) Scan(dest ...any) error {
 		return err
 	}
 	// Make sure the query can be processed to completion with no errors.
-	return r.rows.Close()
+	// Nil r.rows before returning so the deferred Row.Close is a no-op
+	// rather than a second close of the same *sql.Rows.
+	err = r.rows.Close()
+	r.rows = nil
+	return err
 }
 
 func (r *Row) Err() error {
@@ -126,5 +137,9 @@ func (r *Row) Bind(dest any) error {
 	}
 
 	// Make sure the query can be processed to completion with no errors.
-	return r.rows.Close()
+	// Nil r.rows before returning so the deferred Row.Close is a no-op
+	// rather than a second close of the same *sql.Rows.
+	err = r.rows.Close()
+	r.rows = nil
+	return err
 }
