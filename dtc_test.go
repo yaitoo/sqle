@@ -324,8 +324,8 @@ func TestDTCRevert(t *testing.T) {
 // each failed Commit would leak an *sql.Tx that holds a connection from the
 // pool until the *sql.Tx finalizer runs at GC time.
 func TestDTCCommitRollbackOnPartialFailure(t *testing.T) {
-	os.Remove("dtc_pf_a.db")
-	os.Remove("dtc_pf_b.db")
+	_ = os.Remove("dtc_pf_a.db")
+	_ = os.Remove("dtc_pf_b.db")
 
 	dA, err := sql.Open("sqlite3", "file:dtc_pf_a.db?cache=shared&mode=rwc")
 	require.NoError(t, err)
@@ -401,8 +401,8 @@ func TestDTCCommitRollbackOnPartialFailure(t *testing.T) {
 // closing the underlying *sql.DB before the DTC starts; this is the closest
 // in-process approximation of a transient network blip.
 func TestDTCCommitRollbackOnBeginTxFailure(t *testing.T) {
-	os.Remove("dtc_btf_a.db")
-	os.Remove("dtc_btf_b.db")
+	_ = os.Remove("dtc_btf_a.db")
+	_ = os.Remove("dtc_btf_b.db")
 
 	dA, err := sql.Open("sqlite3", "file:dtc_btf_a.db?cache=shared&mode=rwc")
 	require.NoError(t, err)
