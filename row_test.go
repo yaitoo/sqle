@@ -436,6 +436,55 @@ func TestRow(t *testing.T) {
 
 			},
 		},
+		{
+			// Regression for issue #60: after a successful Bind/Scan,
+			// the wrapped *sql.Rows must still be observable (non-nil)
+			// so a subsequent Scan/Bind on the same wrapper detects
+			// the closed-cursor state via rows.Next() returning false
+			// instead of dereferencing nil.
+			name: "row_scan_after_close_should_not_panic",
+			run: func(t *testing.T) {
+				row := db.QueryRow("SELECT id FROM users WHERE id=?", 1)
+				var id int
+				require.NoError(t, row.Scan(&id))
+				require.Equal(t, 1, id)
+
+				// Second Scan must not panic and must report no rows.
+				require.NotPanics(t, func() {
+					var id2 int
+					err := row.Scan(&id2)
+					require.ErrorIs(t, err, sql.ErrNoRows)
+				})
+			},
+		},
+		{
+			name: "row_bind_after_close_should_not_panic",
+			run: func(t *testing.T) {
+				row := db.QueryRow("SELECT id FROM users WHERE id=?", 1)
+				var id int
+				require.NoError(t, row.Bind(&id))
+				require.Equal(t, 1, id)
+
+				require.NotPanics(t, func() {
+					var id2 int
+					err := row.Bind(&id2)
+					require.ErrorIs(t, err, sql.ErrNoRows)
+				})
+			},
+		},
+		{
+			name: "row_close_twice_should_be_idempotent",
+			run: func(t *testing.T) {
+				row := db.QueryRow("SELECT id FROM users WHERE id=?", 1)
+				var id int
+				require.NoError(t, row.Scan(&id))
+
+				require.NotPanics(t, func() {
+					require.NoError(t, row.Close())
+					require.NoError(t, row.Close())
+				})
+			},
+		},
 	}
 
 	for _, test := range tests {

@@ -129,13 +129,13 @@ func TestStmt(t *testing.T) {
 				s, ok := db.stmts[q]
 				db.stmtsMutex.Unlock()
 				require.True(t, ok)
-				require.False(t, s.isUsing)
+				require.False(t, s.refCount > 0)
 
 				time.Sleep(2 * time.Second)
 				db.closeStaleStmt()
 
 				// stmt should be closed and released
-				require.False(t, s.isUsing)
+				require.False(t, s.refCount > 0)
 
 				s, ok = db.stmts[q]
 				require.False(t, ok)
@@ -153,7 +153,7 @@ func TestStmt(t *testing.T) {
 
 				s, ok := db.stmts[q]
 				require.True(t, ok)
-				require.True(t, s.isUsing)
+				require.True(t, s.refCount > 0)
 
 				time.Sleep(2 * time.Second)
 				db.closeStaleStmt()
@@ -161,12 +161,12 @@ func TestStmt(t *testing.T) {
 				// stmt that is in using should not be closed
 				s, ok = db.stmts[q]
 				require.True(t, ok)
-				require.True(t, s.isUsing)
+				require.True(t, s.refCount > 0)
 
 				rows.Scan(&id) // nolint: errcheck
-				require.True(t, s.isUsing)
+				require.True(t, s.refCount > 0)
 				rows.Close()
-				require.False(t, s.isUsing)
+				require.False(t, s.refCount > 0)
 
 				db.closeStaleStmt()
 
@@ -189,7 +189,7 @@ func TestStmt(t *testing.T) {
 
 				s, ok := db.stmts[q]
 				require.True(t, ok)
-				require.True(t, s.isUsing)
+				require.True(t, s.refCount > 0)
 
 				time.Sleep(2 * time.Second)
 				db.closeStaleStmt()
@@ -197,10 +197,10 @@ func TestStmt(t *testing.T) {
 				// stmt that is in using should not be closed
 				s, ok = db.stmts[q]
 				require.True(t, ok)
-				require.True(t, s.isUsing)
+				require.True(t, s.refCount > 0)
 
 				rows.Bind(&r) // nolint: errcheck
-				require.False(t, s.isUsing)
+				require.False(t, s.refCount > 0)
 
 				db.closeStaleStmt()
 
@@ -220,7 +220,7 @@ func TestStmt(t *testing.T) {
 
 				s, ok := db.stmts[q]
 				require.True(t, ok)
-				require.True(t, s.isUsing)
+				require.True(t, s.refCount > 0)
 
 				time.Sleep(2 * time.Second)
 				db.closeStaleStmt()
@@ -228,10 +228,10 @@ func TestStmt(t *testing.T) {
 				// stmt that is in using should not be closed
 				s, ok = db.stmts[q]
 				require.True(t, ok)
-				require.True(t, s.isUsing)
+				require.True(t, s.refCount > 0)
 
 				row.Scan(&id) // nolint: errcheck
-				require.False(t, s.isUsing)
+				require.False(t, s.refCount > 0)
 
 				db.closeStaleStmt()
 
@@ -253,7 +253,7 @@ func TestStmt(t *testing.T) {
 
 				s, ok := db.stmts[q]
 				require.True(t, ok)
-				require.True(t, s.isUsing)
+				require.True(t, s.refCount > 0)
 
 				time.Sleep(2 * time.Second)
 				db.closeStaleStmt()
@@ -261,10 +261,10 @@ func TestStmt(t *testing.T) {
 				// stmt that is in using should not be closed
 				s, ok = db.stmts[q]
 				require.True(t, ok)
-				require.True(t, s.isUsing)
+				require.True(t, s.refCount > 0)
 
 				row.Bind(&r) // nolint: errcheck
-				require.False(t, s.isUsing)
+				require.False(t, s.refCount > 0)
 
 				db.closeStaleStmt()
 

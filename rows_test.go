@@ -238,6 +238,42 @@ func TestRows(t *testing.T) {
 
 			},
 		},
+		{
+			// Regression for issue #60: after a successful Bind, the
+			// wrapped *sql.Rows must still be observable (non-nil) so a
+			// subsequent Bind on the same wrapper detects the closed
+			// state via rows.Next() == false instead of dereferencing
+			// nil. Per the reviewer's option-2 fix, the closed cursor is
+			// preserved rather than nil-ed out, so the second Bind
+			// returns an empty result without panicking.
+			name: "rows_bind_after_close_should_not_panic",
+			run: func(t *testing.T) {
+				rows, err := db.Query("SELECT id FROM rows WHERE id<4")
+				require.NoError(t, err)
+
+				var ids [][]int
+				require.NoError(t, rows.Bind(&ids))
+				require.Len(t, ids, 3)
+
+				require.NotPanics(t, func() {
+					var ids2 [][]int
+					require.NoError(t, rows.Bind(&ids2))
+					require.Empty(t, ids2)
+				})
+			},
+		},
+		{
+			name: "rows_close_twice_should_be_idempotent",
+			run: func(t *testing.T) {
+				rows, err := db.Query("SELECT id FROM rows WHERE id<4")
+				require.NoError(t, err)
+
+				require.NotPanics(t, func() {
+					require.NoError(t, rows.Close())
+					require.NoError(t, rows.Close())
+				})
+			},
+		},
 	}
 
 	for _, test := range tests {
