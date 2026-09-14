@@ -2,12 +2,19 @@ package sqle
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/yaitoo/async"
 )
+
+// ErrInvalidArgument is returned by MapR.QueryLimit when the caller
+// passes a positive limit without supplying a less comparator. Without
+// a comparator, MapR cannot sort the merged rows from each shard, so
+// the resulting page boundary is non-deterministic across runs.
+var ErrInvalidArgument = errors.New("sqle: invalid argument")
 
 // MapR is a Map/Reduce Query Provider based on databases.
 type MapR[T any] struct {
@@ -148,7 +155,16 @@ func (q *MapR[T]) Query(ctx context.Context, rotatedTables []string, b *Builder,
 }
 
 // QueryLimit executes the query and returns a limited list of results.
+// less is required when limit > 0: MapR fans out across shards and the
+// per-shard result ordering is not stable, so without a comparator the
+// returned page boundary is non-deterministic across runs. Callers that
+// don't need ordering should pass limit <= 0 to retrieve the full
+// (unordered) merged result.
 func (q *MapR[T]) QueryLimit(ctx context.Context, rotatedTables []string, b *Builder, less func(i, j T) bool, limit int) ([]T, error) {
+
+	if less == nil && limit > 0 {
+		return nil, ErrInvalidArgument
+	}
 
 	b = b.clone()
 	if limit > 0 {
