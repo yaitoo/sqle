@@ -136,28 +136,14 @@ func (b *mapBinder) Bind(_ reflect.Value, columns []string) []any {
 }
 
 func getMapBinder(t reflect.Type, _ reflect.Type) Binder {
-	bindersMu.RLock()
-	var b Binder
-	var cached bool
-	defer func() {
-		bindersMu.RUnlock()
-
-		if !cached {
-			bindersMu.Lock()
-			binders[t] = b
-			bindersMu.Unlock()
-		}
-
-	}()
-
-	b, cached = binders[t]
-	if cached {
+	if b, ok := binders.Get(t); ok {
 		return b
 	}
 
-	b = &mapBinder{
+	b := &mapBinder{
 		elem: reflect.New(t.Elem()).Interface(),
 	}
 
+	binders.Put(t, b)
 	return b
 }
