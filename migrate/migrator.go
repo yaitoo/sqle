@@ -256,13 +256,12 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 			for i, s := range v.Migrations {
 				status, err := m.getMigrationStatus(tx, v.Name, s)
 				if err != nil {
-					if status == MigrationStatusUnknown {
-						// Surface the abort in the per-version log so the
-						// operator can tell the migration was skipped because
-						// the status could not be determined, not because the
-						// script was a fresh, never-seen-before one (issue #67).
-						log.Printf("│ »[%*d/%d] %-35s %-10s [?] %v\n", w, i+1, n, s.Name, "status unknown", err)
-					}
+					// getMigrationStatus only pairs a non-nil err with
+					// MigrationStatusUnknown (issue #67). Surface the abort
+					// in the per-version log so the operator can tell the
+					// migration was skipped because the status could not be
+					// determined, not because the script was fresh.
+					log.Printf("│ »[%*d/%d] %-35s %-10s [?] %v\n", w, i+1, n, s.Name, "", err)
 					return err
 				}
 
