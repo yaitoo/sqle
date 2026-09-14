@@ -260,6 +260,51 @@ CREATE TABLE members`, members.Scripts)
 
 			},
 		},
+		{
+			// Regression test for issue #65: a 'monthly'/'weekly'/'daily'
+			// subdirectory nested inside a version directory must not be
+			// loaded as a rotation source. Only direct children of the FS
+			// root are rotation sources.
+			//
+			// This case has no top-level monthly/weekly/daily directories
+			// so that the buggy code (which loaded the nested subdirs as
+			// rotations) produces a non-empty rotation slice and the fixed
+			// code produces an empty one.
+			name: "nested_rotation_subdirs_should_be_ignored",
+			fsys: fstest.MapFS{
+				// A regular version directory. Its 'monthly'/'weekly'/'daily'
+				// subfolders must NOT be treated as rotation sources even
+				// though they share the reserved names.
+				"0.0.1/1_create_table_users.sql": &fstest.MapFile{
+					Data: []byte("CREATE TABLE users"),
+				},
+				"0.0.1/monthly/stale_monthly.sql": &fstest.MapFile{
+					Data: []byte(`CREATE TABLE stale_monthly<rotate>`),
+				},
+				"0.0.1/weekly/stale_weekly.sql": &fstest.MapFile{
+					Data: []byte(`CREATE TABLE stale_weekly<rotate>`),
+				},
+				"0.0.1/daily/stale_daily.sql": &fstest.MapFile{
+					Data: []byte(`CREATE TABLE stale_daily<rotate>`),
+				},
+			},
+			setup: func(db *sql.DB) *Migrator {
+				return New(sqle.Open(db))
+			},
+			assert: func(m *Migrator, t *testing.T) {
+				// No top-level rotation dir exists, so none should be loaded.
+				require.Empty(t, m.MonthlyRotations)
+				require.Empty(t, m.WeeklyRotations)
+				require.Empty(t, m.DailyRotations)
+
+				// The version directory itself is still discovered; its
+				// nested rotation-named subdirs are simply ignored.
+				require.Len(t, m.Versions, 1)
+				require.Equal(t, "0.0.1", m.Versions[0].Name)
+				require.Len(t, m.Versions[0].Migrations, 1)
+				require.Equal(t, "create_table_users", m.Versions[0].Migrations[0].Name)
+			},
+		},
 	}
 
 	for _, test := range tests {

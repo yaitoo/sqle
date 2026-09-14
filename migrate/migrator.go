@@ -133,17 +133,24 @@ func (m *Migrator) Discover(fsys fs.FS, options ...Option) error {
 					return err
 				}
 				return nil
-			} else if dn == "monthly" {
+			} else if dn == "monthly" && path == dn {
+				// Only the top-level <moduleRoot>/monthly directory is
+				// a rotation source. fs.WalkDir is depth-first, so a
+				// <semver>/monthly/ subfolder would otherwise be loaded
+				// here and silently overwrite the intended rotations
+				// with semver-specific SQL (see issue #65).
 				m.MonthlyRotations, err = loadRotations(fsys, path)
 				if err != nil {
 					return err
 				}
-			} else if dn == "weekly" {
+			} else if dn == "weekly" && path == dn {
+				// See comment above for monthly.
 				m.WeeklyRotations, err = loadRotations(fsys, path)
 				if err != nil {
 					return err
 				}
-			} else if dn == "daily" {
+			} else if dn == "daily" && path == dn {
+				// See comment above for monthly.
 				m.DailyRotations, err = loadRotations(fsys, path)
 				if err != nil {
 					return err
