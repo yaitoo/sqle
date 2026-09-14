@@ -18,6 +18,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   behaviour.
 
 ### Fixed
+- fix(migrate): report non-`ErrNoRows` errors from `getMigrationStatus` as
+  a new `MigrationStatusUnknown` instead of misclassifying the script as
+  `MigrationStatusNew` (#67). Previously a transient DB error during the
+  `sqle_migrations` lookup (driver timeout, lost connection, missing
+  table) caused the caller to abort the transaction but report the
+  script as fresh, which (a) made operator dashboards show "new
+  migration" when the real problem was a DB outage and (b) risked
+  re-executing a non-idempotent script on the next run. The status check
+  now propagates the underlying error and surfaces a `[?]` log line;
+  `startMigrate` aborts before any DDL or insert into `sqle_migrations`.
+
+### Fixed
 - fix(migrate): propagate caller ctx to `tx.ExecContext` inside
   `db.Transaction(ctx, ...)` blocks (#59). Previously the migrator's
   per-statement Exec calls used the ctx-less wrapper and silently dropped

@@ -725,6 +725,68 @@ CREATE TABLE IF NOT EXISTS bar (
 
 }
 
+// Regression tests for issue #67: a non-ErrNoRows error from the
+// sqle_migrations lookup must be reported as MigrationStatusUnknown,
+// not MigrationStatusNew. Otherwise the caller treats it as a fresh
+// migration and either logs a misleading status or, on a later run
+// after the txn rolled back, re-executes a non-idempotent script.
+func TestGetMigrationStatus_DBError(t *testing.T) {
+	db, clean, err := createSqlite3()
+	defer clean()
+	require.NoError(t, err)
+
+	// Deliberately do NOT call m.Init() — sqle_migrations does not exist,
+	// so the first SELECT raises a "no such table" error. That is a real
+	// DB error, indistinguishable in shape from a transient driver
+	// timeout, and must not be classified as a new migration.
+	sqleDB := sqle.Open(db)
+	m := New(sqleDB)
+
+	s := Migration{
+		Name:     "create_table_users",
+		Rank:     1,
+		Checksum: "abc123",
+		Scripts:  "CREATE TABLE users",
+	}
+
+	require.NoError(t, sqleDB.Transaction(context.TODO(), nil, func(ctx context.Context, tx *sqle.Tx) error {
+		status, err := m.getMigrationStatus(tx, "0.0.1", s)
+		require.Error(t, err, "getMigrationStatus must propagate the underlying DB error")
+		require.Equal(t, MigrationStatusUnknown, status,
+			"non-ErrNoRows errors must be MigrationStatusUnknown, not MigrationStatusNew (issue #67)")
+		return nil
+	}))
+}
+
+// Companion test for issue #67: when the migrator sees a DB error
+// during getMigrationStatus, it must abort and propagate the error
+// instead of silently reclassifying the script as new and running it.
+func TestMigrate_DBError_AbortsAndPropagates(t *testing.T) {
+	db, clean, err := createSqlite3()
+	defer clean()
+	require.NoError(t, err)
+
+	m := New(sqle.Open(db))
+
+	require.NoError(t, m.Discover(fstest.MapFS{
+		"0.1.0/1_create_table_users.sql": &fstest.MapFile{
+			Data: []byte(`CREATE TABLE IF NOT EXISTS users (id int NOT NULL, PRIMARY KEY (id));`),
+		},
+	}, WithModule("tests")))
+
+	// Do NOT call m.Init(). Migrate must abort and return the underlying
+	// DB error, never silently run the migration as if it were new.
+	err = m.Migrate(context.TODO())
+	require.Error(t, err,
+		"Migrate must propagate the DB error from getMigrationStatus instead of treating it as a new migration (issue #67)")
+
+	// And it must NOT have executed the script — the table should not exist.
+	var name string
+	row := db.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name=?", "users")
+	require.ErrorIs(t, row.Scan(&name), sql.ErrNoRows,
+		"the migration script must not be executed when the status check failed with a DB error")
+}
+
 func TestRotate(t *testing.T) {
 
 	tests := []struct {
