@@ -58,7 +58,9 @@ func TestOn(t *testing.T) {
 			Set("status", 1).
 			Set("created", time.Now()).
 			End()
-		result, err := db.On(id).ExecBuilder(context.TODO(), b)
+		ctx, err := db.On(id)
+		require.NoError(t, err)
+		result, err := ctx.ExecBuilder(context.TODO(), b)
 
 		require.NoError(t, err)
 		rows, err := result.RowsAffected()
@@ -71,17 +73,68 @@ func TestOn(t *testing.T) {
 	for i, id := range ids {
 		b := New().On(id).Select("users", "id")
 
-		ctx := db.On(id)
+		ctx, err := db.On(id)
+		require.NoError(t, err)
 
 		require.Equal(t, i, ctx.Index)
 
 		var userID int64
-		err := ctx.QueryRowBuilder(context.TODO(), b).Scan(&userID)
+		err = ctx.QueryRowBuilder(context.TODO(), b).Scan(&userID)
 		require.NoError(t, err)
 		require.Equal(t, id.Int64, userID)
 	}
 
 }
+
+// TestOnOutOfRange verifies DB.On returns ErrInvalidShardID rather than
+// panicking when id.DatabaseID does not index into the sharded DB pool.
+// Covers the three failure modes from issue #69:
+//
+//   - forged ID with DatabaseID == len(dbs) (one past the end)
+//   - forged ID with DatabaseID strictly greater than len(dbs)
+//   - negative DatabaseID (id.DatabaseID is int16; a cast could land below zero)
+//
+// The pool is sized to 4 shards; using shardid.Parse with DatabaseID == 4
+// matches the topology-mismatch scenario from the issue ("an ID generated
+// for a 10-shard setup is reused against a 4-shard setup").
+func TestOnOutOfRange(t *testing.T) {
+	dbs := make([]*sql.DB, 0, 4)
+	for i := 0; i < 4; i++ {
+		db3 := createSQLite3()
+		db3.Exec("CREATE TABLE `users` (`id` bigint, PRIMARY KEY (`id`))") //nolint: errcheck
+		dbs = append(dbs, db3)
+	}
+	db := Open(dbs...)
+
+	// 1) DatabaseID == len(dbs): one past the end (the exact bug-report case).
+	forged := shardid.ID{DatabaseID: int16(len(dbs))}
+	ctx, err := db.On(forged)
+	require.ErrorIs(t, err, ErrInvalidShardID)
+	require.Nil(t, ctx)
+
+	// 2) DatabaseID strictly greater than len(dbs).
+	forged = shardid.ID{DatabaseID: int16(len(dbs)) + 5}
+	ctx, err = db.On(forged)
+	require.ErrorIs(t, err, ErrInvalidShardID)
+	require.Nil(t, ctx)
+
+	// 3) Negative DatabaseID: guards against a future change where the
+	// DatabaseID field is widened and a value below zero would slice
+	// backwards in db.dbs.
+	forged = shardid.ID{DatabaseID: -1}
+	ctx, err = db.On(forged)
+	require.ErrorIs(t, err, ErrInvalidShardID)
+	require.Nil(t, ctx)
+
+	// Sanity: a valid ID still resolves correctly.
+	gen := shardid.New(shardid.WithDatabase(4))
+	id := gen.Next()
+	ctx, err = db.On(id)
+	require.NoError(t, err)
+	require.NotNil(t, ctx)
+}
+
+
 
 func TestDHT(t *testing.T) {
 	db := Open(createSQLite3())

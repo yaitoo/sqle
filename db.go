@@ -11,6 +11,12 @@ import (
 var (
 	StmtMaxIdleTime = 3 * time.Minute
 	ErrMissingDHT   = errors.New("sqle: missing_dht")
+	// ErrInvalidShardID is returned by DB.On when id.DatabaseID does not
+	// index into the current sharded DB pool (e.g. an ID generated for a
+	// larger topology is reused against a smaller one, or a forged ID is
+	// passed). It replaces the previous index-out-of-range panic so callers
+	// can detect topology mismatch and recover.
+	ErrInvalidShardID = errors.New("sqle: invalid_shard_id")
 )
 
 // DB represents a database connection pool with sharding support.
@@ -73,12 +79,21 @@ func (db *DB) Add(dbs ...Database) {
 	}
 }
 
-// On selects the database context based on the shardid ID.
-func (db *DB) On(id shardid.ID) *Client {
+// On selects the database context based on the shardid ID. It returns
+// ErrInvalidShardID when id.DatabaseID does not index into the current
+// sharded DB pool (negative or >= len(dbs)); callers that previously
+// relied on the implicit panic on out-of-range IDs must now handle the
+// error explicitly.
+func (db *DB) On(id shardid.ID) (*Client, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
-	return db.dbs[int(id.DatabaseID)]
+	idx := int(id.DatabaseID)
+	if idx < 0 || idx >= len(db.dbs) {
+		return nil, ErrInvalidShardID
+	}
+
+	return db.dbs[idx], nil
 }
 
 // NewDHT creates a new DHT (Distributed Hash Table) with the specified databases.
