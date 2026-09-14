@@ -1041,3 +1041,145 @@ func TestQueryLimit(t *testing.T) {
 		})
 	}
 }
+
+// TestMapRDoesNotMutateCallerBuilder verifies that none of MapR's
+// First/Count/Query/QueryLimit methods mutate the *Builder passed in by the
+// caller. The previous behaviour injected rotate into the caller's inputs map
+// and (for QueryLimit) appended SQL to the caller's stmt, breaking repeated
+// or concurrent use of the same builder.
+//
+// Two builder shapes are exercised:
+//   - "failing": {id} is left without a matching Param("id", ...), so
+//     Build() returns ErrInvalidParamVariable and the MapR method returns
+//     before any DB query. This path covers the early return without
+//     depending on async fan-out results.
+//   - "succeeding": uses WHERE id > {min} so every shard matches at least
+//     one row; Build() succeeds and the full async fan-out runs across all
+//     10 databases.
+func TestMapRDoesNotMutateCallerBuilder(t *testing.T) {
+	dbs, clean := createSQLites()
+	defer clean()
+	db := Open(dbs...)
+
+	failing := func() *Builder {
+		return New("SELECT id FROM users<rotate> WHERE id={id}")
+	}
+	succeeding := func() *Builder {
+		return New("SELECT id FROM users<rotate> WHERE id > {min}").Param("min", 0)
+	}
+
+	snapshot := func(b *Builder) (string, map[string]string, map[string]any) {
+		stmt := b.stmt.String()
+		inputs := make(map[string]string, len(b.inputs))
+		for k, v := range b.inputs {
+			inputs[k] = v
+		}
+		params := make(map[string]any, len(b.params))
+		for k, v := range b.params {
+			params[k] = v
+		}
+		return stmt, inputs, params
+	}
+
+	cases := []struct {
+		name      string
+		builder   func() *Builder
+		expectErr bool
+		call      func(b *Builder) error
+	}{
+		{
+			name:      "First_succeeding",
+			builder:   succeeding,
+			expectErr: false,
+			call: func(b *Builder) error {
+				_, err := (&MapR[MRUser]{dbs: db.dbs}).First(context.Background(), []string{""}, b)
+				return err
+			},
+		},
+		{
+			name:      "First_failing",
+			builder:   failing,
+			expectErr: true,
+			call: func(b *Builder) error {
+				_, err := (&MapR[MRUser]{dbs: db.dbs}).First(context.Background(), []string{""}, b)
+				return err
+			},
+		},
+		{
+			name:      "Count_succeeding",
+			builder:   succeeding,
+			expectErr: false,
+			call: func(b *Builder) error {
+				_, err := (&MapR[int64]{dbs: db.dbs}).Count(context.Background(), []string{""}, b)
+				return err
+			},
+		},
+		{
+			name:      "Count_failing",
+			builder:   failing,
+			expectErr: true,
+			call: func(b *Builder) error {
+				_, err := (&MapR[int64]{dbs: db.dbs}).Count(context.Background(), []string{""}, b)
+				return err
+			},
+		},
+		{
+			name:      "Query_succeeding",
+			builder:   succeeding,
+			expectErr: false,
+			call: func(b *Builder) error {
+				_, err := (&MapR[MRUser]{dbs: db.dbs}).Query(context.Background(), []string{""}, b, nil)
+				return err
+			},
+		},
+		{
+			name:      "Query_failing",
+			builder:   failing,
+			expectErr: true,
+			call: func(b *Builder) error {
+				_, err := (&MapR[MRUser]{dbs: db.dbs}).Query(context.Background(), []string{""}, b, nil)
+				return err
+			},
+		},
+		{
+			name:      "QueryLimit_succeeding",
+			builder:   succeeding,
+			expectErr: false,
+			call: func(b *Builder) error {
+				_, err := (&MapR[MRUser]{dbs: db.dbs}).QueryLimit(context.Background(), []string{""}, b, nil, 5)
+				return err
+			},
+		},
+		{
+			name:      "QueryLimit_failing",
+			builder:   failing,
+			expectErr: true,
+			call: func(b *Builder) error {
+				_, err := (&MapR[MRUser]{dbs: db.dbs}).QueryLimit(context.Background(), []string{""}, b, nil, 5)
+				return err
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			b := c.builder()
+			stmtBefore, inputsBefore, paramsBefore := snapshot(b)
+
+			err := c.call(b)
+
+			// Assert that the method took the path it was designed to:
+			// _succeeding fixtures must run the full async fan-out without
+			// error; _failing fixtures must short-circuit on Build().
+			if c.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			require.Equal(t, stmtBefore, b.stmt.String(), "stmt was mutated by MapR")
+			require.Equal(t, inputsBefore, b.inputs, "inputs were mutated by MapR")
+			require.Equal(t, paramsBefore, b.params, "params were mutated by MapR")
+		})
+	}
+}

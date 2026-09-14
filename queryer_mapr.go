@@ -17,6 +17,7 @@ type MapR[T any] struct {
 // First executes the query and returns the first result.
 func (q *MapR[T]) First(ctx context.Context, rotatedTables []string, b *Builder) (T, error) {
 	var it T
+	b = b.clone()
 	b.Input("rotate", "<rotate>") // lazy replace on async.Wait
 	query, args, err := b.Build()
 	if err != nil {
@@ -48,6 +49,7 @@ func (q *MapR[T]) First(ctx context.Context, rotatedTables []string, b *Builder)
 
 // Count executes the query and returns the count of results.
 func (q *MapR[T]) Count(ctx context.Context, rotatedTables []string, b *Builder) (int64, error) {
+	b = b.clone()
 	b.Input("rotate", "<rotate>") // lazy replace on async.Wait
 	query, args, err := b.Build()
 	if err != nil {
@@ -91,6 +93,7 @@ func (q *MapR[T]) Count(ctx context.Context, rotatedTables []string, b *Builder)
 // Query executes the query and returns a list of results.
 func (q *MapR[T]) Query(ctx context.Context, rotatedTables []string, b *Builder, less func(i, j T) bool) ([]T, error) {
 
+	b = b.clone()
 	b.Input("rotate", "<rotate>") // lazy replace on async.Wait
 	query, args, err := b.Build()
 	if err != nil {
@@ -147,6 +150,7 @@ func (q *MapR[T]) Query(ctx context.Context, rotatedTables []string, b *Builder,
 // QueryLimit executes the query and returns a limited list of results.
 func (q *MapR[T]) QueryLimit(ctx context.Context, rotatedTables []string, b *Builder, less func(i, j T) bool, limit int) ([]T, error) {
 
+	b = b.clone()
 	if limit > 0 {
 		b.SQL(" LIMIT " + strconv.Itoa(limit*len(q.dbs)))
 	}
