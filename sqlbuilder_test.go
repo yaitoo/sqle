@@ -689,3 +689,222 @@ func TestBuilder(t *testing.T) {
 		})
 	}
 }
+
+func TestBuilderInvalidIdentifier(t *testing.T) {
+
+	tests := []struct {
+		name  string
+		build func() *Builder
+	}{
+		{
+			name: "update_empty_table",
+			build: func() *Builder {
+				return New().Update("").Builder
+			},
+		},
+		{
+			name: "update_semicolon_table",
+			build: func() *Builder {
+				return New().Update("users; DROP TABLE users").Builder
+			},
+		},
+		{
+			name: "update_backtick_table",
+			build: func() *Builder {
+				return New().Update("`users`").Builder
+			},
+		},
+		{
+			name: "update_space_table",
+			build: func() *Builder {
+				return New().Update("users extra").Builder
+			},
+		},
+		{
+			name: "update_dot_table",
+			build: func() *Builder {
+				return New().Update("users; DROP TABLE foo").Builder
+			},
+		},
+		{
+			name: "update_unclosed_angle_bracket",
+			build: func() *Builder {
+				return New().Update("orders<rotate").Builder
+			},
+		},
+		{
+			name: "update_empty_placeholder",
+			build: func() *Builder {
+				return New().Update("orders<>").Builder
+			},
+		},
+		{
+			name: "update_hyphen_in_placeholder",
+			build: func() *Builder {
+				return New().Update("orders<ro-tate>").Builder
+			},
+		},
+		{
+			name: "insert_empty_table",
+			build: func() *Builder {
+				b := New()
+				b.Insert("")
+				return b
+			},
+		},
+		{
+			name: "insert_injection_table",
+			build: func() *Builder {
+				b := New()
+				b.Insert("users; DROP TABLE users")
+				return b
+			},
+		},
+		{
+			name: "insert_qualified_injection",
+			build: func() *Builder {
+				b := New()
+				b.Insert("db.users; DROP TABLE users")
+				return b
+			},
+		},
+		{
+			name: "select_empty_table",
+			build: func() *Builder {
+				return New().Select("")
+			},
+		},
+		{
+			name: "select_injection_table",
+			build: func() *Builder {
+				return New().Select("users; DROP TABLE users")
+			},
+		},
+		{
+			name: "select_injection_column",
+			build: func() *Builder {
+				return New().Select("users", "id; DROP TABLE users")
+			},
+		},
+		{
+			name: "select_backtick_column",
+			build: func() *Builder {
+				return New().Select("users", "id`; DROP TABLE users")
+			},
+		},
+		{
+			name: "select_empty_column",
+			build: func() *Builder {
+				return New().Select("users", "")
+			},
+		},
+		{
+			name: "select_multi_column_one_invalid",
+			build: func() *Builder {
+				return New().Select("users", "id", "id; DROP TABLE users")
+			},
+		},
+		{
+			name: "delete_empty_table",
+			build: func() *Builder {
+				return New().Delete("")
+			},
+		},
+		{
+			name: "delete_injection_table",
+			build: func() *Builder {
+				return New().Delete("users; DROP TABLE users")
+			},
+		},
+		{
+			name: "delete_newline_table",
+			build: func() *Builder {
+				return New().Delete("users\nDROP TABLE users")
+			},
+		},
+		{
+			name: "select_comment_column",
+			build: func() *Builder {
+				return New().Select("users", "id -- comment")
+			},
+		},
+		{
+			name: "select_block_comment_column",
+			build: func() *Builder {
+				return New().Select("users", "id /* comment */")
+			},
+		},
+		{
+			name: "select_newline_column",
+			build: func() *Builder {
+				return New().Select("users", "id\nDROP TABLE users")
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			b := test.build()
+
+			// Make sure none of these queries accidentally produces a usable
+			// SQL string when Build() short-circuits on ErrInvalidIdentifier.
+			_, _, err := b.Build()
+			require.ErrorIs(t, err, ErrInvalidIdentifier)
+		})
+	}
+}
+
+func TestBuilderValidIdentifierStillWorks(t *testing.T) {
+	now := time.Now()
+
+	tests := []struct {
+		name  string
+		build func() *Builder
+	}{
+		{
+			name: "rotate_placeholder",
+			build: func() *Builder {
+				id := shardid.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, shardid.MonthlyRotate, 0)
+				return New().On(id).Select("orders<rotate>", "id")
+			},
+		},
+		{
+			name: "qualified_with_rotate",
+			build: func() *Builder {
+				id := shardid.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, shardid.MonthlyRotate, 0)
+				return New().On(id).Select("db.orders<rotate>", "id")
+			},
+		},
+		{
+			name: "update_set_keeps_param",
+			build: func() *Builder {
+				return New().Update("orders").
+					Set("member_id", 1234).
+					Set("created_time", now).
+					Where("id={id}").
+					Param("id", "order_1")
+			},
+		},
+		{
+			name: "select_with_expression_column",
+			build: func() *Builder {
+				return New().Select("users", "count(id)")
+			},
+		},
+		{
+			name: "select_with_space_in_expression_column",
+			build: func() *Builder {
+				return New().Select("users", "id + 1")
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			b := test.build()
+
+			_, _, err := b.Build()
+			require.NoError(t, err)
+		})
+	}
+}
