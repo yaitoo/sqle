@@ -1145,9 +1145,11 @@ func TestMapRDoesNotMutateCallerBuilder(t *testing.T) {
 		{
 			name:      "QueryLimit_succeeding",
 			builder:   succeeding,
-			expectErr: true, // nil less with limit>0 → ErrInvalidArgument, before any builder mutation
+			expectErr: false,
 			call: func(b *Builder) error {
-				_, err := (&MapR[MRUser]{dbs: db.dbs}).QueryLimit(context.Background(), []string{""}, b, nil, 5)
+				_, err := (&MapR[MRUser]{dbs: db.dbs}).QueryLimit(context.Background(), []string{""}, b, func(i, j MRUser) bool {
+					return i.ID < j.ID
+				}, 5)
 				return err
 			},
 		},
@@ -1155,6 +1157,17 @@ func TestMapRDoesNotMutateCallerBuilder(t *testing.T) {
 			name:      "QueryLimit_failing",
 			builder:   failing,
 			expectErr: true,
+			call: func(b *Builder) error {
+				_, err := (&MapR[MRUser]{dbs: db.dbs}).QueryLimit(context.Background(), []string{""}, b, func(i, j MRUser) bool {
+					return i.ID < j.ID
+				}, 5)
+				return err
+			},
+		},
+		{
+			name:      "QueryLimit_invalid_argument",
+			builder:   succeeding,
+			expectErr: true, // nil less with limit>0 → ErrInvalidArgument, before any builder mutation
 			call: func(b *Builder) error {
 				_, err := (&MapR[MRUser]{dbs: db.dbs}).QueryLimit(context.Background(), []string{""}, b, nil, 5)
 				return err
