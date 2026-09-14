@@ -131,16 +131,17 @@ func TestBool(t *testing.T) {
 func TestBool_Scan_EmptyByte(t *testing.T) {
 	// Regression for https://github.com/yaitoo/sqle/issues/70
 	// Drivers that return []byte{} (instead of nil) for a NULL BIT(1)
-	// column must not trigger an index-out-of-range panic in Bool.Scan.
-	var b Bool
+	// column must not trigger an index-out-of-range panic in Bool.Scan,
+	// and must be treated the same as a nil src (i.e. leave *b unchanged).
+	b := Bool(true)
 	require.NotPanics(t, func() {
 		err := b.Scan([]byte{})
 		require.NoError(t, err)
 	})
-	require.EqualValues(t, false, b)
+	require.EqualValues(t, true, b)
 
 	// nil should still be treated as NULL with no error.
-	var b2 Bool = true
+	b2 := Bool(true)
 	require.NoError(t, b2.Scan(nil))
 	require.EqualValues(t, true, b2)
 }
