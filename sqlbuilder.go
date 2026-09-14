@@ -109,7 +109,14 @@ func (b *Builder) If(predicate bool) *Builder {
 
 // SQL appends the given SQL command to the Builder's statement.
 // If the Builder's shouldSkip flag is set, the command is skipped.
+// If a prior validation already recorded an error, the command is dropped so
+// the attack string never lands in the buffer (Build short-circuits on the
+// stored error and returns the sentinel).
 func (b *Builder) SQL(cmd string) *Builder {
+	if b.err != nil {
+		return b
+	}
+
 	if b.shouldSkip {
 		b.shouldSkip = false
 		return b
@@ -315,11 +322,12 @@ func containsDangerousColumnChars(c string) bool {
 // responsible for the expression's syntax. Plain identifiers are validated and
 // quoted. Any column — expression or identifier — that is empty, contains a
 // breakout character, or fails identifier validation records
-// ErrInvalidIdentifier on the Builder, surfaced from Build.
+// ErrInvalidIdentifier on the Builder (surfaced from Build) and returns "" so
+// the buffer stays clean of the attack string.
 func (b *Builder) quoteColumn(c string) string {
 	if c == "" || containsDangerousColumnChars(c) {
 		b.markInvalidIdentifier()
-		return c
+		return ""
 	}
 
 	if strings.ContainsAny(c, "(") || strings.ContainsAny(c, " ") {
@@ -328,7 +336,7 @@ func (b *Builder) quoteColumn(c string) string {
 
 	if !validateIdentifier(c) {
 		b.markInvalidIdentifier()
-		return c
+		return ""
 	}
 
 	return b.Quote + c + b.Quote

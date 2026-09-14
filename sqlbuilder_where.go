@@ -21,8 +21,16 @@ func NewWhere() *WhereBuilder {
 // Each criteria string represents a condition in the WHERE clause.
 // If a criteria string is empty, it will be ignored.
 // Returns a *WhereBuilder that can be used to further build the SQL statement.
+//
+// Where writes directly to b.stmt and so bypasses b.SQL; when a prior call
+// has recorded ErrInvalidIdentifier the WHERE clause is skipped entirely so
+// the attack string never lands in the buffer.
 func (b *Builder) Where(criteria ...string) *WhereBuilder {
 	wb := &WhereBuilder{Builder: b}
+
+	if b.err != nil {
+		return wb
+	}
 
 	for _, it := range criteria {
 		if it != "" {
@@ -78,6 +86,10 @@ func (wb *WhereBuilder) Or(criteria string) *WhereBuilder {
 
 // SQL adds a condition to the WHERE clause with the specified operator.
 func (wb *WhereBuilder) SQL(op string, criteria string) *WhereBuilder {
+	if wb.Builder.err != nil {
+		return wb
+	}
+
 	if wb.shouldSkip {
 		wb.shouldSkip = false
 		return wb

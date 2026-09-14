@@ -948,3 +948,77 @@ func TestBuilderValidIdentifierStillWorks(t *testing.T) {
 		})
 	}
 }
+
+// TestBuilderStmtBufferCleanliness asserts that when an invalid identifier is
+// rejected, the raw attack string never lands in the SQL buffer. Build
+// short-circuits on the recorded error, but b.stmt.String() (used by callers
+// for logging/debugging) must still be clean — otherwise the payload leaks
+// through side channels even though the SQL never executes.
+func TestBuilderStmtBufferCleanliness(t *testing.T) {
+	payload := "DROP TABLE users"
+
+	tests := []struct {
+		name  string
+		build func() *Builder
+	}{
+		{
+			name: "select_bad_column_does_not_leak",
+			build: func() *Builder {
+				return New().Select("users", "id; "+payload)
+			},
+		},
+		{
+			name: "select_bad_table_does_not_leak",
+			build: func() *Builder {
+				return New().Select("users; " + payload)
+			},
+		},
+		{
+			name: "select_bad_table_then_where_does_not_leak",
+			build: func() *Builder {
+				return New().Select("users; "+payload).Where("id={id}").Param("id", 1)
+			},
+		},
+		{
+			name: "update_bad_table_does_not_leak",
+			build: func() *Builder {
+				return New().Update("users; " + payload).Builder
+			},
+		},
+		{
+			name: "delete_bad_table_does_not_leak",
+			build: func() *Builder {
+				return New().Delete("users; " + payload)
+			},
+		},
+		{
+			name: "insert_bad_table_does_not_leak",
+			build: func() *Builder {
+				b := New()
+				b.Insert("users; " + payload).Set("a", 1).End()
+				return b
+			},
+		},
+		{
+			name: "orderby_bad_column_does_not_leak",
+			build: func() *Builder {
+				return New().Select("users").Order().ByAsc("id; " + payload).Builder
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			b := test.build()
+
+			// Build must report ErrInvalidIdentifier.
+			_, _, err := b.Build()
+			require.ErrorIs(t, err, ErrInvalidIdentifier)
+
+			// The raw payload must never land in b.stmt — anything that
+			// logs, debug-prints, or String()s the builder would leak it.
+			require.NotContains(t, b.stmt.String(), payload,
+				"attack string leaked into stmt buffer")
+		})
+	}
+}
