@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
+- fix(mapr): require a non-nil `less` comparator in `MapR.QueryLimit` when
+  `limit > 0` (#68). Previously, `less == nil` silently skipped the
+  in-memory sort after merging rows from each shard, so the per-shard
+  `LIMIT N` results were returned in whatever order each DB chose. That
+  made pagination page boundaries non-deterministic across runs and
+  gave different requests different "top-N" answers. `QueryLimit` now
+  returns the new exported `ErrInvalidArgument` early in that case, so
+  callers can `errors.Is` against it. Callers that genuinely want the
+  unordered merged result should keep `less == nil` and pass `limit <= 0`.
+
+### Fixed
 - fix(exec): forward caller ctx in `Client.ExecContext` and `Tx.ExecContext`
   empty-args branches instead of silently substituting `context.Background()`
   (#59). Callers that passed a `context.WithTimeout` / `context.WithCancel`

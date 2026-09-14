@@ -3,6 +3,7 @@ package sqle
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -1144,7 +1145,7 @@ func TestMapRDoesNotMutateCallerBuilder(t *testing.T) {
 		{
 			name:      "QueryLimit_succeeding",
 			builder:   succeeding,
-			expectErr: false,
+			expectErr: true, // nil less with limit>0 → ErrInvalidArgument, before any builder mutation
 			call: func(b *Builder) error {
 				_, err := (&MapR[MRUser]{dbs: db.dbs}).QueryLimit(context.Background(), []string{""}, b, nil, 5)
 				return err
@@ -1182,4 +1183,41 @@ func TestMapRDoesNotMutateCallerBuilder(t *testing.T) {
 			require.Equal(t, paramsBefore, b.params, "params were mutated by MapR")
 		})
 	}
+}
+
+// TestQueryLimitLessRequired verifies MapR.QueryLimit's contract that a
+// non-nil less comparator is required when limit > 0. Without a comparator,
+// each shard returns rows in its own order and the merged prefix slice is
+// not deterministic across runs (#68).
+func TestQueryLimitLessRequired(t *testing.T) {
+	dbs, clean := createSQLites()
+	defer clean()
+	db := Open(dbs...)
+
+	q := NewQuery[MRUser](db, WithQueryer[MRUser](&MapR[MRUser]{
+		dbs: db.dbs,
+	}))
+
+	b := New().Select("users", "id").
+		Where("id < 4").
+		End()
+
+	t.Run("nil_less_with_positive_limit_returns_ErrInvalidArgument", func(t *testing.T) {
+		got, err := q.QueryLimit(context.Background(), b, nil, 2)
+		require.ErrorIs(t, err, ErrInvalidArgument)
+		require.Nil(t, got)
+	})
+
+	t.Run("non_nil_less_still_works", func(t *testing.T) {
+		less := func(i, j MRUser) bool { return i.ID < j.ID }
+		got, err := q.QueryLimit(context.Background(), b, less, 2)
+		require.NoError(t, err)
+		require.Equal(t, []MRUser{{ID: 1}, {ID: 2}}, got)
+	})
+
+	t.Run("errors_Is_distinguishes_ErrInvalidArgument", func(t *testing.T) {
+		// callers must be able to branch on this specific error.
+		_, err := q.QueryLimit(context.Background(), b, nil, 5)
+		require.True(t, errors.Is(err, ErrInvalidArgument), "expected errors.Is to match ErrInvalidArgument")
+	})
 }
