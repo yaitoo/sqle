@@ -4,15 +4,11 @@ import (
 	"database/sql"
 	"reflect"
 	"strings"
-	"sync"
 )
 
 var (
-	binders   = make(map[reflect.Type]Binder)
-	bindersMu sync.RWMutex
-
-	columns   = make(map[string][]string)
-	columnsMu sync.RWMutex
+	binders = newLRUCache[reflect.Type, Binder](256)
+	columns = newLRUCache[string, []string](4096)
 )
 
 type Binder interface {
@@ -20,35 +16,20 @@ type Binder interface {
 }
 
 func getColumns(query string, rows *sql.Rows) ([]string, error) {
-	columnsMu.RLock()
-
-	var cols []string
-	var cached bool
-
-	defer func() {
-		columnsMu.RUnlock()
-
-		if !cached {
-			columnsMu.Lock()
-			columns[query] = cols
-			columnsMu.Unlock()
-		}
-	}()
-
-	cols, cached = columns[query]
-	if cached {
+	if cols, ok := columns.Get(query); ok {
 		return cols, nil
 	}
 
-	columns, err := rows.Columns()
-
+	rawCols, err := rows.Columns()
 	if err != nil {
 		return nil, err
 	}
 
-	for _, it := range columns {
+	cols := make([]string, 0, len(rawCols))
+	for _, it := range rawCols {
 		cols = append(cols, strings.ToLower(strings.ReplaceAll(it, "_", "")))
 	}
 
+	columns.Put(query, cols)
 	return cols, nil
 }

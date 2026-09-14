@@ -56,25 +56,11 @@ func (b *structBinder) Bind(v reflect.Value, columns []string) []any {
 }
 
 func getStructBinder(t reflect.Type, v reflect.Value) Binder {
-	bindersMu.RLock()
-
-	var b Binder
-	var cached bool
-	defer func() {
-		bindersMu.RUnlock()
-		if !cached {
-			bindersMu.Lock()
-			binders[t] = b
-			bindersMu.Unlock()
-		}
-
-	}()
-
-	b, cached = binders[t]
-	if cached {
+	if b, ok := binders.Get(t); ok {
 		return b
 	}
 
-	b = newStructBinder(t, v)
+	b := newStructBinder(t, v)
+	binders.Put(t, b)
 	return b
 }

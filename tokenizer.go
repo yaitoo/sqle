@@ -2,13 +2,11 @@ package sqle
 
 import (
 	"regexp"
-	"sync"
 )
 
 var (
-	tokenRegexp     = regexp.MustCompile(`<\w+>|\{\w+\}`)
-	tokenizers      = make(map[string]*Tokenizer)
-	tokenizersMutex sync.RWMutex
+	tokenRegexp = regexp.MustCompile(`<\w+>|\{\w+\}`)
+	tokenizers  = newLRUCache[string, *Tokenizer](4096)
 )
 
 type Tokenizer struct {
@@ -17,16 +15,13 @@ type Tokenizer struct {
 }
 
 func Tokenize(text string) *Tokenizer {
-	tokenizersMutex.RLock()
-	tz, ok := tokenizers[text]
-	tokenizersMutex.RUnlock()
-	if ok {
+	if tz, ok := tokenizers.Get(text); ok {
 		return tz
 	}
 
 	indices := tokenRegexp.FindAllStringIndex(text, -1)
 
-	tz = &Tokenizer{
+	tz := &Tokenizer{
 		Raw: text,
 	}
 
@@ -52,8 +47,6 @@ func Tokenize(text string) *Tokenizer {
 		tz.Tokens = append(tz.Tokens, Text(text[start:]))
 	}
 
-	tokenizersMutex.Lock()
-	tokenizers[text] = tz
-	tokenizersMutex.Unlock()
+	tokenizers.Put(text, tz)
 	return tz
 }
