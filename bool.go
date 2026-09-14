@@ -23,6 +23,9 @@ func (b *Bool) Scan(src interface{}) error { // skipcq: GO-W1029
 
 	switch v := src.(type) {
 	case []byte:
+		if len(v) == 0 {
+			return nil
+		}
 		*b = v[0] == 1
 	case int64:
 		*b = v == 1
