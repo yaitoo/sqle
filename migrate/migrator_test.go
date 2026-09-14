@@ -556,6 +556,23 @@ func TestMigrate(t *testing.T) {
 					require.ErrorIs(t, err, sql.ErrNoRows)
 				}
 
+				// Verify the rotated indexes were actually created. The
+				// script declares `CREATE INDEX IF NOT EXISTS
+				// idx_multi_logs<rotate> ON multi_logs<rotate>(id)` — the
+				// <rotate> placeholder appears in both the index name and
+				// the referenced table, so a regression in either
+				// substitution would still leave the table query above
+				// passing. Asserting sqlite_master catches that.
+				for _, rt := range rotations {
+					var name string
+					err := m.dbs[0].QueryRow(
+						"SELECT name FROM sqlite_master WHERE type='index' AND name=?",
+						"idx_multi_logs"+rt,
+					).Scan(&name)
+					require.NoError(t, err, "expected idx_multi_logs%s to exist", rt)
+					require.Equal(t, "idx_multi_logs"+rt, name)
+				}
+
 			},
 		},
 		{
