@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed (breaking)
+- fix(db): `DB.On(shardid.ID)` now returns `(*Client, error)` instead of `*Client`.
+  It returns the new exported `ErrInvalidShardID` when `id.DatabaseID` is out
+  of range for the current sharded DB pool (negative or `>= len(dbs)`),
+  replacing the previous index-out-of-range panic (#69). The check covers
+  negative values too, so a forged ID whose `DatabaseID` would cast to a
+  negative `int` is also caught. This is observable: callers that previously
+  received `*Client` must now handle the error explicitly. The signature
+  change matches the existing `DB.OnDHT` return shape. Callers that only
+  generate IDs through `shardid.New(WithDatabase(N)).Next()` against an
+  `Open(dbs...)` of size N see no behaviour change.
+
 ### Fixed
 - fix(mapr): require a non-nil `less` comparator in `MapR.QueryLimit` when
   `limit > 0` (#68). Previously, `less == nil` silently skipped the

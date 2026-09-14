@@ -24,7 +24,9 @@ func TestOpenGenericSlice(t *testing.T) {
 
 	db := Open(dbs...)
 	require.NotNil(t, db)
-	require.Equal(t, 0, db.On(shardid.ID{DatabaseID: 0}).Index)
+	ctx, err := db.On(shardid.ID{DatabaseID: 0})
+	require.NoError(t, err)
+	require.Equal(t, 0, ctx.Index)
 }
 
 // TestDatabaseWrapper proves that a custom type satisfying Database
