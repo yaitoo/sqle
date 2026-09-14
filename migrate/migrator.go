@@ -264,12 +264,20 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 				rotations := m.buildRotations(s.Rotate, s.RotateBegin, s.RotateEnd)
 
 				now := time.Now()
+				// Substitute <rotate> via the *Builder <input> token so the
+				// replacement shares the library's tokenizer rules (see
+				// tokenizer.go:9) rather than doing a raw strings.ReplaceAll on
+				// the split statement.
 				for _, it := range strings.Split(stripSQLComments(s.Scripts), ";") {
 					it := strings.TrimSpace(it)
 					if it != "" {
 						for _, rt := range rotations {
-							s := strings.ReplaceAll(it, "<rotate>", rt)
-							_, err = tx.ExecContext(ctx, s + ";")
+							b := sqle.New(it).Input("rotate", rt)
+							query, _, err := b.Build()
+							if err != nil {
+								return err
+							}
+							_, err = tx.ExecContext(ctx, query+";")
 							if err != nil {
 								return err
 							}

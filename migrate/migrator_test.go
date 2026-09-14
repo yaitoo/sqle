@@ -514,6 +514,51 @@ func TestMigrate(t *testing.T) {
 			},
 		},
 		{
+			name: "multiple_statements_with_rotate_should_work",
+			setup: func(db *sql.DB) (*Migrator, error) {
+
+				m := New(sqle.Open(db))
+
+				err := m.Discover(fstest.MapFS{
+					"0.1.0/1_create_with_rotate.sql": &fstest.MapFile{
+						Data: []byte(`/* rotate: monthly = 20240201 - 20240301 */
+						CREATE TABLE IF NOT EXISTS multi_logs<rotate> (
+							id int NOT NULL,
+							PRIMARY KEY (id)
+						);
+						CREATE TABLE IF NOT EXISTS multi_users<rotate> (
+							id int NOT NULL,
+							PRIMARY KEY (id)
+						);
+						CREATE INDEX IF NOT EXISTS idx_multi_logs<rotate> ON multi_logs<rotate>(id);`),
+					},
+				})
+
+				if err != nil {
+					return nil, err
+				}
+
+				return m, nil
+
+			},
+			assert: func(t *testing.T, m *Migrator) {
+				var id int64
+
+				rotations := []string{
+					"", "_202402", "_202403",
+				}
+
+				for _, rt := range rotations {
+					err := m.dbs[0].QueryRow("SELECT id FROM multi_logs"+rt+" WHERE id=?", 0).Scan(&id)
+					require.ErrorIs(t, err, sql.ErrNoRows)
+
+					err = m.dbs[0].QueryRow("SELECT id FROM multi_users"+rt+" WHERE id=?", 0).Scan(&id)
+					require.ErrorIs(t, err, sql.ErrNoRows)
+				}
+
+			},
+		},
+		{
 			name: "semicolons_in_comments_should_not_split_statements",
 			setup: func(db *sql.DB) (*Migrator, error) {
 
