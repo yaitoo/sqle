@@ -146,11 +146,24 @@ func (b *Builder) Build() (string, []any, error) {
 
 }
 
-// clone returns a deep copy of b. It is used by callers that need to mutate
-// the builder (e.g. to inject <rotate>) without touching the caller's
-// *Builder. inputs and params are shallow-copied — their values are stored by
-// interface, so aliasing is safe. stmt is rebuilt from the current SQL string
-// so that further mutations on the clone do not affect the original builder.
+// clone returns a copy of b whose stmt buffer and inputs/params maps are
+// independent of b: stmt is rebuilt from the current SQL string so further
+// writes on the clone do not touch the original, and inputs/params are fresh
+// maps populated with the current key/value pairs.
+//
+// clone is used by MapR (First/Count/Query/QueryLimit) to inject <rotate> and
+// the LIMIT clause without mutating the caller's *Builder.
+//
+// Note: the values stored in inputs and params are shared with the original
+// builder (not deep-copied). The shallow copy is safe for two reasons:
+//
+//  1. inputs values are Go strings, which are immutable.
+//  2. The rest of this package never mutates a stored value in place —
+//     Builder.Input / Param / Inputs / Params only assign keys, and
+//     Builder.Build only reads values. As long as that invariant holds,
+//     a future caller mutating a stored value (e.g. appending to a slice
+//     or writing through a pointer held in params) will leak that mutation
+//     across both builders; this method does not protect against that.
 func (b *Builder) clone() *Builder {
 	s := b.stmt.String()
 	nb := &Builder{
