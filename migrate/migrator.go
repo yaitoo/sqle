@@ -264,12 +264,26 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 				rotations := m.buildRotations(s.Rotate, s.RotateBegin, s.RotateEnd)
 
 				now := time.Now()
+				// Substitute <rotate> per rotation. Using strings.ReplaceAll
+				// (rather than routing through *Builder + Input) keeps this
+				// symmetric with startRotate (below) and avoids two
+				// regressions that the Builder's tokenizer (tokenizer.go:9,
+				// regex `<\w+>|\{\w+\}`) would introduce on arbitrary
+				// migration SQL:
+				//   1. plain `{name}` placeholders in seed templates would
+				//      hard-fail Build with ErrInvalidParamVariable;
+				//   2. other `<tag>` tokens inside string literals would be
+				//      silently dropped (the InputToken branch writes nothing
+				//      when the input name is unset — see sqlbuilder.go:124).
+				// Known limitation: <rotate> inside a single/double/backtick-
+				// quoted literal is also substituted here; that mirrors the
+				// behaviour of startRotate and is a separate issue from #64.
 				for _, it := range strings.Split(stripSQLComments(s.Scripts), ";") {
 					it := strings.TrimSpace(it)
 					if it != "" {
 						for _, rt := range rotations {
 							s := strings.ReplaceAll(it, "<rotate>", rt)
-							_, err = tx.ExecContext(ctx, s + ";")
+							_, err = tx.ExecContext(ctx, s+";")
 							if err != nil {
 								return err
 							}
