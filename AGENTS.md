@@ -188,7 +188,9 @@ id := gen.Next()
 // Write to rotated table on selected DB
 b := sqle.New().On(id).Insert("orders<rotate>").
     Set("order_id", oid).Set("amount", amt).End()
-_, _ = db.On(id).ExecBuilder(ctx, b)
+c, err := db.On(id)
+if err != nil { return err }
+_, _ = c.ExecBuilder(ctx, b)
 
 // Query across sharded DBs for a time window using MapR
 - MapR Query with custom Queryer
@@ -423,8 +425,8 @@ Order/Where
 ## 7) Sharding and rotation
 - shardid.ID encodes DatabaseID and rotation suffix.
 - Rotation: table names may include <rotate> placeholder, e.g., orders<rotate>.
-- b.On(id) sets input rotate to id.RotateName(); db.On(id) selects the Client by id.DatabaseID.
-- DHT-based sharding: db.NewDHT(name, dbIndexes...), db.OnDHT(key, name?) → *Client.
+- b.On(id) sets input rotate to id.RotateName(); db.On(id) → (*Client, error) selects the Client by id.DatabaseID and returns ErrInvalidShardID when the index is out of range (negative or >= len(dbs)).
+- DHT-based sharding: db.NewDHT(name, dbIndexes...), db.OnDHT(key, name?) → (*Client, error).
 - Query time windows: WithMonths/WithWeeks/WithDays add rotated suffixes scanned by MapR.
 
 
@@ -469,6 +471,7 @@ Order/Where
 ## 13) Error handling and invariants
 - On missing param during Build → ErrInvalidParamVariable.
 - OnDHT without DHT → ErrMissingDHT.
+- On with id.DatabaseID out of range (negative or >= len(dbs)) → ErrInvalidShardID.
 - Scanning requires pointers and correct kinds; see exported Err* in row.go.
 
 
@@ -485,7 +488,12 @@ Order/Where
 - CRUD: see README sections Create/Query/Update/Delete (mirrors tests).
 - Paginated + ordered list: build WHERE + Order(WithAllow(...)).ByAsc/ByDesc and add LIMIT/OFFSET via SQL.
 - MapR query last N days: NewQuery[T](db, WithDays(start, end)).QueryLimit(ctx, b, less, N)
-- Sharded write: db.On(id).ExecBuilder(ctx, b.On(id))
+- Sharded write:
+  ```
+  c, err := db.On(id)
+  if err != nil { return err }
+  _, _ = c.ExecBuilder(ctx, b.On(id))
+  ```
 
 
 ## 16) File references (quick jump)

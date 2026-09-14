@@ -462,8 +462,11 @@ b.Delete("orders<rotate>").Where().
     Param("order_id", "order_123456")
 
 
-db.On(id). // automatically select database based on `id.DatabaseID`
- ExecBuilder(context.TODO(),b) // DELETE FROM `orders` WHERE order_id = ?
+client, err := db.On(id) // automatically select database based on `id.DatabaseID`
+if err != nil {
+    return err
+}
+client.ExecBuilder(context.TODO(), b) // DELETE FROM `orders` WHERE order_id = ?
 
 ```
 
