@@ -47,6 +47,7 @@ const (
 	MigrationStatusNew      MigrationStatus = iota // new migration, needs to be executed
 	MigrationStatusExecuted                        // already executed, checksum matches
 	MigrationStatusModified                        // already executed but checksum changed
+	MigrationStatusUnknown                         // migration status could not be determined due to a DB error
 )
 
 type Migrator struct {
@@ -255,6 +256,12 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 			for i, s := range v.Migrations {
 				status, err := m.getMigrationStatus(tx, v.Name, s)
 				if err != nil {
+					// getMigrationStatus only pairs a non-nil err with
+					// MigrationStatusUnknown (issue #67). Surface the abort
+					// in the per-version log so the operator can tell the
+					// migration was skipped because the status could not be
+					// determined, not because the script was fresh.
+					log.Printf("│ »[%*d/%d] %-35s %-10s [?] %v\n", w, i+1, n, s.Name, "", err)
 					return err
 				}
 
@@ -353,7 +360,10 @@ func (m *Migrator) getMigrationStatus(tx *sqle.Tx, version string, s Migration) 
 		return MigrationStatusExecuted, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
-		return MigrationStatusNew, err
+		// A real DB error (driver timeout, connection lost, missing table, etc.)
+		// is not "new" — report it as Unknown so callers can distinguish it
+		// from a genuinely new migration. See issue #67.
+		return MigrationStatusUnknown, err
 	}
 
 	// Checksum doesn't exist, check if a script with same name and rank was modified
@@ -364,7 +374,9 @@ func (m *Migrator) getMigrationStatus(tx *sqle.Tx, version string, s Migration) 
 			// No record with same name and rank exists, it's a new script
 			return MigrationStatusNew, nil
 		}
-		return MigrationStatusNew, err
+		// Same rationale as above: a non-ErrNoRows error here is a DB
+		// problem, not evidence that the script is new.
+		return MigrationStatusUnknown, err
 	}
 
 	// Record with same name and rank exists but checksum is different, script content was modified
