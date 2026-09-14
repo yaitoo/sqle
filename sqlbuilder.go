@@ -14,10 +14,9 @@ var (
 	// ErrInvalidParamVariable is an error that is returned when an invalid parameter variable is encountered.
 	ErrInvalidParamVariable = errors.New("sqle: invalid param variable")
 
-	// ErrInvalidIdentifier is returned when a table or column name is empty or
-	// contains characters that are not permitted in a SQL identifier. It is
-	// surfaced from Build when Update/Insert/Select/Delete/quoteColumn receive
-	// an invalid identifier.
+	// ErrInvalidIdentifier is returned when a table name (Update/Insert/
+	// Select/Delete) or a Select column name is empty or contains characters
+	// that are not permitted in a SQL identifier. It is surfaced from Build.
 	//
 	// Identifiers are validated against a strict shape: a leading letter or
 	// underscore followed by letters, digits and underscores, with optional
@@ -25,6 +24,10 @@ var (
 	// and an optional dotted schema/table form (schema.table). This prevents
 	// payloads like `id; DROP TABLE users` from reaching the wire protocol
 	// even though the surrounding quoting already prevents their execution.
+	//
+	// Note: column names passed via UpdateBuilder.Set/SetMap and
+	// InsertBuilder.Set/SetMap/End are not validated here; callers must
+	// restrict those via WithAllow or other whitelists.
 	ErrInvalidIdentifier = errors.New("sqle: invalid identifier")
 
 	// DefaultSQLQuote is the default character used to escape column names in UPDATE and INSERT statements.
@@ -282,33 +285,40 @@ func validateIdentifier(s string) bool {
 	return true
 }
 
-// containsDangerousColumnChars reports whether c contains any character that
+// markInvalidIdentifier records ErrInvalidIdentifier on the Builder so it
+// surfaces from Build, unless an error is already recorded. The first error
+// wins so a chain of bad inputs reports the same sentinel to callers.
+func (b *Builder) markInvalidIdentifier() {
+	if b.err == nil {
+		b.err = ErrInvalidIdentifier
+	}
+}
+
+// containsDangerousColumnChars reports whether c contains any token that
 // would let a column expression break out of the SQL context: the surrounding
-// quote, statement terminators, line breaks, or SQL comment markers. Any of
-// these in a column passed via Select is treated as an injection attempt.
+// quote, statement terminators, line breaks, or the SQL comment sequences
+// "--", "/*", and "*/". Single arithmetic bytes ("-", "/", "*") are allowed
+// because they appear in legitimate expressions like `price * qty`.
 func containsDangerousColumnChars(c string) bool {
-	return strings.ContainsAny(c, "`;\n\r--/*")
+	if strings.ContainsAny(c, "`;\n\r") {
+		return true
+	}
+	if strings.Contains(c, "--") || strings.Contains(c, "/*") || strings.Contains(c, "*/") {
+		return true
+	}
+	return false
 }
 
 // quoteColumn escapes the given column name using the Builder's Quote character.
 // A column that contains '(' or space is treated as an expression (e.g.
 // `count(id)`, `id + 1`) and passed through unchanged; the caller is
 // responsible for the expression's syntax. Plain identifiers are validated and
-// quoted. Any column — expression or identifier — that contains a quote,
-// statement separator, line break, or SQL comment marker records
+// quoted. Any column — expression or identifier — that is empty, contains a
+// breakout character, or fails identifier validation records
 // ErrInvalidIdentifier on the Builder, surfaced from Build.
 func (b *Builder) quoteColumn(c string) string {
-	if c == "" {
-		if b.err == nil {
-			b.err = ErrInvalidIdentifier
-		}
-		return c
-	}
-
-	if containsDangerousColumnChars(c) {
-		if b.err == nil {
-			b.err = ErrInvalidIdentifier
-		}
+	if c == "" || containsDangerousColumnChars(c) {
+		b.markInvalidIdentifier()
 		return c
 	}
 
@@ -317,9 +327,7 @@ func (b *Builder) quoteColumn(c string) string {
 	}
 
 	if !validateIdentifier(c) {
-		if b.err == nil {
-			b.err = ErrInvalidIdentifier
-		}
+		b.markInvalidIdentifier()
 		return c
 	}
 
@@ -330,9 +338,7 @@ func (b *Builder) quoteColumn(c string) string {
 // Returns the new UpdateBuilder.
 func (b *Builder) Update(table string) *UpdateBuilder {
 	if !validateIdentifier(table) {
-		if b.err == nil {
-			b.err = ErrInvalidIdentifier
-		}
+		b.markInvalidIdentifier()
 	} else {
 		b.SQL("UPDATE ").SQL(b.Quote).SQL(table).SQL(b.Quote).SQL(" SET ")
 	}
@@ -345,9 +351,7 @@ func (b *Builder) Update(table string) *UpdateBuilder {
 // Returns the new InsertBuilder.
 func (b *Builder) Insert(table string) *InsertBuilder {
 	if !validateIdentifier(table) {
-		if b.err == nil {
-			b.err = ErrInvalidIdentifier
-		}
+		b.markInvalidIdentifier()
 	}
 	return &InsertBuilder{
 		b:      b,
@@ -381,9 +385,7 @@ func (b *Builder) Select(table string, columns ...string) *Builder {
 	}
 
 	if !validateIdentifier(table) {
-		if b.err == nil {
-			b.err = ErrInvalidIdentifier
-		}
+		b.markInvalidIdentifier()
 	} else {
 		b.SQL(" FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
 	}
@@ -395,9 +397,7 @@ func (b *Builder) Select(table string, columns ...string) *Builder {
 // Returns the current query builder.
 func (b *Builder) Delete(table string) *Builder {
 	if !validateIdentifier(table) {
-		if b.err == nil {
-			b.err = ErrInvalidIdentifier
-		}
+		b.markInvalidIdentifier()
 	} else {
 		b.SQL("DELETE FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
 	}

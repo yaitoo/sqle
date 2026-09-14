@@ -897,6 +897,38 @@ func TestBuilderValidIdentifierStillWorks(t *testing.T) {
 				return New().Select("users", "id + 1")
 			},
 		},
+		{
+			// Arithmetic operators must not be mistaken for SQL comment
+			// markers. A byte-cutset on "-/*" rejects lone `-`, `/`, `*`
+			// and breaks legitimate expressions. Sequences "--", "/*",
+			// "*/" are still rejected.
+			name: "select_with_arithmetic_expression",
+			build: func() *Builder {
+				return New().Select("line_items", "price * qty")
+			},
+		},
+		{
+			name: "select_with_subtract_expression",
+			build: func() *Builder {
+				return New().Select("orders", "total - discount")
+			},
+		},
+		{
+			name: "select_with_divide_expression",
+			build: func() *Builder {
+				return New().Select("metrics", "sum / count")
+			},
+		},
+		{
+			// InsertEnd should leave the buffer clean when the table name
+			// was rejected, mirroring Update/Select/Delete.
+			name: "insert_end_skips_writes_on_invalid_table",
+			build: func() *Builder {
+				b := New()
+				b.Insert("users; DROP TABLE users").End()
+				return b
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -904,6 +936,14 @@ func TestBuilderValidIdentifierStillWorks(t *testing.T) {
 			b := test.build()
 
 			_, _, err := b.Build()
+			if test.name == "insert_end_skips_writes_on_invalid_table" {
+				require.ErrorIs(t, err, ErrInvalidIdentifier)
+				// Buffer must not contain the payload — consistent with
+				// Update/Select/Delete which skip the table write on
+				// validation failure.
+				require.NotContains(t, b.stmt.String(), "DROP TABLE")
+				return
+			}
 			require.NoError(t, err)
 		})
 	}
