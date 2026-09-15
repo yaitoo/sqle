@@ -4,8 +4,13 @@ import (
 	"regexp"
 )
 
+// tokenRegexp matches an input placeholder (<name>) or a parameter placeholder
+// ({name}) where name is an identifier. The supported character class is a
+// leading letter or underscore followed by letters, digits, underscores, dots,
+// or hyphens — so identifiers like "year", "sharding_id", "my-table" and
+// "module.field" are all recognized.
 var (
-	tokenRegexp = regexp.MustCompile(`<\w+>|\{\w+\}`)
+	tokenRegexp = regexp.MustCompile(`<[A-Za-z_][A-Za-z0-9_.\-]*>|\{[A-Za-z_][A-Za-z0-9_.\-]*\}`)
 	tokenizers  = newLRUCache[string, *Tokenizer](4096)
 )
 

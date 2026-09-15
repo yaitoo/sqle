@@ -739,12 +739,6 @@ func TestBuilderInvalidIdentifier(t *testing.T) {
 			},
 		},
 		{
-			name: "update_hyphen_in_placeholder",
-			build: func() *Builder {
-				return New().Update("orders<ro-tate>").Builder
-			},
-		},
-		{
 			name: "insert_empty_table",
 			build: func() *Builder {
 				b := New()
@@ -985,6 +979,52 @@ func TestBuilderValidIdentifierStillWorks(t *testing.T) {
 			},
 			assert: func(t *testing.T, sql string) {
 				require.Empty(t, sql, "stmt buffer should be clean when table validation fails")
+			},
+		},
+		{
+			// A hyphenated input placeholder must be accepted by the
+			// builder's identifier validation and substituted through
+			// <my-table> like any other <name> placeholder.
+			name: "hyphenated_input_placeholder_in_table",
+			build: func() *Builder {
+				return New().Select("orders<my-table>", "id").Input("my-table", "actual_table")
+			},
+			assert: func(t *testing.T, sql string) {
+				require.Equal(t, "SELECT `id` FROM `ordersactual_table`", sql)
+			},
+		},
+		{
+			// A dotted input placeholder must be accepted by the builder's
+			// identifier validation and substituted through <module.field>.
+			name: "dotted_input_placeholder_in_table",
+			build: func() *Builder {
+				return New().Select("orders<module.field>", "id").Input("module.field", "tbl")
+			},
+			assert: func(t *testing.T, sql string) {
+				require.Equal(t, "SELECT `id` FROM `orderstbl`", sql)
+			},
+		},
+		{
+			// Hyphenated placeholders are also valid in column arguments;
+			// the substituted value is injected directly into the SQL since
+			// the column is treated as an identifier, not an expression.
+			name: "hyphenated_input_placeholder_in_column",
+			build: func() *Builder {
+				return New().Select("orders", "<my-column>").Input("my-column", "id")
+			},
+			assert: func(t *testing.T, sql string) {
+				require.Equal(t, "SELECT `id` FROM `orders`", sql)
+			},
+		},
+		{
+			// Combined hyphen + dot in a single placeholder name round-trips
+			// through the builder unchanged.
+			name: "hyphen_and_dot_input_placeholder",
+			build: func() *Builder {
+				return New().Select("orders<my-table.column>", "id").Input("my-table.column", "tbl")
+			},
+			assert: func(t *testing.T, sql string) {
+				require.Equal(t, "SELECT `id` FROM `orderstbl`", sql)
 			},
 		},
 	}
