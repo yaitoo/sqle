@@ -69,10 +69,12 @@ var (
 // strings that are hard to reproduce in tests.
 //
 // If you need to run the same logical query concurrently — for example from
-// multiple HTTP handlers — build a fresh *Builder per goroutine, or call
-// (*Builder).clone() (which this package uses internally, e.g. from
-// MapR.First/Count/Query/QueryLimit) to obtain an independent copy before
-// mutating it.
+// multiple HTTP handlers — build a fresh *Builder per goroutine; do not share
+// a single *Builder across requests. (Internally, this package uses the
+// unexported (*Builder).clone helper when it needs an independent copy — for
+// example, MapR.First/Count/Query/QueryLimit clone before injecting the
+// <rotate> input and the LIMIT clause — so a single MapR call is safe even
+// though it takes a *Builder.)
 type Builder struct {
 	stmt       strings.Builder
 	inputs     map[string]string
