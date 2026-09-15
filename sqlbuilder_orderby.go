@@ -28,19 +28,23 @@ func NewOrderBy(opts ...BuilderOption) *OrderByBuilder {
 }
 
 // WithOrderBy sets the order by clause for the SQL query.
-// It takes an instance of the OrderByBuilder and adds the allowed columns to the Builder's order list.
-// It also appends the SQL string representation of the OrderByBuilder to the Builder's SQL string.
-// It returns a new instance of the OrderByBuilder.
+//
+// It appends the SQL produced by ob (typically a " ORDER BY ..." clause
+// built by prior ByAsc/ByDesc/By calls on ob) to b's SQL string, once
+// at call time, and returns ob unchanged.
+//
+// WithOrderBy captures ob as a one-shot snapshot: mutating ob after the
+// call does not propagate to b, and re-calling b.WithOrderBy(ob) after
+// mutating ob appends a duplicate ORDER BY clause, producing invalid
+// SQL. Build the complete ORDER BY on ob before calling WithOrderBy.
 func (b *Builder) WithOrderBy(ob *OrderByBuilder) *OrderByBuilder {
 	if ob == nil {
 		return nil
 	}
 
-	n := b.Order()
-
 	b.SQL(ob.String())
 
-	return n
+	return ob
 }
 
 // Order create an OrderByBuilder with allowed columns to prevent sql injection. NB: any input is allowed if it is not provided
