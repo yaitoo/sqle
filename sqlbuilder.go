@@ -49,6 +49,30 @@ var (
 )
 
 // Builder is a SQL query builder that allows you to construct SQL statements.
+//
+// Builder is NOT safe for concurrent use.
+//
+// A *Builder owns three pieces of mutable state that are shared across every
+// method on the type: a strings.Builder (the SQL statement buffer; per its
+// own docs, "strings.Builder is not safe for concurrent use"), and two maps
+// (inputs and params) that the runtime will crash on if two goroutines write
+// to them at the same time ("fatal error: concurrent map writes"). Every
+// mutating method — Input, Inputs, Param, Params, If, SQL, plus the
+// SQL-emitting helpers such as Select, Update, Insert, Delete, UpdateBuilder,
+// InsertBuilder, WhereBuilder and OrderByBuilder — writes to one of these
+// without holding a lock.
+//
+// Callers must therefore restrict a *Builder to a single goroutine: build it
+// (Input/Param/SQL/...) and call Build from that same goroutine, and do not
+// share it across requests. Sharing a *Builder across goroutines is undefined
+// behaviour and may produce intermittent panics or silently corrupted SQL
+// strings that are hard to reproduce in tests.
+//
+// If you need to run the same logical query concurrently — for example from
+// multiple HTTP handlers — build a fresh *Builder per goroutine, or call
+// (*Builder).clone() (which this package uses internally, e.g. from
+// MapR.First/Count/Query/QueryLimit) to obtain an independent copy before
+// mutating it.
 type Builder struct {
 	stmt       strings.Builder
 	inputs     map[string]string
