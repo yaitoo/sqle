@@ -14,6 +14,22 @@ var (
 	// ErrInvalidParamVariable is an error that is returned when an invalid parameter variable is encountered.
 	ErrInvalidParamVariable = errors.New("sqle: invalid param variable")
 
+	// ErrInvalidIdentifier is returned when a table name (Update/Insert/
+	// Select/Delete) or a Select column name is empty or contains characters
+	// that are not permitted in a SQL identifier. It is surfaced from Build.
+	//
+	// Identifiers are validated against a strict shape: a leading letter or
+	// underscore followed by letters, digits and underscores, with optional
+	// <name> placeholders (used by input substitution, e.g. orders<rotate>)
+	// and an optional dotted schema/table form (schema.table). This prevents
+	// payloads like `id; DROP TABLE users` from reaching the wire protocol
+	// even though the surrounding quoting already prevents their execution.
+	//
+	// Note: column names passed via UpdateBuilder.Set/SetMap and
+	// InsertBuilder.Set/SetMap/End are not validated here; callers must
+	// restrict those via WithAllow or other whitelists.
+	ErrInvalidIdentifier = errors.New("sqle: invalid identifier")
+
 	// DefaultSQLQuote is the default character used to escape column names in UPDATE and INSERT statements.
 	DefaultSQLQuote = "`"
 
@@ -29,6 +45,7 @@ type Builder struct {
 	inputs     map[string]string
 	params     map[string]any
 	shouldSkip bool
+	err        error // deferred error from validation; surfaced by Build
 
 	Quote        string // escape column name in UPDATE and INSERT
 	Parameterize func(name string, index int) string
@@ -92,7 +109,14 @@ func (b *Builder) If(predicate bool) *Builder {
 
 // SQL appends the given SQL command to the Builder's statement.
 // If the Builder's shouldSkip flag is set, the command is skipped.
+// If a prior validation already recorded an error, the command is dropped so
+// the attack string never lands in the buffer (Build short-circuits on the
+// stored error and returns the sentinel).
 func (b *Builder) SQL(cmd string) *Builder {
+	if b.err != nil {
+		return b
+	}
+
 	if b.shouldSkip {
 		b.shouldSkip = false
 		return b
@@ -111,6 +135,10 @@ func (b *Builder) String() string {
 
 // Build constructs the final SQL statement and returns it along with the parameter values.
 func (b *Builder) Build() (string, []any, error) {
+	if b.err != nil {
+		return "", nil, b.err
+	}
+
 	tz := Tokenize(b.stmt.String())
 
 	var params []any
@@ -171,6 +199,7 @@ func (b *Builder) clone() *Builder {
 		inputs:       make(map[string]string, len(b.inputs)),
 		params:       make(map[string]any, len(b.params)),
 		shouldSkip:   b.shouldSkip,
+		err:          b.err,
 		Quote:        b.Quote,
 		Parameterize: b.Parameterize,
 	}
@@ -185,19 +214,172 @@ func (b *Builder) clone() *Builder {
 	return nb
 }
 
+// isASCIILetter reports whether c is an ASCII letter [A-Za-z].
+func isASCIILetter(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+}
+
+// isASCIIDigit reports whether c is an ASCII digit [0-9].
+func isASCIIDigit(c byte) bool {
+	return c >= '0' && c <= '9'
+}
+
+// isPlainIdentifier reports whether s is a non-empty SQL identifier segment:
+// a leading letter or underscore followed by letters, digits and underscores.
+func isPlainIdentifier(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if i == 0 {
+			if !isASCIILetter(c) && c != '_' {
+				return false
+			}
+			continue
+		}
+		if !isASCIILetter(c) && !isASCIIDigit(c) && c != '_' {
+			return false
+		}
+	}
+	return true
+}
+
+// validateIdentifierSegment reports whether a single dotted segment of an
+// identifier is well-formed: a concatenation of plain identifiers (matching
+// isPlainIdentifier) and <name> placeholders (e.g. `<rotate>`) used for input
+// substitution. A leading `<`, trailing `>` mismatch, or any character outside
+// [A-Za-z0-9_<>] is rejected.
+func validateIdentifierSegment(s string) bool {
+	if s == "" {
+		return false
+	}
+	i := 0
+	for i < len(s) {
+		if s[i] == '<' {
+			end := strings.IndexByte(s[i:], '>')
+			if end <= 1 {
+				// `<` with no matching `>`, or `<>` / `<>` empty name.
+				return false
+			}
+			if !isPlainIdentifier(s[i+1 : i+end]) {
+				return false
+			}
+			i += end + 1
+			continue
+		}
+		// Plain identifier until the next `<` or end of segment.
+		next := strings.IndexByte(s[i:], '<')
+		if next == -1 {
+			return isPlainIdentifier(s[i:])
+		}
+		if next == 0 {
+			return false
+		}
+		if !isPlainIdentifier(s[i : i+next]) {
+			return false
+		}
+		i += next
+	}
+	return true
+}
+
+// validateIdentifier reports whether s is a well-formed SQL identifier. A
+// valid identifier is a non-empty sequence of identifier characters
+// ([A-Za-z_][A-Za-z0-9_]*) and optional <name> placeholders, optionally
+// qualified by a single dotted schema/table form (schema.table). Anything
+// else — empty string, embedded backticks, semicolons, spaces, SQL
+// comments, multi-level qualifications like catalog.schema.table — is
+// rejected.
+func validateIdentifier(s string) bool {
+	if s == "" {
+		return false
+	}
+	segments := strings.Split(s, ".")
+	if len(segments) > 2 {
+		return false
+	}
+	for _, seg := range segments {
+		if !validateIdentifierSegment(seg) {
+			return false
+		}
+	}
+	return true
+}
+
+// quoteQualifiedIdentifier quotes a table or column name for SQL output.
+// It splits the identifier on '.' so that a qualified name like db.orders
+// becomes `db`.`orders` rather than `db.orders` (which the database would
+// read as a single identifier named "db.orders"). The caller must have
+// already validated the input via validateIdentifier; this function only
+// formats the segments. It returns "" if validation fails so the caller
+// can surface the error and keep the buffer clean.
+func (b *Builder) quoteQualifiedIdentifier(s string) string {
+	if !validateIdentifier(s) {
+		b.markInvalidIdentifier()
+		return ""
+	}
+	parts := make([]string, 0, 2)
+	for _, seg := range strings.Split(s, ".") {
+		parts = append(parts, b.Quote+seg+b.Quote)
+	}
+	return strings.Join(parts, ".")
+}
+
+// markInvalidIdentifier records ErrInvalidIdentifier on the Builder so it
+// surfaces from Build, unless an error is already recorded. The first error
+// wins so a chain of bad inputs reports the same sentinel to callers.
+func (b *Builder) markInvalidIdentifier() {
+	if b.err == nil {
+		b.err = ErrInvalidIdentifier
+	}
+}
+
+// containsDangerousColumnChars reports whether c contains any token that
+// would let a column expression break out of the SQL context: the surrounding
+// quote, statement terminators, line breaks, or the SQL comment sequences
+// "--", "/*", and "*/". Single arithmetic bytes ("-", "/", "*") are allowed
+// because they appear in legitimate expressions like `price * qty`.
+func containsDangerousColumnChars(c string) bool {
+	if strings.ContainsAny(c, "`;\n\r") {
+		return true
+	}
+	if strings.Contains(c, "--") || strings.Contains(c, "/*") || strings.Contains(c, "*/") {
+		return true
+	}
+	return false
+}
+
 // quoteColumn escapes the given column name using the Builder's Quote character.
+// A column that contains '(' or space is treated as an expression (e.g.
+// `count(id)`, `id + 1`) and passed through unchanged; the caller is
+// responsible for the expression's syntax. Plain identifiers are validated and
+// quoted (with each dotted segment quoted independently for qualified names
+// like users.id). Any column — expression or identifier — that is empty,
+// contains a breakout character, or fails identifier validation records
+// ErrInvalidIdentifier on the Builder (surfaced from Build) and returns "" so
+// the buffer stays clean of the attack string.
 func (b *Builder) quoteColumn(c string) string {
+	if c == "" || containsDangerousColumnChars(c) {
+		b.markInvalidIdentifier()
+		return ""
+	}
+
 	if strings.ContainsAny(c, "(") || strings.ContainsAny(c, " ") {
 		return c
-	} else {
-		return b.Quote + c + b.Quote
 	}
+
+	return b.quoteQualifiedIdentifier(c)
 }
 
 // Update starts a new UpdateBuilder and sets the table to update.
 // Returns the new UpdateBuilder.
 func (b *Builder) Update(table string) *UpdateBuilder {
-	b.SQL("UPDATE ").SQL(b.Quote).SQL(table).SQL(b.Quote).SQL(" SET ")
+	if !validateIdentifier(table) {
+		b.markInvalidIdentifier()
+	} else {
+		b.SQL("UPDATE ").SQL(b.quoteQualifiedIdentifier(table)).SQL(" SET ")
+	}
 	return &UpdateBuilder{
 		Builder: b,
 	}
@@ -206,6 +388,9 @@ func (b *Builder) Update(table string) *UpdateBuilder {
 // Insert starts a new InsertBuilder and sets the table to insert into.
 // Returns the new InsertBuilder.
 func (b *Builder) Insert(table string) *InsertBuilder {
+	if !validateIdentifier(table) {
+		b.markInvalidIdentifier()
+	}
 	return &InsertBuilder{
 		b:      b,
 		table:  table,
@@ -216,6 +401,12 @@ func (b *Builder) Insert(table string) *InsertBuilder {
 // Select adds a SELECT statement to the current query builder.
 // If no columns are specified, it selects all columns using "*".
 // Returns the current query builder.
+//
+// Column names passed by the caller are trusted expressions (anything
+// containing `(` or space) or validated plain identifiers; see quoteColumn.
+// When the table name contains characters outside the strict identifier
+// shape (for example `users; DROP TABLE users`), ErrInvalidIdentifier is
+// recorded on the Builder and surfaced from Build.
 func (b *Builder) Select(table string, columns ...string) *Builder {
 	b.SQL("SELECT")
 
@@ -231,7 +422,11 @@ func (b *Builder) Select(table string, columns ...string) *Builder {
 		}
 	}
 
-	b.SQL(" FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
+	if !validateIdentifier(table) {
+		b.markInvalidIdentifier()
+	} else {
+		b.SQL(" FROM ").SQL(b.quoteQualifiedIdentifier(table))
+	}
 
 	return b
 }
@@ -239,7 +434,11 @@ func (b *Builder) Select(table string, columns ...string) *Builder {
 // Delete adds a DELETE statement to the current query builder.
 // Returns the current query builder.
 func (b *Builder) Delete(table string) *Builder {
-	b.SQL("DELETE FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
+	if !validateIdentifier(table) {
+		b.markInvalidIdentifier()
+	} else {
+		b.SQL("DELETE FROM ").SQL(b.quoteQualifiedIdentifier(table))
+	}
 
 	return b
 }

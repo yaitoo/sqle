@@ -73,7 +73,14 @@ func (ib *InsertBuilder) SetMap(m map[string]any, opts ...BuilderOption) *Insert
 }
 
 func (ib *InsertBuilder) End() *Builder {
-	ib.b.SQL("INSERT INTO ").SQL(ib.b.Quote).SQL(ib.table).SQL(ib.b.Quote)
+	// If Insert recorded an invalid identifier, leave the SQL buffer clean
+	// so the attack string cannot leak through debug/logging paths. Build
+	// short-circuits on ib.b.err and returns ErrInvalidIdentifier.
+	if ib.b.err != nil {
+		return ib.b
+	}
+
+	ib.b.SQL("INSERT INTO ").SQL(ib.b.quoteQualifiedIdentifier(ib.table))
 
 	cols := " ("
 	values := " VALUES ("
