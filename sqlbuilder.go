@@ -52,21 +52,18 @@ var (
 //
 // Builder is NOT safe for concurrent use.
 //
-// A *Builder owns three pieces of mutable state that are shared across every
-// method on the type: a strings.Builder (the SQL statement buffer; per its
-// own docs, "strings.Builder is not safe for concurrent use"), and two maps
-// (inputs and params) that the runtime will crash on if two goroutines write
-// to them at the same time ("fatal error: concurrent map writes"). Every
-// mutating method — Input, Inputs, Param, Params, If, SQL, plus the
-// SQL-emitting helpers such as Select, Update, Insert, Delete, UpdateBuilder,
-// InsertBuilder, WhereBuilder and OrderByBuilder — writes to one of these
-// without holding a lock.
-//
-// Callers must therefore restrict a *Builder to a single goroutine: build it
-// (Input/Param/SQL/...) and call Build from that same goroutine, and do not
-// share it across requests. Sharing a *Builder across goroutines is undefined
-// behaviour and may produce intermittent panics or silently corrupted SQL
-// strings that are hard to reproduce in tests.
+// Neither a *Builder nor any of its helper objects (UpdateBuilder,
+// InsertBuilder, WhereBuilder, OrderByBuilder) may be concurrently mutated,
+// regardless of which field a method accesses. *Builder carries mutable
+// state beyond the SQL statement buffer and the inputs/params maps — e.g.
+// shouldSkip, the deferred err slot, and the exported Quote and Parameterize
+// fields — and every helper builder carries its own additional state
+// (written, shouldSkip, columns, values, options, …) on top of the embedded
+// *Builder. Callers must therefore synchronize access themselves; sharing any
+// of these objects across goroutines is undefined behaviour and may produce
+// intermittent panics (including "fatal error: concurrent map writes" and
+// races on strings.Builder) or silently corrupted SQL strings that are hard
+// to reproduce in tests.
 //
 // If you need to run the same logical query concurrently — for example from
 // multiple HTTP handlers — build a fresh *Builder per goroutine; do not share
