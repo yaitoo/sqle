@@ -459,7 +459,6 @@ func startRotate(ctx context.Context, db *sqle.DB, rotatedNames []string, rotati
 	var err error
 	var n int
 	var w int
-	var checksum string
 	for _, r := range rotations {
 		err = db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.Tx) error {
 			n = len(rotatedNames)
@@ -467,6 +466,12 @@ func startRotate(ctx context.Context, db *sqle.DB, rotatedNames []string, rotati
 			log.Printf("┌─[ %s ]\n", r.Name)
 
 			for i, rn := range rotatedNames {
+				// checksum must be fresh per (r, rn) lookup: Scan leaves the
+				// destination untouched on sql.ErrNoRows, so a stale value
+				// from a previous successful lookup would short-circuit the
+				// `if checksum != ""` check below and silently skip the
+				// insert (issue #74).
+				var checksum string
 				err = tx.QueryRow("SELECT checksum FROM sqle_rotations WHERE checksum = ? and rotated_name = ?", r.Checksum, rn).Scan(&checksum)
 				if err != nil {
 					if !errors.Is(err, sql.ErrNoRows) {

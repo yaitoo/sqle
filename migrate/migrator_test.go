@@ -937,3 +937,106 @@ func TestRotate(t *testing.T) {
 	}
 
 }
+
+// Regression test for issue #74: Migrator.startRotate reused the
+// `checksum` variable across iterations of both the rotations loop
+// and the rotatedNames loop. When a prior Scan had populated
+// `checksum` (e.g. because a row for an earlier rotation already
+// existed in sqle_rotations) and the next Scan returned
+// sql.ErrNoRows, Scan does NOT overwrite the destination — so the
+// stale value triggered the `if checksum != ""` short-circuit and
+// the insert for the later rotation was silently skipped.
+//
+// This test reproduces the bug deterministically: it configures two
+// monthly rotations (monthly_logs and monthly_users), pre-populates
+// sqle_rotations only for the FIRST rotation, then calls Rotate.
+// With the bug, Rotate would log "[✔]" for the second rotation and
+// never create its tables or sqle_rotations rows. With the fix, the
+// second rotation's tables and rows are created normally.
+func TestRotate_ChecksumNotReusedAcrossIterations(t *testing.T) {
+	db, clean, err := createSqlite3()
+	defer clean()
+	require.NoError(t, err)
+
+	m := New(sqle.Open(db))
+	m.now = func() time.Time {
+		return time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+	}
+
+	require.NoError(t, m.Discover(fstest.MapFS{
+		"monthly/monthly_logs.sql": &fstest.MapFile{
+			Data: []byte(`CREATE TABLE IF NOT EXISTS monthly_logs<rotate> (
+				id int NOT NULL,
+				msg varchar(50) NOT NULL,
+				PRIMARY KEY (id)
+			);`),
+		},
+		"monthly/monthly_users.sql": &fstest.MapFile{
+			Data: []byte(`CREATE TABLE IF NOT EXISTS monthly_users<rotate> (
+				id int NOT NULL,
+				name varchar(50) NOT NULL,
+				PRIMARY KEY (id)
+			);`),
+		},
+	}))
+
+	require.NoError(t, m.Init(context.TODO()))
+
+	require.Len(t, m.MonthlyRotations, 2)
+	first := m.MonthlyRotations[0]
+	second := m.MonthlyRotations[1]
+	require.NotEqual(t, first.Checksum, second.Checksum,
+		"the two rotations must have different checksums for this test to exercise the bug")
+
+	// Pre-populate sqle_rotations ONLY for the first rotation's
+	// rotated_names. This is the state in which the bug surfaces:
+	// the first rotation's Scan succeeds (writing first.Checksum to
+	// the shared `checksum` variable) and the second rotation's Scan
+	// returns sql.ErrNoRows — without the fix, the stale value
+	// short-circuits the insert.
+	for _, rn := range []string{"_202402", "_202403"} {
+		_, err := db.Exec(
+			"INSERT INTO sqle_rotations(checksum, rotated_name, name, rotated_on, execution_time) VALUES (?, ?, ?, ?, ?)",
+			first.Checksum, rn, first.Name, time.Now(), "0s",
+		)
+		require.NoError(t, err)
+	}
+
+	require.NoError(t, m.Rotate(context.TODO()))
+
+	// First rotation: rows existed before Rotate, so they must still be
+	// present and untouched (Rotate should have skipped them with [✔]).
+	for _, rn := range []string{"_202402", "_202403"} {
+		var name string
+		err := m.dbs[0].QueryRow(
+			"SELECT name FROM sqle_rotations WHERE checksum = ? AND rotated_name = ?",
+			first.Checksum, rn,
+		).Scan(&name)
+		require.NoError(t, err, "sqle_rotations row for first rotation %s must exist", rn)
+		require.Equal(t, first.Name, name)
+	}
+
+	// Second rotation: rows did NOT exist before Rotate. With the bug,
+	// they are still missing because the stale `checksum` variable
+	// short-circuits the insert. With the fix, they are inserted.
+	for _, rn := range []string{"_202402", "_202403"} {
+		var name string
+		err := m.dbs[0].QueryRow(
+			"SELECT name FROM sqle_rotations WHERE checksum = ? AND rotated_name = ?",
+			second.Checksum, rn,
+		).Scan(&name)
+		require.NoError(t, err,
+			"sqle_rotations row for second rotation %s must exist after Rotate (issue #74)", rn)
+		require.Equal(t, second.Name, name)
+	}
+
+	// And the actual rotated tables for the second rotation must have
+	// been created — the same bug silently skipped the CREATE TABLE
+	// statement that precedes the sqle_rotations INSERT.
+	for _, rt := range []string{"_202402", "_202403"} {
+		var id int64
+		err := m.dbs[0].QueryRow("SELECT id FROM monthly_users"+rt+" WHERE id=?", 0).Scan(&id)
+		require.ErrorIs(t, err, sql.ErrNoRows,
+			"monthly_users%s table must exist (issue #74)", rt)
+	}
+}
