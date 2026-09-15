@@ -121,3 +121,68 @@ func TestOrderByBuilder(t *testing.T) {
 		})
 	}
 }
+
+func TestWithOrderBy_ReturnsSameInstanceAndAppends(t *testing.T) {
+	b := New("SELECT * FROM users")
+	ob := NewOrderBy(WithAllow("id", "name"))
+	ob.ByDesc("id")
+
+	// WithOrderBy must return the same *OrderByBuilder that was passed in,
+	// not a fresh empty wrapper, so the caller can keep building on it.
+	ret := b.WithOrderBy(ob)
+	require.Same(t, ob, ret)
+
+	// WithOrderBy appends ob.String() to b.stmt once, at call time. Pin
+	// that snapshot so a future change can't quietly retro-append on each
+	// chained By* call (which would silently drop columns for callers that
+	// never re-invoke WithOrderBy).
+	require.Equal(t, "SELECT * FROM users ORDER BY `id` DESC", b.String())
+
+	// Subsequent By* calls on the returned builder mutate ob.Builder, not b.
+	ret.ByAsc("name")
+
+	// ob.Builder reflects the chained call...
+	require.Equal(t, " ORDER BY `id` DESC, `name` ASC", ob.String())
+	// ...but b's snapshot is unchanged — re-call WithOrderBy to push it.
+	require.Equal(t, "SELECT * FROM users ORDER BY `id` DESC", b.String())
+}
+
+func TestWithOrderBy_RejectsSharedReceiver(t *testing.T) {
+	b := New("SELECT * FROM users")
+
+	// ob built via b.Order() shares the receiver — its embedded *Builder
+	// is exactly b, so ob.String() reads b.stmt and WithOrderBy would
+	// append b's stmt to itself.
+	ob := b.Order(WithAllow("id", "name"))
+	ob.ByDesc("id")
+
+	// Sanity: b already has the ORDER BY because ob.Builder == b.
+	require.Equal(t, "SELECT * FROM users ORDER BY `id` DESC", b.String())
+
+	// WithOrderBy must reject the shared-receiver builder instead of
+	// silently doubling b.stmt.
+	ret := b.WithOrderBy(ob)
+
+	// b's stmt is unchanged after the rejected call (no doubling).
+	require.Equal(t, "SELECT * FROM users ORDER BY `id` DESC", b.String())
+
+	// WithOrderBy returns ob so the caller can still inspect it; the
+	// error surfaces from Build.
+	require.Same(t, ob, ret)
+
+	_, _, err := b.Build()
+	require.ErrorIs(t, err, ErrOrderBySharedReceiver)
+}
+
+func TestWithOrderBy_StandaloneBuilderDoesNotMarkError(t *testing.T) {
+	b := New("SELECT * FROM users")
+	ob := NewOrderBy(WithAllow("id"))
+	ob.ByDesc("id")
+
+	b.WithOrderBy(ob)
+
+	// Pin the happy path: a standalone ob must not trip the
+	// shared-receiver guard, so Build succeeds.
+	_, _, err := b.Build()
+	require.NoError(t, err)
+}

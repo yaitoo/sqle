@@ -101,7 +101,9 @@ _, _ = db.ExecBuilder(ctx, b)
 - Order builder reuse
 ```
 base := sqle.New().Select("users").Where().End()
-ob := base.Order(sqle.WithAllow("created_at","name"))
+// ob is built standalone via NewOrderBy; passing a base.Order(...) builder
+// to WithOrderBy would double the receiver buffer (ErrOrderBySharedReceiver).
+ob := sqle.NewOrderBy(sqle.WithAllow("created_at","name"))
 ob.ByDesc("created_at")
 base.WithOrderBy(ob)
 rows, _ := db.QueryBuilder(ctx, base)
