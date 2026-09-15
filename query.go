@@ -2,15 +2,47 @@ package sqle
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
+// Errors aggregates multiple errors so a caller can observe every failure
+// from a fan-out operation rather than only the first one. It implements
+// the multi-error unwrap contract (Unwrap []error) so callers can use
+// errors.Is / errors.As to inspect any individual error, including
+// sentinel values such as sql.ErrNoRows, sql.ErrTxDone, or context.Canceled.
 type Errors struct {
 	items []error
 }
 
 func (e *Errors) Error() string {
 	return fmt.Sprint(e.items)
+}
+
+// Unwrap returns the aggregated errors so that errors.Is and errors.As
+// traverse every contained error (Go 1.20+ multi-error semantics).
+// It returns nil when there are no items.
+func (e *Errors) Unwrap() []error {
+	if e == nil || len(e.items) == 0 {
+		return nil
+	}
+	return e.items
+}
+
+// Is reports whether any error in the aggregate matches target, using
+// errors.Is semantics on each item. This lets callers branch on sentinels
+// (sql.ErrNoRows, context.Canceled, ...) directly against an *Errors value
+// even before the standard library's multi-error unwrap kicks in.
+func (e *Errors) Is(target error) bool {
+	if e == nil {
+		return target == nil
+	}
+	for _, it := range e.items {
+		if errors.Is(it, target) {
+			return true
+		}
+	}
+	return false
 }
 
 type Query[T any] struct {
