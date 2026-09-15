@@ -30,6 +30,15 @@ var (
 	// restrict those via WithAllow or other whitelists.
 	ErrInvalidIdentifier = errors.New("sqle: invalid identifier")
 
+	// ErrOrderBySharedReceiver is surfaced from Build when WithOrderBy is
+	// called with an *OrderByBuilder whose embedded *Builder is the same
+	// *Builder that WithOrderBy was called on (i.e. the ob was produced by
+	// b.Order(...) rather than NewOrderBy). In that case ob.String() reads
+	// b's own stmt, so appending it would duplicate b's buffer. WithOrderBy
+	// records this error and skips the append; build the ob via NewOrderBy
+	// to use WithOrderBy.
+	ErrOrderBySharedReceiver = errors.New("sqle: WithOrderBy requires a standalone *OrderByBuilder (use NewOrderBy); passing b.Order(...).By*(...) builders would double the receiver buffer")
+
 	// DefaultSQLQuote is the default character used to escape column names in UPDATE and INSERT statements.
 	DefaultSQLQuote = "`"
 
@@ -332,6 +341,15 @@ func (b *Builder) quoteQualifiedIdentifier(s string) string {
 func (b *Builder) markInvalidIdentifier() {
 	if b.err == nil {
 		b.err = ErrInvalidIdentifier
+	}
+}
+
+// markOrderBySharedReceiver records ErrOrderBySharedReceiver on the Builder
+// so it surfaces from Build, unless an error is already recorded. The first
+// error wins so a chain of bad inputs reports the same sentinel to callers.
+func (b *Builder) markOrderBySharedReceiver() {
+	if b.err == nil {
+		b.err = ErrOrderBySharedReceiver
 	}
 }
 

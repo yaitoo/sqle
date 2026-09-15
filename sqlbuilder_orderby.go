@@ -33,13 +33,29 @@ func NewOrderBy(opts ...BuilderOption) *OrderByBuilder {
 // built by prior ByAsc/ByDesc/By calls on ob) to b's SQL string, once
 // at call time, and returns ob unchanged.
 //
+// ob must be a standalone *OrderByBuilder produced by NewOrderBy.
+// Builders produced by b.Order(...) share the receiver — their embedded
+// *Builder is exactly b — so ob.String() would read b's own stmt and
+// appending it would duplicate b's buffer. Passing such a builder
+// records ErrOrderBySharedReceiver on b (surfaced from Build) and does
+// not append. Use NewOrderBy when the ORDER BY is built separately.
+//
 // WithOrderBy captures ob as a one-shot snapshot: mutating ob after the
 // call does not propagate to b, and re-calling b.WithOrderBy(ob) after
-// mutating ob appends a duplicate ORDER BY clause, producing invalid
-// SQL. Build the complete ORDER BY on ob before calling WithOrderBy.
+// mutating ob appends a duplicate ORDER BY clause. Build the complete
+// ORDER BY on ob before calling WithOrderBy.
 func (b *Builder) WithOrderBy(ob *OrderByBuilder) *OrderByBuilder {
 	if ob == nil {
 		return nil
+	}
+
+	// Reject builders that share the receiver: their String() reads
+	// b.stmt, so b.SQL(ob.String()) would append b's current stmt to
+	// itself. Returning ob (instead of nil) keeps chained By* calls
+	// usable; the error is surfaced from Build.
+	if ob.Builder == b {
+		b.markOrderBySharedReceiver()
+		return ob
 	}
 
 	b.SQL(ob.String())
@@ -47,7 +63,12 @@ func (b *Builder) WithOrderBy(ob *OrderByBuilder) *OrderByBuilder {
 	return ob
 }
 
-// Order create an OrderByBuilder with allowed columns to prevent sql injection. NB: any input is allowed if it is not provided
+// Order create an OrderByBuilder with allowed columns to prevent sql injection. NB: any input is allowed if it is not provided.
+//
+// The returned OrderByBuilder shares the receiver (its embedded *Builder
+// is b), so ByAsc/ByDesc/By on it write directly into b's SQL. Do not
+// pass this builder to b.WithOrderBy — that would append b's stmt to
+// itself; use NewOrderBy when the ORDER BY is built separately.
 func (b *Builder) Order(opts ...BuilderOption) *OrderByBuilder {
 	ob := &OrderByBuilder{
 		Builder: b,
