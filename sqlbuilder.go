@@ -277,11 +277,35 @@ func isPlainIdentifier(s string) bool {
 	return true
 }
 
+// isPlaceholderName reports whether s is a non-empty <name> placeholder name:
+// a leading letter or underscore followed by letters, digits, underscores,
+// dots, or hyphens. Mirrors the character class accepted by tokenRegexp so
+// identifiers like `<my-table>` and `<module.field>` round-trip cleanly
+// through both the tokenizer and the builder's identifier validation.
+func isPlaceholderName(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if i == 0 {
+			if !isASCIILetter(c) && c != '_' {
+				return false
+			}
+			continue
+		}
+		if !isASCIILetter(c) && !isASCIIDigit(c) && c != '_' && c != '.' && c != '-' {
+			return false
+		}
+	}
+	return true
+}
+
 // validateIdentifierSegment reports whether a single dotted segment of an
 // identifier is well-formed: a concatenation of plain identifiers (matching
-// isPlainIdentifier) and <name> placeholders (e.g. `<rotate>`) used for input
-// substitution. A leading `<`, trailing `>` mismatch, or any character outside
-// [A-Za-z0-9_<>] is rejected.
+// isPlainIdentifier) and <name> placeholders (e.g. `<rotate>`, `<my-table>`,
+// `<module.field>`) used for input substitution. A leading `<`, trailing `>`
+// mismatch, or any character outside [A-Za-z0-9_<>.-] is rejected.
 func validateIdentifierSegment(s string) bool {
 	if s == "" {
 		return false
@@ -294,7 +318,7 @@ func validateIdentifierSegment(s string) bool {
 				// `<` with no matching `>`, or `<>` / `<>` empty name.
 				return false
 			}
-			if !isPlainIdentifier(s[i+1 : i+end]) {
+			if !isPlaceholderName(s[i+1 : i+end]) {
 				return false
 			}
 			i += end + 1
@@ -318,16 +342,20 @@ func validateIdentifierSegment(s string) bool {
 
 // validateIdentifier reports whether s is a well-formed SQL identifier. A
 // valid identifier is a non-empty sequence of identifier characters
-// ([A-Za-z_][A-Za-z0-9_]*) and optional <name> placeholders, optionally
-// qualified by a single dotted schema/table form (schema.table). Anything
-// else — empty string, embedded backticks, semicolons, spaces, SQL
-// comments, multi-level qualifications like catalog.schema.table — is
-// rejected.
+// ([A-Za-z_][A-Za-z0-9_]*) and optional <name> placeholders (with names
+// matching [A-Za-z_][A-Za-z0-9_.\-]*), optionally qualified by a single
+// dotted schema/table form (schema.table). Anything else — empty string,
+// embedded backticks, semicolons, spaces, SQL comments, multi-level
+// qualifications like catalog.schema.table — is rejected.
+//
+// Dots inside a <name> placeholder are treated as part of the placeholder
+// name rather than as a schema/table separator, so identifiers like
+// `orders<module.field>` round-trip cleanly.
 func validateIdentifier(s string) bool {
 	if s == "" {
 		return false
 	}
-	segments := strings.Split(s, ".")
+	segments := splitOnTopLevelDot(s)
 	if len(segments) > 2 {
 		return false
 	}
@@ -339,8 +367,46 @@ func validateIdentifier(s string) bool {
 	return true
 }
 
+// splitOnTopLevelDot splits s on '.' characters that are NOT inside a
+// <name> placeholder. Placeholder contents are treated as opaque so that
+// dotted placeholders like `<module.field>` are kept as a single segment,
+// while a top-level schema/table separator (e.g. `db.orders`) still splits
+// the identifier into two segments as before.
+func splitOnTopLevelDot(s string) []string {
+	var segments []string
+	start := 0
+	i := 0
+	for i < len(s) {
+		if s[i] == '<' {
+			end := strings.IndexByte(s[i:], '>')
+			if end == -1 {
+				// Unclosed `<`: skip the rest; validateIdentifierSegment
+				// will reject the malformed segment.
+				i = len(s)
+				continue
+			}
+			if end == 0 {
+				// Empty `<>`: advance past `<` so the loop makes progress;
+				// validateIdentifierSegment will reject the empty name.
+				i++
+				continue
+			}
+			i += end + 1
+			continue
+		}
+		if s[i] == '.' {
+			segments = append(segments, s[start:i])
+			start = i + 1
+		}
+		i++
+	}
+	segments = append(segments, s[start:])
+	return segments
+}
+
 // quoteQualifiedIdentifier quotes a table or column name for SQL output.
-// It splits the identifier on '.' so that a qualified name like db.orders
+// It splits the identifier on top-level '.' (dots inside <name> placeholders
+// are kept with the placeholder) so that a qualified name like db.orders
 // becomes `db`.`orders` rather than `db.orders` (which the database would
 // read as a single identifier named "db.orders"). The caller must have
 // already validated the input via validateIdentifier; this function only
@@ -352,7 +418,7 @@ func (b *Builder) quoteQualifiedIdentifier(s string) string {
 		return ""
 	}
 	parts := make([]string, 0, 2)
-	for _, seg := range strings.Split(s, ".") {
+	for _, seg := range splitOnTopLevelDot(s) {
 		parts = append(parts, b.Quote+seg+b.Quote)
 	}
 	return strings.Join(parts, ".")
