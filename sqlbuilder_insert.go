@@ -80,7 +80,7 @@ func (ib *InsertBuilder) End() *Builder {
 		return ib.b
 	}
 
-	ib.b.SQL("INSERT INTO ").SQL(ib.b.Quote).SQL(ib.table).SQL(ib.b.Quote)
+	ib.b.SQL("INSERT INTO ").SQL(ib.b.quoteQualifiedIdentifier(ib.table))
 
 	cols := " ("
 	values := " VALUES ("

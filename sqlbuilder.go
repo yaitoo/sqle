@@ -214,6 +214,16 @@ func (b *Builder) clone() *Builder {
 	return nb
 }
 
+// isASCIILetter reports whether c is an ASCII letter [A-Za-z].
+func isASCIILetter(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+}
+
+// isASCIIDigit reports whether c is an ASCII digit [0-9].
+func isASCIIDigit(c byte) bool {
+	return c >= '0' && c <= '9'
+}
+
 // isPlainIdentifier reports whether s is a non-empty SQL identifier segment:
 // a leading letter or underscore followed by letters, digits and underscores.
 func isPlainIdentifier(s string) bool {
@@ -223,12 +233,12 @@ func isPlainIdentifier(s string) bool {
 	for i := 0; i < len(s); i++ {
 		c := s[i]
 		if i == 0 {
-			if !(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z') && c != '_' {
+			if !isASCIILetter(c) && c != '_' {
 				return false
 			}
 			continue
 		}
-		if !(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z') && !(c >= '0' && c <= '9') && c != '_' {
+		if !isASCIILetter(c) && !isASCIIDigit(c) && c != '_' {
 			return false
 		}
 	}
@@ -279,17 +289,41 @@ func validateIdentifierSegment(s string) bool {
 // ([A-Za-z_][A-Za-z0-9_]*) and optional <name> placeholders, optionally
 // qualified by a single dotted schema/table form (schema.table). Anything
 // else — empty string, embedded backticks, semicolons, spaces, SQL
-// comments — is rejected.
+// comments, multi-level qualifications like catalog.schema.table — is
+// rejected.
 func validateIdentifier(s string) bool {
 	if s == "" {
 		return false
 	}
-	for _, seg := range strings.Split(s, ".") {
+	segments := strings.Split(s, ".")
+	if len(segments) > 2 {
+		return false
+	}
+	for _, seg := range segments {
 		if !validateIdentifierSegment(seg) {
 			return false
 		}
 	}
 	return true
+}
+
+// quoteQualifiedIdentifier quotes a table or column name for SQL output.
+// It splits the identifier on '.' so that a qualified name like db.orders
+// becomes `db`.`orders` rather than `db.orders` (which the database would
+// read as a single identifier named "db.orders"). The caller must have
+// already validated the input via validateIdentifier; this function only
+// formats the segments. It returns "" if validation fails so the caller
+// can surface the error and keep the buffer clean.
+func (b *Builder) quoteQualifiedIdentifier(s string) string {
+	if !validateIdentifier(s) {
+		b.markInvalidIdentifier()
+		return ""
+	}
+	parts := make([]string, 0, 2)
+	for _, seg := range strings.Split(s, ".") {
+		parts = append(parts, b.Quote+seg+b.Quote)
+	}
+	return strings.Join(parts, ".")
 }
 
 // markInvalidIdentifier records ErrInvalidIdentifier on the Builder so it
@@ -320,8 +354,9 @@ func containsDangerousColumnChars(c string) bool {
 // A column that contains '(' or space is treated as an expression (e.g.
 // `count(id)`, `id + 1`) and passed through unchanged; the caller is
 // responsible for the expression's syntax. Plain identifiers are validated and
-// quoted. Any column — expression or identifier — that is empty, contains a
-// breakout character, or fails identifier validation records
+// quoted (with each dotted segment quoted independently for qualified names
+// like users.id). Any column — expression or identifier — that is empty,
+// contains a breakout character, or fails identifier validation records
 // ErrInvalidIdentifier on the Builder (surfaced from Build) and returns "" so
 // the buffer stays clean of the attack string.
 func (b *Builder) quoteColumn(c string) string {
@@ -334,12 +369,7 @@ func (b *Builder) quoteColumn(c string) string {
 		return c
 	}
 
-	if !validateIdentifier(c) {
-		b.markInvalidIdentifier()
-		return ""
-	}
-
-	return b.Quote + c + b.Quote
+	return b.quoteQualifiedIdentifier(c)
 }
 
 // Update starts a new UpdateBuilder and sets the table to update.
@@ -348,7 +378,7 @@ func (b *Builder) Update(table string) *UpdateBuilder {
 	if !validateIdentifier(table) {
 		b.markInvalidIdentifier()
 	} else {
-		b.SQL("UPDATE ").SQL(b.Quote).SQL(table).SQL(b.Quote).SQL(" SET ")
+		b.SQL("UPDATE ").SQL(b.quoteQualifiedIdentifier(table)).SQL(" SET ")
 	}
 	return &UpdateBuilder{
 		Builder: b,
@@ -395,7 +425,7 @@ func (b *Builder) Select(table string, columns ...string) *Builder {
 	if !validateIdentifier(table) {
 		b.markInvalidIdentifier()
 	} else {
-		b.SQL(" FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
+		b.SQL(" FROM ").SQL(b.quoteQualifiedIdentifier(table))
 	}
 
 	return b
@@ -407,7 +437,7 @@ func (b *Builder) Delete(table string) *Builder {
 	if !validateIdentifier(table) {
 		b.markInvalidIdentifier()
 	} else {
-		b.SQL("DELETE FROM ").SQL(b.Quote).SQL(table).SQL(b.Quote)
+		b.SQL("DELETE FROM ").SQL(b.quoteQualifiedIdentifier(table))
 	}
 
 	return b

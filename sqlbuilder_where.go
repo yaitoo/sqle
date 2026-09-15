@@ -86,7 +86,7 @@ func (wb *WhereBuilder) Or(criteria string) *WhereBuilder {
 
 // SQL adds a condition to the WHERE clause with the specified operator.
 func (wb *WhereBuilder) SQL(op string, criteria string) *WhereBuilder {
-	if wb.Builder.err != nil {
+	if wb.err != nil {
 		return wb
 	}
 
@@ -98,15 +98,15 @@ func (wb *WhereBuilder) SQL(op string, criteria string) *WhereBuilder {
 	if criteria != "" {
 		// first condition, op expression should not be written
 		if wb.written {
-			wb.Builder.stmt.WriteString(" ")
-			wb.Builder.stmt.WriteString(op)
+			wb.stmt.WriteString(" ")
+			wb.stmt.WriteString(op)
 		} else {
-			wb.Builder.stmt.WriteString(" WHERE")
+			wb.stmt.WriteString(" WHERE")
 		}
 
 		wb.written = true
-		wb.Builder.stmt.WriteString(" ")
-		wb.Builder.stmt.WriteString(criteria)
+		wb.stmt.WriteString(" ")
+		wb.stmt.WriteString(criteria)
 	}
 
 	return wb

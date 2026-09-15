@@ -858,8 +858,9 @@ func TestBuilderValidIdentifierStillWorks(t *testing.T) {
 	now := time.Now()
 
 	tests := []struct {
-		name  string
-		build func() *Builder
+		name   string
+		build  func() *Builder
+		assert func(t *testing.T, sql string)
 	}{
 		{
 			name: "rotate_placeholder",
@@ -873,6 +874,60 @@ func TestBuilderValidIdentifierStillWorks(t *testing.T) {
 			build: func() *Builder {
 				id := shardid.Build(time.Date(2024, 2, 20, 0, 0, 0, 0, time.UTC).UnixMilli(), 0, 0, shardid.MonthlyRotate, 0)
 				return New().On(id).Select("db.orders<rotate>", "id")
+			},
+		},
+		{
+			// A dotted table name must be split into segments and each
+			// segment quoted independently, producing `db`.`orders`
+			// rather than `db.orders` (which the DB reads as a single
+			// identifier named "db.orders").
+			name: "qualified_select_quotes_each_segment",
+			build: func() *Builder {
+				return New().Select("db.orders", "id")
+			},
+			assert: func(t *testing.T, sql string) {
+				require.Equal(t, "SELECT `id` FROM `db`.`orders`", sql)
+			},
+		},
+		{
+			name: "qualified_update_quotes_each_segment",
+			build: func() *Builder {
+				return New().Update("db.orders").
+					Set("member_id", 1).
+					Where("id={id}").
+					Param("id", 1)
+			},
+			assert: func(t *testing.T, sql string) {
+				require.Equal(t, "UPDATE `db`.`orders` SET `member_id`=? WHERE id=?", sql)
+			},
+		},
+		{
+			name: "qualified_delete_quotes_each_segment",
+			build: func() *Builder {
+				return New().Delete("db.orders").Where("id={id}").Param("id", 1)
+			},
+			assert: func(t *testing.T, sql string) {
+				require.Equal(t, "DELETE FROM `db`.`orders` WHERE id=?", sql)
+			},
+		},
+		{
+			name: "qualified_insert_quotes_each_segment",
+			build: func() *Builder {
+				b := New()
+				b.Insert("db.orders").Set("a", 1).End()
+				return b
+			},
+			assert: func(t *testing.T, sql string) {
+				require.Equal(t, "INSERT INTO `db`.`orders` (`a`) VALUES (?)", sql)
+			},
+		},
+		{
+			name: "qualified_column_quotes_each_segment",
+			build: func() *Builder {
+				return New().Select("orders", "orders.id")
+			},
+			assert: func(t *testing.T, sql string) {
+				require.Equal(t, "SELECT `orders`.`id` FROM `orders`", sql)
 			},
 		},
 		{
@@ -928,6 +983,9 @@ func TestBuilderValidIdentifierStillWorks(t *testing.T) {
 				b.Insert("users; DROP TABLE users").End()
 				return b
 			},
+			assert: func(t *testing.T, sql string) {
+				require.Empty(t, sql, "stmt buffer should be clean when table validation fails")
+			},
 		},
 	}
 
@@ -935,16 +993,45 @@ func TestBuilderValidIdentifierStillWorks(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			b := test.build()
 
-			_, _, err := b.Build()
+			sql, _, err := b.Build()
+
+			// insert_end_skips_writes_on_invalid_table is the only case
+			// that expects ErrInvalidIdentifier; its assert still
+			// confirms the buffer is clean.
 			if test.name == "insert_end_skips_writes_on_invalid_table" {
 				require.ErrorIs(t, err, ErrInvalidIdentifier)
-				// Buffer must not contain the payload — consistent with
-				// Update/Select/Delete which skip the table write on
-				// validation failure.
+				require.Empty(t, sql, "stmt buffer should be clean when table validation fails")
 				require.NotContains(t, b.stmt.String(), "DROP TABLE")
 				return
 			}
+
 			require.NoError(t, err)
+			if test.assert != nil {
+				test.assert(t, sql)
+			}
+		})
+	}
+}
+
+// TestBuilderRejectsMultiLevelQualification ensures validateIdentifier rejects
+// inputs with more than one dot, even when each segment is well-formed. The
+// documented strict shape permits a single schema.table form; deeper
+// qualifications like catalog.schema.table are out of scope.
+func TestBuilderRejectsMultiLevelQualification(t *testing.T) {
+	cases := []string{
+		"a.b.c",
+		"catalog.schema.table",
+		"db.schema.users<rotate>",
+		"a.b.c.d",
+	}
+
+	for _, name := range cases {
+		t.Run(name, func(t *testing.T) {
+			b := New().Select(name, "id")
+			_, _, err := b.Build()
+			require.ErrorIs(t, err, ErrInvalidIdentifier)
+			require.NotContains(t, b.stmt.String(), name,
+				"rejected multi-level qualification must not leak into stmt buffer")
 		})
 	}
 }
