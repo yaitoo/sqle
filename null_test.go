@@ -110,3 +110,25 @@ func TestNullInJSON(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("null"), bufNull)
 }
+
+func TestNullStringResetVOnNullJSON(t *testing.T) {
+	// Regression for issue #81: Null[T].UnmarshalJSON must reset V to its
+	// zero value when the payload is JSON null (or empty), so callers that
+	// read V after a null round-trip do not see stale data.
+
+	var n Null[string]
+	err := json.Unmarshal([]byte(`"stale"`), &n)
+	require.NoError(t, err)
+	require.Equal(t, "stale", n.TValue())
+	require.Equal(t, true, n.Valid)
+
+	err = json.Unmarshal([]byte("null"), &n)
+	require.NoError(t, err)
+	require.Equal(t, false, n.Valid)
+	require.Equal(t, "", n.TValue())
+
+	err = n.UnmarshalJSON(nil)
+	require.NoError(t, err)
+	require.Equal(t, false, n.Valid)
+	require.Equal(t, "", n.TValue())
+}
