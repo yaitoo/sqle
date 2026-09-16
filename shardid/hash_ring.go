@@ -6,9 +6,29 @@ import (
 	"strconv"
 )
 
-var (
-	defaultReplicas = []string{"A", "C", "E", "G", "I", "K", "M", "O", "Q", "S"}
-)
+// defaultReplicas is the set of virtual-node labels HashRing places on the
+// hash ring for every physical database. Each label is concatenated with
+// the database index (e.g. "A0", "A1", ..., "S9") and hashed to a fixed
+// position on the 32-bit ring, so each database ends up with
+// len(defaultReplicas) virtual nodes.
+//
+// The labels are the ten odd letters of the English alphabet (A, C, E,
+// G, I, K, M, O, Q, S). They are chosen deliberately rather than the
+// obvious "V0"…"V9":
+//   - they have widely-spread FNV-1a hashes, so virtual nodes land in
+//     distinct buckets of the ring instead of clustering near each
+//     other (verified empirically by hash_ring_test.go and dht_test.go,
+//     whose fixtures are derived from these exact labels);
+//   - they are short and visually unambiguous in logs;
+//   - using "V0"…"V9" — the same prefix for every replica — caused
+//     nearby virtual nodes in earlier iterations of this library,
+//     producing poor key distribution on small ring sizes.
+//
+// defaultReplicas is package-private. DHTs built via NewDHT(dbs...) use
+// this slice unless the caller wraps the HashRing via WithReplicas(...),
+// in which case the caller-supplied labels fully replace it (see
+// NewDHT, NewHR, and DHT.Add).
+var defaultReplicas = []string{"A", "C", "E", "G", "I", "K", "M", "O", "Q", "S"}
 
 // HashRing implement consistent hashing for database sharding with hash key
 type HashRing struct {

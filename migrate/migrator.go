@@ -235,7 +235,7 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 		if n == 1 {
 			log.Printf("migrate: %s\n", m.module)
 		} else {
-			log.Printf("migrate db-%v: %s\n", i, m.module)
+			log.Printf("migrate shard %d/%d: %s\n", i+1, n, m.module)
 		}
 
 		err = m.startMigrate(ctx, db)
@@ -309,7 +309,7 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 				}
 
 				cmd := sqle.New()
-				et := round(time.Since(now)).String()
+				et := roundDuration(time.Since(now)).String()
 				cmd.Insert("sqle_migrations").
 					Set("checksum", s.Checksum).
 					Set("module", m.module).
@@ -413,7 +413,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 		if n == 1 {
 			log.Printf("rotate: %s\n", m.module)
 		} else {
-			log.Printf("rotate db-%v: %s\n", i, m.module)
+			log.Printf("rotate shard %d/%d: %s\n", i+1, n, m.module)
 		}
 
 		now := m.now().UTC()
@@ -495,7 +495,7 @@ func startRotate(ctx context.Context, db *sqle.DB, txOpts *sql.TxOptions, rotate
 				}
 
 				cmd := sqle.New()
-				et := round(time.Since(now)).String()
+				et := roundDuration(time.Since(now)).String()
 				cmd.Insert("sqle_rotations").
 					Set("checksum", r.Checksum).
 					Set("name", r.Name).
