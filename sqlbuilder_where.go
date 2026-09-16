@@ -67,8 +67,18 @@ func (b *Builder) WithWhere(wb *WhereBuilder) *WhereBuilder {
 	return b.Where(strings.TrimPrefix(wb.stmt.String(), " WHERE "))
 }
 
-// If sets a condition to skip the subsequent SQL statements.
-// If the predicate is false, the subsequent SQL statements will be skipped.
+// If gates the *next single* And/Or/SQL call on this WhereBuilder. When
+// predicate is false, exactly one following And/Or/SQL call is skipped;
+// any further chained calls are emitted unconditionally. The skip flag is
+// consumed by the first And/Or/SQL call after If.
+//
+// Pitfall: If does NOT gate a chain of And/Or calls. If you write
+// wb.If(q.Name != "").And("name={name}").And("age={age}") and the
+// predicate is false, only the first And is skipped and "age={age}"
+// still appears in the WHERE clause. Put an If(false) in front of each
+// gated call (or refactor to a helper that only runs the chain when the
+// predicate is true) when you need to skip multiple consecutive
+// conditions.
 func (wb *WhereBuilder) If(predicate bool) *WhereBuilder {
 	wb.shouldSkip = !predicate
 	return wb

@@ -132,8 +132,22 @@ func (b *Builder) Params(v map[string]any) *Builder {
 	return b
 }
 
-// If sets a condition that determines whether the subsequent SQL command should be executed.
-// If the predicate is false, the command is skipped.
+// If gates the *next single* SQL-emitting call on this Builder. When
+// predicate is false, exactly one following call is skipped; any further
+// chained calls are emitted unconditionally. The skip flag is consumed by
+// the first SQL-emitting call after If.
+//
+// This is the canonical pattern from the README:
+//
+//	b.SQL(" WHERE created>=now()").
+//	    If(true).SQL(" LIMIT 5").
+//	    If(false).SQL(" OFFSET 5")
+//
+// Pitfall: If does NOT gate a chain of calls. If you write
+// b.If(cond).SQL("A").SQL("B") and cond is false, only "A" is skipped
+// and "B" still appears in the output. To skip every call in a chain
+// you must put an If(false) in front of each one (or refactor to a
+// helper that only runs the chain when cond is true).
 func (b *Builder) If(predicate bool) *Builder {
 	b.shouldSkip = !predicate
 	return b
