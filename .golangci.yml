@@ -1,0 +1,15 @@
+# golangci-lint configuration. See https://golangci-lint.run/
+#
+# Skipping test files: errcheck noise from `defer d.Close()` and similar
+# cleanup helpers dominates the lint output, and the existing tests
+# already exercise the relevant error paths. Production code (everything
+# outside _test.go) keeps the standard linter set.
+version: "2"
+
+run:
+  # Skip _test.go files entirely (issue: lint noise from
+  # defer-close cleanup helpers and typecheck on single-file runs).
+  tests: false
+
+linters:
+  default: standard
