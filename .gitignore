@@ -11,6 +11,10 @@
 # Test binary, built with `go test -c`
 *.test
 *.db
+# sqlite temp artefacts produced by `file::memory:?cache=shared`
+*.db-journal
+*.db-shm
+*.db-wal
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
