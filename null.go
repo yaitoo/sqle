@@ -44,6 +44,8 @@ func (t Null[T]) MarshalJSON() ([]byte, error) { // skipcq: GO-W1029
 // UnmarshalJSON implements the json.Unmarshaler interface
 func (t *Null[T]) UnmarshalJSON(data []byte) error { // skipcq: GO-W1029
 	if len(data) == 0 || string(data) == nullJson {
+		var zero T
+		t.V = zero
 		t.Null.Valid = false
 		return nil
 	}
