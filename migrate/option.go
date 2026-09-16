@@ -27,8 +27,9 @@ func WithModule(name string) Option {
 
 // WithTxOptions configures the *sql.TxOptions used by Migrate and Rotate
 // when opening the per-version and per-rotation transactions. A nil opts
-// (or the zero value) preserves the previous behaviour of passing nil to
-// db.Transaction.
+// preserves the previous behaviour of passing nil to db.Transaction; a
+// non-nil but zero-valued *sql.TxOptions is forwarded as-is, which some
+// drivers treat differently from nil.
 //
 // On databases whose default isolation makes parallel migrations
 // deadlock-prone (MySQL REPEATABLE READ, PostgreSQL SERIALIZABLE), call

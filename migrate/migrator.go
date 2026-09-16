@@ -54,6 +54,8 @@ type Migrator struct {
 	dbs    []*sqle.DB
 	suffix string
 	module string
+	// txOpts is forwarded to every db.Transaction opened during
+	// Migrate and Rotate; nil means driver default. See WithTxOptions.
 	txOpts *sql.TxOptions
 
 	Versions         []Semver
