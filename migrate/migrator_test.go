@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"io/fs"
 	"os"
+	"sync"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -1038,5 +1039,131 @@ func TestRotate_ChecksumNotReusedAcrossIterations(t *testing.T) {
 		err := m.dbs[0].QueryRow("SELECT id FROM monthly_users"+rt+" WHERE id=?", 0).Scan(&id)
 		require.ErrorIs(t, err, sql.ErrNoRows,
 			"monthly_users%s table must exist (issue #74)", rt)
+	}
+}
+
+// txOptCapture wraps a *sql.DB so every BeginTx call is recorded. The
+// remaining Database methods are promoted from the embedded *sql.DB so
+// the wrapper still satisfies sqle.Database.
+type txOptCapture struct {
+	*sql.DB
+	mu   sync.Mutex
+	opts []*sql.TxOptions
+}
+
+func (c *txOptCapture) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+	c.mu.Lock()
+	c.opts = append(c.opts, opts)
+	c.mu.Unlock()
+	return c.DB.BeginTx(ctx, opts)
+}
+
+func (c *txOptCapture) snapshot() []*sql.TxOptions {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	out := make([]*sql.TxOptions, len(c.opts))
+	copy(out, c.opts)
+	return out
+}
+
+// Regression test for issue #80: the migrator previously hard-coded
+// `db.Transaction(ctx, nil, ...)` inside both startMigrate and
+// startRotate, leaving callers no way to set an isolation level or the
+// read-only flag. WithTxOptions should forward the supplied *sql.TxOptions
+// to every BeginTx call. The wrapping txOptCapture inspects what
+// reaches the driver layer.
+func TestMigrate_WithTxOptions_Propagated(t *testing.T) {
+	db, clean, err := createSqlite3()
+	require.NoError(t, err)
+	defer clean()
+
+	capture := &txOptCapture{DB: db}
+
+	want := &sql.TxOptions{Isolation: sql.LevelReadCommitted, ReadOnly: false}
+	m := New(sqle.Open(capture))
+	require.NoError(t, m.Discover(fstest.MapFS{
+		"0.1.0/1_create_table_users.sql": &fstest.MapFile{
+			Data: []byte(`CREATE TABLE IF NOT EXISTS users (id int NOT NULL, PRIMARY KEY (id));`),
+		},
+		"0.2.0/1_create_table_orders.sql": &fstest.MapFile{
+			Data: []byte(`CREATE TABLE IF NOT EXISTS orders (id int NOT NULL, PRIMARY KEY (id));`),
+		},
+	}, WithModule("tests"), WithTxOptions(want)))
+
+	require.NoError(t, m.Init(context.TODO()))
+	require.NoError(t, m.Migrate(context.TODO()))
+
+	got := capture.snapshot()
+	require.NotEmpty(t, got, "Migrate must open at least one transaction")
+	for i, opts := range got {
+		require.Same(t, want, opts,
+			"BeginTx call #%d received %p, want %p (the exact *sql.TxOptions the caller passed via WithTxOptions, issue #80)",
+			i, opts, want)
+	}
+}
+
+// Companion of TestMigrate_WithTxOptions_Propagated for the rotation
+// path: startRotate previously hard-coded `db.Transaction(ctx, nil, ...)`
+// too, so a configured TxOptions must reach the rotation transactions as
+// well.
+func TestRotate_WithTxOptions_Propagated(t *testing.T) {
+	db, clean, err := createSqlite3()
+	require.NoError(t, err)
+	defer clean()
+
+	capture := &txOptCapture{DB: db}
+
+	want := &sql.TxOptions{Isolation: sql.LevelReadCommitted, ReadOnly: false}
+	m := New(sqle.Open(capture))
+	m.now = func() time.Time {
+		return time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+	}
+
+	require.NoError(t, m.Discover(fstest.MapFS{
+		"monthly/monthly_logs.sql": &fstest.MapFile{
+			Data: []byte(`CREATE TABLE IF NOT EXISTS monthly_logs<rotate> (
+				id int NOT NULL,
+				PRIMARY KEY (id)
+			);`),
+		},
+	}, WithTxOptions(want)))
+
+	require.NoError(t, m.Init(context.TODO()))
+	require.NoError(t, m.Rotate(context.TODO()))
+
+	got := capture.snapshot()
+	require.NotEmpty(t, got, "Rotate must open at least one transaction")
+	for i, opts := range got {
+		require.Same(t, want, opts,
+			"BeginTx call #%d received %p, want %p (the exact *sql.TxOptions the caller passed via WithTxOptions, issue #80)",
+			i, opts, want)
+	}
+}
+
+// Default (no WithTxOptions) keeps the previous behaviour: the migrator
+// passes nil to db.Transaction, which in turn passes nil to BeginTx.
+// This guards against a future change that would silently start
+// constructing a non-nil *sql.TxOptions{} by accident.
+func TestMigrate_NoTxOptions_PassesNilToBeginTx(t *testing.T) {
+	db, clean, err := createSqlite3()
+	require.NoError(t, err)
+	defer clean()
+
+	capture := &txOptCapture{DB: db}
+
+	m := New(sqle.Open(capture))
+	require.NoError(t, m.Discover(fstest.MapFS{
+		"0.1.0/1_create_table_users.sql": &fstest.MapFile{
+			Data: []byte(`CREATE TABLE IF NOT EXISTS users (id int NOT NULL, PRIMARY KEY (id));`),
+		},
+	}, WithModule("tests")))
+
+	require.NoError(t, m.Init(context.TODO()))
+	require.NoError(t, m.Migrate(context.TODO()))
+
+	for i, opts := range capture.snapshot() {
+		require.Nil(t, opts,
+			"BeginTx call #%d must receive nil TxOptions by default; got %+v (issue #80 regression check)",
+			i, opts)
 	}
 }

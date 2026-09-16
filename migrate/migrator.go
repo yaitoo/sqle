@@ -54,6 +54,7 @@ type Migrator struct {
 	dbs    []*sqle.DB
 	suffix string
 	module string
+	txOpts *sql.TxOptions
 
 	Versions         []Semver
 	MonthlyRotations []Rotation
@@ -251,7 +252,7 @@ func (m *Migrator) startMigrate(ctx context.Context, db *sqle.DB) error {
 		n := len(v.Migrations)
 		w := len(strconv.Itoa(n))
 		log.Printf("┌─[ v%s ]\n", v.Name)
-		err = db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.Tx) error {
+		err = db.Transaction(ctx, m.txOpts, func(ctx context.Context, tx *sqle.Tx) error {
 
 			for i, s := range v.Migrations {
 				status, err := m.getMigrationStatus(tx, v.Name, s)
@@ -419,7 +420,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 			"_" + now.AddDate(0, 1, 0).Format("200601"),
 		}
 
-		err = startRotate(ctx, db, months, m.MonthlyRotations)
+		err = startRotate(ctx, db, m.txOpts, months, m.MonthlyRotations)
 		if err != nil {
 			return err
 		}
@@ -435,7 +436,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 			"_" + next.Format("2006") + fmt.Sprintf("%03d", nextWeek),
 		}
 
-		err = startRotate(ctx, db, weeks, m.WeeklyRotations)
+		err = startRotate(ctx, db, m.txOpts, weeks, m.WeeklyRotations)
 		if err != nil {
 			return err
 		}
@@ -445,7 +446,7 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 			"_" + now.AddDate(0, 0, 1).Format("20060102"),
 		}
 
-		err = startRotate(ctx, db, days, m.DailyRotations)
+		err = startRotate(ctx, db, m.txOpts, days, m.DailyRotations)
 		if err != nil {
 			return err
 		}
@@ -455,12 +456,12 @@ func (m *Migrator) Rotate(ctx context.Context) error {
 	return nil
 }
 
-func startRotate(ctx context.Context, db *sqle.DB, rotatedNames []string, rotations []Rotation) error {
+func startRotate(ctx context.Context, db *sqle.DB, txOpts *sql.TxOptions, rotatedNames []string, rotations []Rotation) error {
 	var err error
 	var n int
 	var w int
 	for _, r := range rotations {
-		err = db.Transaction(ctx, nil, func(ctx context.Context, tx *sqle.Tx) error {
+		err = db.Transaction(ctx, txOpts, func(ctx context.Context, tx *sqle.Tx) error {
 			n = len(rotatedNames)
 			w = len(strconv.Itoa(n))
 			log.Printf("┌─[ %s ]\n", r.Name)
