@@ -472,7 +472,7 @@ func (b *Builder) quoteColumn(c string) string {
 		return ""
 	}
 
-	if strings.ContainsAny(c, "(") || strings.ContainsAny(c, " ") {
+	if strings.ContainsAny(c, "( ") {
 		return c
 	}
 
