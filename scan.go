@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"reflect"
 	"time"
+	"unsafe"
 )
 
 func scanTo(dest any, destValue reflect.Value, cols []string, rows *sql.Rows) (bool, error) {
@@ -31,8 +32,10 @@ func scanTo(dest any, destValue reflect.Value, cols []string, rows *sql.Rows) (b
 }
 
 func scanToStruct(v reflect.Value, cols []string, rows *sql.Rows) error {
-	b := getStructBinder(v.Type(), v)
-	return rows.Scan(b.Bind(v, cols)...)
+	b := getStructBinder(v.Type(), v).(*structBinder)
+	fields, release := b.acquire(v, cols)
+	defer release()
+	return rows.Scan(fields...)
 }
 
 func scanToMap(dest reflect.Value, cols []string, rows *sql.Rows) error {
@@ -41,9 +44,10 @@ func scanToMap(dest reflect.Value, cols []string, rows *sql.Rows) error {
 	if kt.Kind() != reflect.String {
 		return ErrMustStringKey
 	}
-	b := getMapBinder(vt, kt)
+	b := getMapBinder(vt, kt).(*mapBinder)
 
-	fields := b.Bind(dest, cols)
+	fields, release := b.acquire(len(cols))
+	defer release()
 
 	err := rows.Scan(fields...)
 	if err != nil {
@@ -69,21 +73,23 @@ func scanToList(item reflect.Value, itemType reflect.Type, list reflect.Value, c
 		*uintptr, *float32, *float64, *bool, *string, *time.Time,
 		sql.Scanner:
 
-		for rows.Next() {
-			values := make([]any, 0, n)
-			for i := 0; i < n; i++ {
-				values = append(values, reflect.New(elem).Interface())
-			}
+		// Pre-allocate a scratch slice whose backing storage holds the
+		// Scan targets for every row. Each values[i] is a *T pointer into
+		// scratch's backing array, so rows.Scan writes directly into the
+		// scratch and we avoid allocating `reflect.New(elem)` per column
+		// per row (issue #78).
+		scratch := reflect.MakeSlice(itemType, n, n)
+		values := make([]any, n)
+		populateScanTargets(values, scratch, n)
 
+		for rows.Next() {
 			err = rows.Scan(values...)
 			if err != nil {
 				return list, err
 			}
 
-			fields := reflect.MakeSlice(itemType, 0, n)
-			for i := 0; i < n; i++ {
-				fields = reflect.Append(fields, reflect.ValueOf(values[i]).Elem())
-			}
+			fields := reflect.MakeSlice(itemType, n, n)
+			copyReflectSlice(fields, scratch, n)
 			list = reflect.Append(list, fields)
 		}
 	case Binder:
@@ -108,6 +114,41 @@ func scanToList(item reflect.Value, itemType reflect.Type, list reflect.Value, c
 	return list, nil
 }
 
+// populateScanTargets fills values[i] with a *T pointer into the i-th slot
+// of scratch's backing array. After this call, rows.Scan(values...) writes
+// through those pointers into the scratch — no per-row reflect.New(elem).
+//
+// values must have length n; scratch must be a slice of the same element
+// type with length n.
+func populateScanTargets(values []any, scratch reflect.Value, n int) {
+	if n == 0 {
+		return
+	}
+	elemType := scratch.Type().Elem()
+	sz := elemType.Size()
+	base := unsafe.Pointer(scratch.Index(0).Addr().Pointer())
+	for i := 0; i < n; i++ {
+		addr := unsafe.Add(base, uintptr(i)*sz)
+		values[i] = reflect.NewAt(elemType, addr).Interface()
+	}
+}
+
+// copyReflectSlice copies n elements from src into dst via an unsafe byte
+// copy. Both must be slices of the same element type with length ≥ n.
+func copyReflectSlice(dst, src reflect.Value, n int) {
+	if n == 0 {
+		return
+	}
+	elemType := dst.Type().Elem()
+	sz := elemType.Size()
+	total := uintptr(n) * sz
+	srcPtr := unsafe.Pointer(src.Index(0).Addr().Pointer())
+	dstPtr := unsafe.Pointer(dst.Index(0).Addr().Pointer())
+	srcBytes := unsafe.Slice((*byte)(srcPtr), total)
+	dstBytes := unsafe.Slice((*byte)(dstPtr), total)
+	copy(dstBytes, srcBytes)
+}
+
 func scanToBinderList(_ reflect.Value, itemType reflect.Type, list reflect.Value, cols []string, rows *sql.Rows) (reflect.Value, error) {
 
 	var err error
@@ -128,11 +169,13 @@ func scanToBinderList(_ reflect.Value, itemType reflect.Type, list reflect.Value
 func scanToStructList(item reflect.Value, itemType reflect.Type, list reflect.Value, cols []string, rows *sql.Rows) (reflect.Value, error) {
 
 	var err error
-	b := getStructBinder(item.Type(), item)
+	b := getStructBinder(item.Type(), item).(*structBinder)
 
 	for rows.Next() {
 		it := reflect.New(itemType)
-		err = rows.Scan(b.Bind(it.Elem(), cols)...)
+		fields, release := b.acquire(it.Elem(), cols)
+		err = rows.Scan(fields...)
+		release()
 		if err != nil {
 			return reflect.Value{}, err
 		}
@@ -148,17 +191,23 @@ func scanToMapList(item reflect.Value, itemType reflect.Type, list reflect.Value
 	if kt.Kind() != reflect.String {
 		return list, ErrMustStringKey
 	}
-	b := getMapBinder(vt, kt)
+	b := getMapBinder(vt, kt).(*mapBinder)
 
-	fields := b.Bind(list, cols)
+	fields, release := b.acquire(len(cols))
+	defer release()
 	var err error
+	// Pre-size the map so the n SetMapIndex calls don't trigger
+	// rehashes. The map itself must be allocated per row (issue #78)
+	// because reflect.Append shares the underlying map across all
+	// appended entries; clearing and re-using a single map would alias
+	// every entry in the resulting list.
 	for rows.Next() {
 		err = rows.Scan(fields...)
 		if err != nil {
 			return list, err
 		}
 
-		it := reflect.MakeMap(itemType)
+		it := reflect.MakeMapWithSize(itemType, len(cols))
 		for i, n := range cols {
 			it.SetMapIndex(reflect.ValueOf(n), reflect.ValueOf(fields[i]).Elem())
 		}
