@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"reflect"
 	"time"
-	"unsafe"
 )
 
 func scanTo(dest any, destValue reflect.Value, cols []string, rows *sql.Rows) (bool, error) {
@@ -77,7 +76,9 @@ func scanToList(item reflect.Value, itemType reflect.Type, list reflect.Value, c
 		// Scan targets for every row. Each values[i] is a *T pointer into
 		// scratch's backing array, so rows.Scan writes directly into the
 		// scratch and we avoid allocating `reflect.New(elem)` per column
-		// per row (issue #78).
+		// per row (issue #78). scratch is a typed slice so the GC keeps
+		// any pointer fields (string data, time.Time *Location,
+		// sql.NullString data) alive across iterations.
 		scratch := reflect.MakeSlice(itemType, n, n)
 		values := make([]any, n)
 		populateScanTargets(values, scratch, n)
@@ -89,7 +90,10 @@ func scanToList(item reflect.Value, itemType reflect.Type, list reflect.Value, c
 			}
 
 			fields := reflect.MakeSlice(itemType, n, n)
-			copyReflectSlice(fields, scratch, n)
+			// reflect.Copy uses typedslicecopy / typedmemmove, which
+			// emit the GC write barriers required for pointer-bearing
+			// elements (string, time.Time, sql.Scanner, etc.).
+			reflect.Copy(fields, scratch)
 			list = reflect.Append(list, fields)
 		}
 	case Binder:
@@ -119,34 +123,16 @@ func scanToList(item reflect.Value, itemType reflect.Type, list reflect.Value, c
 // through those pointers into the scratch — no per-row reflect.New(elem).
 //
 // values must have length n; scratch must be a slice of the same element
-// type with length n.
+// type with length n. scratch is a typed []T so the GC scans pointer
+// fields (string data, time.Time *Location, sql.NullString fields)
+// written by Scan.
 func populateScanTargets(values []any, scratch reflect.Value, n int) {
 	if n == 0 {
 		return
 	}
-	elemType := scratch.Type().Elem()
-	sz := elemType.Size()
-	base := unsafe.Pointer(scratch.Index(0).Addr().Pointer())
 	for i := 0; i < n; i++ {
-		addr := unsafe.Add(base, uintptr(i)*sz)
-		values[i] = reflect.NewAt(elemType, addr).Interface()
+		values[i] = scratch.Index(i).Addr().Interface()
 	}
-}
-
-// copyReflectSlice copies n elements from src into dst via an unsafe byte
-// copy. Both must be slices of the same element type with length ≥ n.
-func copyReflectSlice(dst, src reflect.Value, n int) {
-	if n == 0 {
-		return
-	}
-	elemType := dst.Type().Elem()
-	sz := elemType.Size()
-	total := uintptr(n) * sz
-	srcPtr := unsafe.Pointer(src.Index(0).Addr().Pointer())
-	dstPtr := unsafe.Pointer(dst.Index(0).Addr().Pointer())
-	srcBytes := unsafe.Slice((*byte)(srcPtr), total)
-	dstBytes := unsafe.Slice((*byte)(dstPtr), total)
-	copy(dstBytes, srcBytes)
 }
 
 func scanToBinderList(_ reflect.Value, itemType reflect.Type, list reflect.Value, cols []string, rows *sql.Rows) (reflect.Value, error) {

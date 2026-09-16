@@ -83,12 +83,17 @@ func (b *structBinder) acquire(v reflect.Value, columns []string) ([]any, func()
 }
 
 func (b *structBinder) Bind(v reflect.Value, columns []string) []any {
-	s, _ := b.acquire(v, columns)
-	// Public Binder interface: release is dropped, so the slot is
-	// reclaimed by GC and never returns to the pool for external
-	// callers. Internal callers (scanToStruct / scanToStructList) use
-	// acquire directly and benefit from pooling (issue #78).
-	return s
+	values := make([]any, len(columns))
+	var missed any
+	for k, name := range columns {
+		i, ok := b.fieldIndexes[name]
+		if ok {
+			values[k] = v.Field(i).Addr().Interface()
+		} else {
+			values[k] = &missed
+		}
+	}
+	return values
 }
 
 func getStructBinder(t reflect.Type, v reflect.Value) Binder {
