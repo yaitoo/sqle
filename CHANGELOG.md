@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Open(dbs...)` of size N see no behaviour change.
 
 ### Fixed
+- fix(migrate): add `WithTxOptions(*sql.TxOptions) Option` so callers can
+  configure isolation level and read-only mode for the per-version and
+  per-rotation transactions (#80). Previously `Migrator.startMigrate`
+  and `Migrator.startRotate` hard-coded `nil` `TxOptions`, leaving no way
+  to relax the driver's default isolation (MySQL REPEATABLE READ,
+  PostgreSQL SERIALIZABLE) for multi-instance migrations or to mark
+  verification-only transactions as read-only. Defaults are unchanged:
+  passing no `WithTxOptions` still forwards `nil` to `db.Transaction`.
+  README-style hint: `WithTxOptions(&sql.TxOptions{Isolation: sql.LevelReadCommitted})`
+  is recommended for concurrent migrators.
+
+### Fixed
 - fix(mapr): require a non-nil `less` comparator in `MapR.QueryLimit` when
   `limit > 0` (#68). Previously, `less == nil` silently skipped the
   in-memory sort after merging rows from each shard, so the per-shard
