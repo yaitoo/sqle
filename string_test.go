@@ -110,3 +110,27 @@ func TestStringInJSON(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("null"), bufNull)
 }
+
+func TestStringResetVOnNullJSON(t *testing.T) {
+	// Regression for issue #81: String has its own UnmarshalJSON that
+	// shadows Null[T], so it must also zero V when the payload is JSON null
+	// or empty, otherwise the embedded Null.V is reachable as stale data.
+
+	var s String
+	err := json.Unmarshal([]byte(`"stale"`), &s)
+	require.NoError(t, err)
+	require.Equal(t, "stale", s.String())
+	require.Equal(t, true, s.Valid)
+
+	err = json.Unmarshal([]byte("null"), &s)
+	require.NoError(t, err)
+	require.Equal(t, false, s.Valid)
+	require.Equal(t, "", s.String())
+	require.Equal(t, "", s.Null.V)
+
+	err = s.UnmarshalJSON(nil)
+	require.NoError(t, err)
+	require.Equal(t, false, s.Valid)
+	require.Equal(t, "", s.String())
+	require.Equal(t, "", s.Null.V)
+}
