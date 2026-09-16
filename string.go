@@ -40,7 +40,7 @@ func (t String) MarshalJSON() ([]byte, error) { // skipcq: GO-W1029
 func (t *String) UnmarshalJSON(data []byte) error { // skipcq: GO-W1029
 	if len(data) == 0 || string(data) == nullJson {
 		var zero string
-		t.Null.V = zero
+		t.V = zero
 		t.Null.Valid = false
 		return nil
 	}
