@@ -49,21 +49,46 @@ func (m *DHT) On(v string) (int, int, error) {
 	m.RLock()
 	defer m.RUnlock()
 
-	i, n := m.current.On(v)
+	// Route both the current-ring and (when v sits on an affected
+	// virtual node) the next-ring lookup through ringOn, rather than
+	// calling HashRing.On directly via m.current / m.next. This makes
+	// two things explicit at the call site that the inline form hid:
+	//
+	//   1. No second DHT.RWMutex acquisition. The caller already holds
+	//      m's RLock. HashRing.On is pure (no locking of its own) and
+	//      ringOn does not change that — but if HashRing.On ever grew
+	//      its own mutex in the future, funnelling both lookups through
+	//      ringOn keeps the contract in one place instead of two.
+	//
+	//   2. The inner `n, _ := m.next.On(v)` previously shadowed the
+	//      outer `n` (the vNode hash) and re-used the name for the
+	//      next-ring db index. That made the conditional read like a
+	//      vNode-hash comparison when it is actually a db-index
+	//      comparison; ringOn gives the next-ring result its own name
+	//      so the comparison is unambiguous.
+	curIdx, vn := ringOn(m.current, v)
+	current := m.dbs[curIdx]
 
-	current := m.dbs[i]
-
-	ok := m.affectedVNodes[n]
-	if ok {
-		n, _ := m.next.On(v)
-		if n == i {
-			return current, current, nil
-		}
-
-		return current, m.dbs[n], ErrDataItemIsBusy
+	if !m.affectedVNodes[vn] {
+		return current, current, nil
 	}
 
-	return current, current, nil
+	nextIdx, _ := ringOn(m.next, v)
+	if nextIdx == curIdx {
+		return current, current, nil
+	}
+
+	return current, m.dbs[nextIdx], ErrDataItemIsBusy
+}
+
+// ringOn locates v in r and returns (dbIndex, vNodeHash). It is a thin
+// pass-through to HashRing.On, factored out of DHT.On so both lookups
+// inside DHT.On go through one named entry point. HashRing.On takes
+// no locks, so ringOn is safe to call while holding m.RLock() — see
+// the comment on DHT.On for why we route through here rather than
+// calling r.On directly.
+func ringOn(r *HashRing, v string) (int, uint32) {
+	return r.On(v)
 }
 
 // Done dbs are added, then reset current/next HashRing

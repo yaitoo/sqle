@@ -211,7 +211,7 @@ func (db *Client) ExecContext(ctx context.Context, query string, args ...any) (s
 // database/sql.DB.Begin signature. Cancellation and timeouts cannot be
 // propagated through this method; callers that need them must use BeginTx.
 func (db *Client) Begin(opts *sql.TxOptions) (*Tx, error) {
-	return db.BeginTx(context.TODO(), opts)
+	return db.BeginTx(context.Background(), opts)
 
 }
 
