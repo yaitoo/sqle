@@ -49,6 +49,46 @@ func TestBuilder(t *testing.T) {
 			},
 		},
 		{
+			// Regression test for the single-call-skip semantics of
+			// Builder.If: an If(false) consumes exactly one subsequent
+			// SQL call; any further chained calls are emitted
+			// unconditionally. See sqlbuilder.go (Builder.If) doc.
+			name: "build_if_skips_only_next_single_sql_call",
+			build: func() *Builder {
+				b := New("SELECT * FROM orders")
+				b.SQL(" WHERE created>=now()").
+					If(false).SQL(" LIMIT 5").
+					SQL(" OFFSET 5")
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				// " LIMIT 5" is consumed by If(false); " OFFSET 5" is not.
+				require.Equal(t, "SELECT * FROM orders WHERE created>=now() OFFSET 5", s)
+				require.Nil(t, vars)
+			},
+		},
+		{
+			// Regression test: chained SQL calls after If(true) all
+			// run — the predicate only gates the *next* call, never a
+			// chain. See sqlbuilder.go (Builder.If) doc.
+			name: "build_if_true_does_not_gate_chained_sql_calls",
+			build: func() *Builder {
+				b := New("SELECT * FROM orders")
+				b.SQL(" WHERE created>=now()").
+					If(true).SQL(" LIMIT 5").
+					SQL(" OFFSET 5")
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "SELECT * FROM orders WHERE created>=now() LIMIT 5 OFFSET 5", s)
+				require.Nil(t, vars)
+			},
+		},
+		{
 			name: "build_with_input_tokens",
 			build: func() *Builder {
 				b := New("SELECT * FROM", "orders_<yyyyMM> as orders")
@@ -156,6 +196,58 @@ func TestBuilder(t *testing.T) {
 
 				require.Equal(t, 123456, vars[0])
 				require.Equal(t, now, vars[1])
+			},
+		},
+		{
+			// Regression test for the single-call-skip semantics of
+			// WhereBuilder.If: an If(false) consumes exactly one
+			// subsequent And/Or/SQL call; any further chained calls
+			// are emitted unconditionally. See sqlbuilder_where.go
+			// (WhereBuilder.If) doc.
+			name: "build_where_if_skips_only_next_single_and_call",
+			build: func() *Builder {
+				b := New().Select("orders")
+				b.Where("status = 'active'").
+					If(false).And("name = {name}").
+					And("age > {age}")
+
+				b.Param("name", "alice")
+				b.Param("age", 18)
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				// "name = {name}" is consumed by If(false); "age > {age}"
+				// is not. The two params both appear because Param is
+				// independent of whether the criteria was emitted.
+				require.Equal(t, "SELECT * FROM `orders` WHERE status = 'active' AND age > ?", s)
+				require.Len(t, vars, 1)
+				require.Equal(t, 18, vars[0])
+			},
+		},
+		{
+			// Regression test: chained And calls after If(true) all
+			// run — the predicate only gates the *next* call, never a
+			// chain. See sqlbuilder_where.go (WhereBuilder.If) doc.
+			name: "build_where_if_true_does_not_gate_chained_and_calls",
+			build: func() *Builder {
+				b := New().Select("orders")
+				b.Where("status = 'active'").
+					If(true).And("name = {name}").
+					And("age > {age}")
+
+				b.Param("name", "alice")
+				b.Param("age", 18)
+				return b
+			},
+			assert: func(t *testing.T, b *Builder) {
+				s, vars, err := b.Build()
+				require.NoError(t, err)
+				require.Equal(t, "SELECT * FROM `orders` WHERE status = 'active' AND name = ? AND age > ?", s)
+				require.Len(t, vars, 2)
+				require.Equal(t, "alice", vars[0])
+				require.Equal(t, 18, vars[1])
 			},
 		},
 		{
