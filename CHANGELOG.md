@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed (breaking)
+- fix(db): `(*DB).Close()` now closes every shard database and stops the
+  statement reaper of every shard client (#107). It used to resolve to the
+  embedded `(*Client).Close`, so only the first shard was closed and the other
+  shards — and their reaper goroutines — were left running. This is
+  observable: after `db.Close()` the connection pools of the remaining shards
+  are closed too, and `db.Close()` returns the joined error of all shard
+  closes. The new `(*DB).Stop()` stops the reapers without closing any
+  database.
 - fix(db): `DB.On(shardid.ID)` now returns `(*Client, error)` instead of `*Client`.
   It returns the new exported `ErrInvalidShardID` when `id.DatabaseID` is out
   of range for the current sharded DB pool (negative or `>= len(dbs)`),
@@ -19,6 +27,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Open(dbs...)` of size N see no behaviour change.
 
 ### Fixed
+- fix(client): the background statement reaper started by `Open`/`DB.Add` can
+  now be stopped, instead of leaking one goroutine and one `time.Ticker` per
+  wrapped database for the lifetime of the process (#107). The reaper loop
+  only left through `<-delay.C`, so `defer delay.Stop()` was unreachable and
+  the `*Client` (and through it the closed `*sql.DB`) stayed reachable from a
+  background goroutine. `(*Client).Close()` now stops the reaper before
+  closing the underlying database, and the new `(*Client).Stop()` stops the
+  reaper only, leaving the connection pool usable. Both are idempotent and
+  wait for the reaper goroutine to return. `(*DB).Close()`/`(*DB).Stop()` do
+  the same for every shard client the DB holds.
 - fix(migrate): add `WithTxOptions(*sql.TxOptions) Option` so callers can
   configure isolation level and read-only mode for the per-version and
   per-rotation transactions (#80). Previously `Migrator.startMigrate`

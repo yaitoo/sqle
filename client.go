@@ -19,6 +19,16 @@ type Client struct {
 
 	stmtMaxIdleTime time.Duration
 	Index           int
+
+	// stopOnce guards the one-shot close of done, so Stop and Close can
+	// be called repeatedly, and from different goroutines.
+	stopOnce sync.Once
+	// done is closed by Stop to tell the background statement reaper
+	// (checkIdleStmt) to return.
+	done chan struct{}
+	// reaperWG tracks the background statement reaper, so Stop can wait
+	// for it to exit before returning.
+	reaperWG sync.WaitGroup
 }
 
 // Ping forwards to the underlying Database. Kept so *DB keeps the
@@ -32,8 +42,27 @@ func (db *Client) PingContext(ctx context.Context) error {
 	return db.DB.PingContext(ctx)
 }
 
-// Close forwards to the underlying Database.
+// Stop terminates the background prepared statement reaper started by Open
+// or DB.Add. It does not close the underlying database, so the connection
+// pool stays usable; use Close to release both.
+//
+// Stop is idempotent and safe for concurrent use.
+func (db *Client) Stop() {
+	db.stopOnce.Do(func() {
+		if db.done != nil {
+			close(db.done)
+		}
+	})
+
+	// Wait for the reaper to return, so a stopped client does not keep
+	// the database reachable from a background goroutine.
+	db.reaperWG.Wait()
+}
+
+// Close stops the background prepared statement reaper and closes the
+// underlying Database.
 func (db *Client) Close() error {
+	db.Stop()
 	return db.DB.Close()
 }
 

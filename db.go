@@ -40,19 +40,29 @@ func Open[T Database](dbs ...T) *DB {
 	}
 
 	for i, db := range dbs {
-		ctx := &Client{
-			DB:              db,
-			Index:           i,
-			stmts:           make(map[string]*Stmt),
-			stmtMaxIdleTime: StmtMaxIdleTime,
-		}
-		d.dbs = append(d.dbs, ctx)
-		go ctx.checkIdleStmt()
+		d.dbs = append(d.dbs, newClient(db, i))
 	}
 
 	d.Client = d.dbs[0]
 
 	return d
+}
+
+// newClient creates a Client for db and starts its background statement
+// reaper. The reaper runs until Client.Stop (or Client.Close) is called.
+func newClient(db Database, index int) *Client {
+	c := &Client{
+		DB:              db,
+		Index:           index,
+		stmts:           make(map[string]*Stmt),
+		stmtMaxIdleTime: StmtMaxIdleTime,
+		done:            make(chan struct{}),
+	}
+
+	c.reaperWG.Add(1)
+	go c.checkIdleStmt()
+
+	return c
 }
 
 // Add dynamically scales out the DB with new databases. Go does not
@@ -68,15 +78,45 @@ func (db *DB) Add(dbs ...Database) {
 	n := len(db.dbs)
 
 	for i, d := range dbs {
-		ctx := &Client{
-			DB:              d,
-			Index:           n + i,
-			stmts:           make(map[string]*Stmt),
-			stmtMaxIdleTime: StmtMaxIdleTime,
-		}
-		db.dbs = append(db.dbs, ctx)
-		go ctx.checkIdleStmt()
+		db.dbs = append(db.dbs, newClient(d, n+i))
 	}
+}
+
+// Stop terminates the background statement reaper of every shard client held
+// by DB. It does not close the underlying databases, so the connection pools
+// stay usable; use Close to release both.
+//
+// Stop is idempotent and safe for concurrent use.
+func (db *DB) Stop() {
+	// db.dbs is only mutated by Add, which holds the same lock, so the
+	// slice can be iterated safely here.
+	db.Lock()
+	defer db.Unlock()
+
+	for _, c := range db.dbs {
+		c.Stop()
+	}
+}
+
+// Close stops the background statement reaper of every shard client and
+// closes the underlying databases.
+//
+// DB.Close used to resolve to the embedded Client.Close, which only closed
+// the first shard: the other shards, and their reaper goroutines, were left
+// running.
+func (db *DB) Close() error {
+	db.Lock()
+	defer db.Unlock()
+
+	var errs []error
+
+	for _, c := range db.dbs {
+		if err := c.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 // On selects the database context based on the shardid ID. It returns

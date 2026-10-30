@@ -136,6 +136,58 @@ func TestOnOutOfRange(t *testing.T) {
 
 
 
+// TestDBCloseStopsAllShardReapers verifies that closing a sharded DB stops
+// the statement reaper of every shard client it holds, and closes every
+// underlying database. DB.Close used to resolve to the embedded Client.Close,
+// which only closed the first shard and left the other reapers running.
+func TestDBCloseStopsAllShardReapers(t *testing.T) {
+	dbs := []*sql.DB{createSQLite3(), createSQLite3(), createSQLite3()}
+
+	before := countReapers()
+
+	db := Open(dbs...)
+
+	require.Eventually(t, func() bool {
+		return countReapers() == before+len(dbs)
+	}, 5*time.Second, 10*time.Millisecond)
+
+	require.NoError(t, db.Close())
+
+	// Every reaper is gone, not only the one of the first shard.
+	require.Equal(t, before, countReapers())
+
+	// Every underlying database is closed, not only the first one.
+	for _, d := range dbs {
+		require.Error(t, d.Ping())
+	}
+}
+
+// TestDBStopStopsAllShardReapers verifies that DB.Stop terminates the
+// statement reaper of every shard client, but keeps the underlying databases
+// usable.
+func TestDBStopStopsAllShardReapers(t *testing.T) {
+	dbs := []*sql.DB{createSQLite3(), createSQLite3()}
+
+	before := countReapers()
+
+	db := Open(dbs...)
+
+	require.Eventually(t, func() bool {
+		return countReapers() == before+len(dbs)
+	}, 5*time.Second, 10*time.Millisecond)
+
+	db.Stop()
+
+	require.Equal(t, before, countReapers())
+
+	// Stop only stops the reapers, the connection pools stay usable.
+	for _, d := range dbs {
+		require.NoError(t, d.Ping())
+	}
+
+	require.NoError(t, db.Close())
+}
+
 func TestDHT(t *testing.T) {
 	db := Open(createSQLite3())
 

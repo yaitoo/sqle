@@ -377,8 +377,8 @@ CREATE TABLE IF NOT EXISTS monthly_logs<rotate> (
 
 
 ## 3) Core types and flows
-- DB: sharding-aware wrapper over multiple Client instances; `Open[T Database](dbs ...T) *DB` (generic so `Open(dbs...)` works directly for `[]*sql.DB` or any custom Database slice), `Add(dbs ...Database)`, `On(shardid.ID)`, `NewDHT/GetDHT/OnDHT`.
-- Client: wraps a Database (anything that satisfies the Database interface; *sql.DB satisfies it by default) and caches prepared statements (Stmt). Provides Query/Exec and *Builder variants; Ping/PingContext/Close/Prepare/PrepareContext/Conn/Driver/Stats/SetMaxOpenConns/SetMaxIdleConns/SetConnMaxLifetime/SetConnMaxIdleTime forward to the wrapped Database so *DB keeps the same promoted API as before.
+- DB: sharding-aware wrapper over multiple Client instances; `Open[T Database](dbs ...T) *DB` (generic so `Open(dbs...)` works directly for `[]*sql.DB` or any custom Database slice), `Add(dbs ...Database)`, `On(shardid.ID)`, `NewDHT/GetDHT/OnDHT`. `DB.Close()` closes every shard database and stops every shard reaper; `DB.Stop()` only stops the reapers.
+- Client: wraps a Database (anything that satisfies the Database interface; *sql.DB satisfies it by default) and caches prepared statements (Stmt). Provides Query/Exec and *Builder variants; Ping/PingContext/Prepare/PrepareContext/Conn/Driver/Stats/SetMaxOpenConns/SetMaxIdleConns/SetConnMaxLifetime/SetConnMaxIdleTime forward to the wrapped Database so *DB keeps the same promoted API as before. `Close()` stops the background statement reaper and then closes the wrapped Database; `Stop()` stops the reaper only, keeping the pool usable.
 - Tx: wraps *sql.Tx with local prepared statement cache.
 - Query[T]: high-level query facade over Queryer[T] (default MapR[T]). Supports First/Count/Query/QueryLimit and rotation window options.
 - Queryer[T]: interface to implement backends. Default MapR[T] fans out over dbs and rotated tables, merges and sorts.
@@ -421,6 +421,7 @@ Order/Where
 ## 6) Prepared statements and performance
 - Client caches prepared Stmt by query string with lastUsed and isUsing flags.
 - StmtMaxIdleTime governs eviction (default 3m). Reuse() marks stmt usable again; Rows/Row Close calls handle this.
+- Every Client started by Open/Add runs a background reaper goroutine (checkIdleStmt). It exits when the client is stopped: `Client.Close()`/`Client.Stop()` (and `DB.Close()`/`DB.Stop()` for all shard clients) close the reaper's done channel and wait for the goroutine to return, so a closed client never leaks a goroutine or a ticker.
 - Tx maintains its own short-lived stmt cache.
 
 
