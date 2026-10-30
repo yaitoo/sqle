@@ -130,9 +130,12 @@ func (db *DB) Stop() {
 	}
 }
 
-// Close stops the background statement reaper of every shard client and
-// closes the underlying databases. The returned error joins the errors
+// Close releases the DB: it stops the statement reaper of every shard client
+// and closes every shard database. The returned error joins the errors
 // reported by the shard databases.
+//
+// Use Stop instead when the shard pools must stay open and serving: Stop
+// reclaims the reapers without touching the pools.
 //
 // The reapers are stopped in a first pass that cannot block, so a shard whose
 // Database.Close stalls can no longer leave the other reapers running. The

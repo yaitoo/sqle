@@ -18,6 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shard whose `Database.Close` stalls cannot keep the other reapers running
   or the other pools open. The new `(*DB).Stop()` stops the reapers without
   closing any database.
+  Upgrade note: callers that closed a sharded DB but kept serving from its
+  other shards now get `sql: database is closed` from them. Closing a pool
+  marks it closed for new queries, closes its idle connections at once, and
+  closes a connection that is in use only when it is released: a query that
+  is already running completes normally, while a request still waiting for a
+  connection, and every later query against that shard, fails. Use
+  `(*DB).Stop()` to reclaim the reapers while keeping every pool open and
+  serving. Rolling this change back does not reopen pools that were already
+  closed, so it is not a way to undo such an interruption. No stored data and
+  no access policy are affected.
 - fix(db): `DB.On(shardid.ID)` now returns `(*Client, error)` instead of `*Client`.
   It returns the new exported `ErrInvalidShardID` when `id.DatabaseID` is out
   of range for the current sharded DB pool (negative or `>= len(dbs)`),
