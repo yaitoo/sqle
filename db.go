@@ -24,6 +24,8 @@ type DB struct {
 	*Client
 	_ noCopy //nolint: unused
 
+	// mu guards dhts and dbs, so that the shard pool and the DHT rings
+	// are always read under the same lock.
 	mu   sync.RWMutex
 	dhts map[string]*shardid.DHT
 	dbs  []*Client
@@ -72,8 +74,8 @@ func newClient(db Database, index int) *Client {
 // friction point; the primary entry point that benefits from generic
 // variadic is Open.
 func (db *DB) Add(dbs ...Database) {
-	db.Lock()
-	defer db.Unlock()
+	db.mu.Lock()
+	defer db.mu.Unlock()
 
 	n := len(db.dbs)
 
@@ -88,10 +90,8 @@ func (db *DB) Add(dbs ...Database) {
 //
 // Stop is idempotent and safe for concurrent use.
 func (db *DB) Stop() {
-	// db.dbs is only mutated by Add, which holds the same lock, so the
-	// slice can be iterated safely here.
-	db.Lock()
-	defer db.Unlock()
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
 	for _, c := range db.dbs {
 		c.Stop()
@@ -99,14 +99,15 @@ func (db *DB) Stop() {
 }
 
 // Close stops the background statement reaper of every shard client and
-// closes the underlying databases.
+// closes the underlying databases. The returned error joins the errors
+// reported by the shard databases.
 //
 // DB.Close used to resolve to the embedded Client.Close, which only closed
 // the first shard: the other shards, and their reaper goroutines, were left
 // running.
 func (db *DB) Close() error {
-	db.Lock()
-	defer db.Unlock()
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
 	var errs []error
 

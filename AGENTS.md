@@ -377,7 +377,7 @@ CREATE TABLE IF NOT EXISTS monthly_logs<rotate> (
 
 
 ## 3) Core types and flows
-- DB: sharding-aware wrapper over multiple Client instances; `Open[T Database](dbs ...T) *DB` (generic so `Open(dbs...)` works directly for `[]*sql.DB` or any custom Database slice), `Add(dbs ...Database)`, `On(shardid.ID)`, `NewDHT/GetDHT/OnDHT`. `DB.Close()` closes every shard database and stops every shard reaper; `DB.Stop()` only stops the reapers.
+- DB: sharding-aware wrapper over multiple Client instances; `Open[T Database](dbs ...T) *DB` (generic so `Open(dbs...)` works directly for `[]*sql.DB` or any custom Database slice), `Add(dbs ...Database)`, `On(shardid.ID)`, `NewDHT/GetDHT/OnDHT`. `DB.Close()` closes every shard database and stops every shard reaper; `DB.Stop()` only stops the reapers. The shard pool (`dbs`) and the DHT rings (`dhts`) share one RWMutex, so `Add` and `On`/`OnDHT` may be used concurrently.
 - Client: wraps a Database (anything that satisfies the Database interface; *sql.DB satisfies it by default) and caches prepared statements (Stmt). Provides Query/Exec and *Builder variants; Ping/PingContext/Prepare/PrepareContext/Conn/Driver/Stats/SetMaxOpenConns/SetMaxIdleConns/SetConnMaxLifetime/SetConnMaxIdleTime forward to the wrapped Database so *DB keeps the same promoted API as before. `Close()` stops the background statement reaper and then closes the wrapped Database; `Stop()` stops the reaper only, keeping the pool usable.
 - Tx: wraps *sql.Tx with local prepared statement cache.
 - Query[T]: high-level query facade over Queryer[T] (default MapR[T]). Supports First/Count/Query/QueryLimit and rotation window options.

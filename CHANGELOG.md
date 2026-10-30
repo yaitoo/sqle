@@ -27,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Open(dbs...)` of size N see no behaviour change.
 
 ### Fixed
+- fix(db): guard the shard pool with a single lock. `DB.Add` wrote `db.dbs`
+  under the mutex promoted from the embedded `*Client`, while `DB.On` and
+  `DB.OnDHT` read it under `DB.mu`, so scaling out the pool while a shard was
+  being resolved was a data race. `Add`, `Stop` and `Close` now use `DB.mu`,
+  like the other accessors of the shard pool and the DHT rings.
 - fix(client): the background statement reaper started by `Open`/`DB.Add` can
   now be stopped, instead of leaking one goroutine and one `time.Ticker` per
   wrapped database for the lifetime of the process (#107). The reaper loop

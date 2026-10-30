@@ -3,6 +3,7 @@ package sqle
 import (
 	"context"
 	"database/sql"
+	"sync"
 	"testing"
 	"time"
 
@@ -186,6 +187,47 @@ func TestDBStopStopsAllShardReapers(t *testing.T) {
 	}
 
 	require.NoError(t, db.Close())
+}
+
+// TestConcurrentAddAndOn verifies that scaling out the shard pool while a
+// shard is being resolved is race free. db.dbs used to be written by Add
+// under the embedded Client mutex, but read by On under DB.mu, so the two
+// accessors did not exclude each other.
+func TestConcurrentAddAndOn(t *testing.T) {
+	db := Open(createSQLite3())
+
+	var (
+		wg    sync.WaitGroup
+		added = make(chan *sql.DB, 32)
+	)
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 20; i++ {
+			d := createSQLite3()
+			added <- d
+			db.Add(d)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 20; i++ {
+			// DatabaseID 0 always resolves, the pool only grows.
+			db.On(shardid.ID{DatabaseID: 0}) //nolint: errcheck
+		}
+	}()
+
+	wg.Wait()
+	close(added)
+
+	db.Stop()
+
+	for d := range added {
+		d.Close() //nolint: errcheck
+	}
 }
 
 func TestDHT(t *testing.T) {
