@@ -421,7 +421,7 @@ Order/Where
 ## 6) Prepared statements and performance
 - Client caches prepared Stmt by query string with lastUsed and isUsing flags.
 - StmtMaxIdleTime governs eviction (default 3m). Reuse() marks stmt usable again; Rows/Row Close calls handle this.
-- Every Client started by Open/Add runs a background reaper goroutine (checkIdleStmt). It exits when the client is stopped: `Client.Close()`/`Client.Stop()` (and `DB.Close()`/`DB.Stop()` for all shard clients) close the reaper's done channel and wait for the goroutine to return, so a closed client never leaks a goroutine or a ticker.
+- Every Client started by Open/Add runs a background reaper goroutine (checkIdleStmt). It exits when the client is stopped: `Client.Close()`/`Client.Stop()` (and `DB.Close()`/`DB.Stop()` for all shard clients) close the reaper's done channel, so a closed client never leaks a goroutine or a ticker. The reaper exits asynchronously: it returns right after the signal, or after the eviction pass it is in the middle of.
 - Tx maintains its own short-lived stmt cache.
 
 

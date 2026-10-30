@@ -39,9 +39,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the `*Client` (and through it the closed `*sql.DB`) stayed reachable from a
   background goroutine. `(*Client).Close()` now stops the reaper before
   closing the underlying database, and the new `(*Client).Stop()` stops the
-  reaper only, leaving the connection pool usable. Both are idempotent and
-  wait for the reaper goroutine to return. `(*DB).Close()`/`(*DB).Stop()` do
-  the same for every shard client the DB holds.
+  reaper only, leaving the connection pool usable. Both are idempotent. The
+  reaper exits asynchronously: it returns right after the signal, or after the
+  eviction pass it is in the middle of, so `Close` never waits on an in-flight
+  statement prepare. `(*DB).Close()`/`(*DB).Stop()` do the same for every
+  shard client the DB holds.
 - fix(migrate): add `WithTxOptions(*sql.TxOptions) Option` so callers can
   configure isolation level and read-only mode for the per-version and
   per-rotation transactions (#80). Previously `Migrator.startMigrate`

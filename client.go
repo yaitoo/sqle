@@ -26,9 +26,6 @@ type Client struct {
 	// done is closed by Stop to tell the background statement reaper
 	// (checkIdleStmt) to return.
 	done chan struct{}
-	// reaperWG tracks the background statement reaper, so Stop can wait
-	// for it to exit before returning.
-	reaperWG sync.WaitGroup
 }
 
 // Ping forwards to the underlying Database. Kept so *DB keeps the
@@ -56,10 +53,6 @@ func (db *Client) Stop() {
 			close(db.done)
 		}
 	})
-
-	// Wait for the reaper to return, so a stopped client does not keep
-	// the database reachable from a background goroutine.
-	db.reaperWG.Wait()
 }
 
 // Close stops the background prepared statement reaper and closes the

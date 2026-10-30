@@ -45,7 +45,9 @@ func TestCloseStopsIdleStmtReaper(t *testing.T) {
 	require.NoError(t, client.Close())
 
 	// Close must terminate the reaper instead of leaking it.
-	require.Equal(t, before, countReapers())
+	require.Eventually(t, func() bool {
+		return countReapers() == before
+	}, 5*time.Second, 10*time.Millisecond)
 
 	// The underlying database is closed as well.
 	require.Error(t, client.Ping())
@@ -68,7 +70,9 @@ func TestStopKeepsDatabaseOpen(t *testing.T) {
 
 	client.Stop()
 
-	require.Equal(t, before, countReapers())
+	require.Eventually(t, func() bool {
+		return countReapers() == before
+	}, 5*time.Second, 10*time.Millisecond)
 	require.NoError(t, client.Ping())
 
 	// Stop is idempotent, and Close still closes the database afterwards.

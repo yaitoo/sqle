@@ -61,7 +61,6 @@ func newClient(db Database, index int) *Client {
 		done:            make(chan struct{}),
 	}
 
-	c.reaperWG.Add(1)
 	go c.checkIdleStmt()
 
 	return c

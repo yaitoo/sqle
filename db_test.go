@@ -155,7 +155,9 @@ func TestDBCloseStopsAllShardReapers(t *testing.T) {
 	require.NoError(t, db.Close())
 
 	// Every reaper is gone, not only the one of the first shard.
-	require.Equal(t, before, countReapers())
+	require.Eventually(t, func() bool {
+		return countReapers() == before
+	}, 5*time.Second, 10*time.Millisecond)
 
 	// Every underlying database is closed, not only the first one.
 	for _, d := range dbs {
@@ -179,7 +181,9 @@ func TestDBStopStopsAllShardReapers(t *testing.T) {
 
 	db.Stop()
 
-	require.Equal(t, before, countReapers())
+	require.Eventually(t, func() bool {
+		return countReapers() == before
+	}, 5*time.Second, 10*time.Millisecond)
 
 	// Stop only stops the reapers, the connection pools stay usable.
 	for _, d := range dbs {
