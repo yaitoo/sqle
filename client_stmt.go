@@ -84,13 +84,26 @@ func (db *Client) closeStaleStmt() {
 
 }
 
+// checkIdleStmt periodically closes the statements that have been idle for
+// longer than stmtMaxIdleTime. It runs until Stop closes the done channel.
 func (db *Client) checkIdleStmt() {
+	if db.stmtMaxIdleTime <= 0 {
+		// time.NewTicker panics on a non-positive interval. There is
+		// nothing to evict periodically in that case, so just wait for
+		// the stop signal instead of crashing the process.
+		<-db.done
+		return
+	}
+
 	delay := time.NewTicker(db.stmtMaxIdleTime)
 	defer delay.Stop()
 
 	for {
-		<-delay.C
-
-		db.closeStaleStmt()
+		select {
+		case <-delay.C:
+			db.closeStaleStmt()
+		case <-db.done:
+			return
+		}
 	}
 }

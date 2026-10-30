@@ -71,7 +71,7 @@ func NewQuery[T any](db *DB, options ...QueryOption[T]) *Query[T] {
 
 	if q.queryer == nil {
 		q.queryer = &MapR[T]{
-			dbs: q.db.dbs,
+			dbs: q.db.snapshotClients(),
 		}
 	}
 

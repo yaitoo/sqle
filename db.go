@@ -24,6 +24,8 @@ type DB struct {
 	*Client
 	_ noCopy //nolint: unused
 
+	// mu guards dhts and dbs, so that the shard pool and the DHT rings
+	// are always read under the same lock.
 	mu   sync.RWMutex
 	dhts map[string]*shardid.DHT
 	dbs  []*Client
@@ -40,19 +42,28 @@ func Open[T Database](dbs ...T) *DB {
 	}
 
 	for i, db := range dbs {
-		ctx := &Client{
-			DB:              db,
-			Index:           i,
-			stmts:           make(map[string]*Stmt),
-			stmtMaxIdleTime: StmtMaxIdleTime,
-		}
-		d.dbs = append(d.dbs, ctx)
-		go ctx.checkIdleStmt()
+		d.dbs = append(d.dbs, newClient(db, i))
 	}
 
 	d.Client = d.dbs[0]
 
 	return d
+}
+
+// newClient creates a Client for db and starts its background statement
+// reaper. The reaper runs until Client.Stop (or Client.Close) is called.
+func newClient(db Database, index int) *Client {
+	c := &Client{
+		DB:              db,
+		Index:           index,
+		stmts:           make(map[string]*Stmt),
+		stmtMaxIdleTime: StmtMaxIdleTime,
+		done:            make(chan struct{}),
+	}
+
+	go c.checkIdleStmt()
+
+	return c
 }
 
 // Add dynamically scales out the DB with new databases. Go does not
@@ -62,21 +73,109 @@ func Open[T Database](dbs ...T) *DB {
 // friction point; the primary entry point that benefits from generic
 // variadic is Open.
 func (db *DB) Add(dbs ...Database) {
-	db.Lock()
-	defer db.Unlock()
+	db.mu.Lock()
+	defer db.mu.Unlock()
 
 	n := len(db.dbs)
 
 	for i, d := range dbs {
-		ctx := &Client{
-			DB:              d,
-			Index:           n + i,
-			stmts:           make(map[string]*Stmt),
-			stmtMaxIdleTime: StmtMaxIdleTime,
-		}
-		db.dbs = append(db.dbs, ctx)
-		go ctx.checkIdleStmt()
+		db.dbs = append(db.dbs, newClient(d, n+i))
 	}
+}
+
+// snapshotClients returns a copy of the shard pool, taken under DB.mu. A
+// query captures the shards it fans out over when it is built, so the copy
+// keeps a concurrent Add from tearing the slice while it is read.
+func (db *DB) snapshotClients() []*Client {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	dbs := make([]*Client, len(db.dbs))
+	copy(dbs, db.dbs)
+
+	return dbs
+}
+
+// shardClients returns the clients that Stop and Close have to release: the
+// shard pool, plus the embedded client when it is not part of the pool.
+//
+// Open sets the embedded client to the first shard, but DB is exported, so a
+// caller can build one that carries a Client without any shard entry. That
+// client still owns a database and a statement reaper, and must not be left
+// behind.
+//
+// The caller must hold db.mu.
+func (db *DB) shardClients() []*Client {
+	clients := make([]*Client, 0, len(db.dbs)+1)
+	clients = append(clients, db.dbs...)
+
+	if db.Client != nil && (len(db.dbs) == 0 || db.dbs[0] != db.Client) {
+		clients = append(clients, db.Client)
+	}
+
+	return clients
+}
+
+// Stop terminates the background statement reaper of every shard client held
+// by DB. It does not close the underlying databases, so the connection pools
+// stay usable; use Close to release both.
+//
+// Stop is idempotent and safe for concurrent use.
+func (db *DB) Stop() {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	for _, c := range db.shardClients() {
+		c.Stop()
+	}
+}
+
+// Close releases the DB: it stops the statement reaper of every shard client
+// and closes every shard database. The returned error joins the errors
+// reported by the shard databases.
+//
+// Use Stop instead when the shard pools must stay open and serving: Stop
+// reclaims the reapers without touching the pools.
+//
+// The reapers are stopped in a first pass that cannot block, so a shard whose
+// Database.Close stalls can no longer leave the other reapers running. The
+// shard databases are then closed independently of each other, so one stalled
+// close does not keep the other pools open. Close still waits for the shard
+// databases to be closed, so a Database.Close that never returns delays the
+// return of Close, but it does not hold back the other shards.
+//
+// DB.Close used to resolve to the embedded Client.Close, which only closed
+// the first shard: the other shards, and their reaper goroutines, were left
+// running.
+func (db *DB) Close() error {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	clients := db.shardClients()
+
+	// Stop every reaper first. Stop only closes the reaper's done
+	// channel, so this pass never blocks.
+	for _, c := range clients {
+		c.Stop()
+	}
+
+	// Close the shard databases independently: Database.Close may block
+	// on outstanding work, and that must not keep the other pools open.
+	errs := make([]error, len(clients))
+
+	var wg sync.WaitGroup
+
+	for i, c := range clients {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs[i] = c.DB.Close()
+		}()
+	}
+
+	wg.Wait()
+
+	return errors.Join(errs...)
 }
 
 // On selects the database context based on the shardid ID. It returns

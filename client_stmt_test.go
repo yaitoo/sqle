@@ -1,12 +1,85 @@
 package sqle
 
 import (
+	"bytes"
 	"database/sql"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+// countReapers returns the number of live statement reaper goroutines. The
+// reaper runs in Client.checkIdleStmt, so it shows up in the goroutine dump
+// by function name.
+func countReapers() int {
+	buf := make([]byte, 64*1024)
+	for {
+		n := runtime.Stack(buf, true)
+		if n < len(buf) {
+			return bytes.Count(buf[:n], []byte("checkIdleStmt"))
+		}
+		buf = make([]byte, 2*len(buf))
+	}
+}
+
+// TestCloseStopsIdleStmtReaper verifies that closing a client terminates the
+// background statement reaper it started. The reaper used to have no exit
+// path, so every Open leaked a goroutine (and a ticker) for the lifetime of
+// the process.
+func TestCloseStopsIdleStmtReaper(t *testing.T) {
+	d, err := sql.Open("sqlite3", "file::memory:")
+	require.NoError(t, err)
+
+	before := countReapers()
+
+	db := Open(d)
+	client := db.Client
+
+	// Open starts one reaper per wrapped database.
+	require.Eventually(t, func() bool {
+		return countReapers() == before+1
+	}, 5*time.Second, 10*time.Millisecond)
+
+	require.NoError(t, client.Close())
+
+	// Close must terminate the reaper instead of leaking it.
+	require.Eventually(t, func() bool {
+		return countReapers() == before
+	}, 5*time.Second, 10*time.Millisecond)
+
+	// The underlying database is closed as well.
+	require.Error(t, client.Ping())
+}
+
+// TestStopKeepsDatabaseOpen verifies that Stop only terminates the reaper
+// and leaves the underlying database usable.
+func TestStopKeepsDatabaseOpen(t *testing.T) {
+	d, err := sql.Open("sqlite3", "file::memory:")
+	require.NoError(t, err)
+
+	before := countReapers()
+
+	db := Open(d)
+	client := db.Client
+
+	require.Eventually(t, func() bool {
+		return countReapers() == before+1
+	}, 5*time.Second, 10*time.Millisecond)
+
+	client.Stop()
+
+	require.Eventually(t, func() bool {
+		return countReapers() == before
+	}, 5*time.Second, 10*time.Millisecond)
+	require.NoError(t, client.Ping())
+
+	// Stop is idempotent, and Close still closes the database afterwards.
+	client.Stop()
+	require.NoError(t, client.Close())
+	require.Error(t, client.Ping())
+}
 
 func TestStmt(t *testing.T) {
 	d, err := sql.Open("sqlite3", "file::memory:")

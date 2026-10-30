@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed (breaking)
+- fix(db): `(*DB).Close()` now closes every shard database and stops the
+  statement reaper of every shard client (#107). It used to resolve to the
+  embedded `(*Client).Close`, so only the first shard was closed and the other
+  shards — and their reaper goroutines — were left running. This is
+  observable: after `db.Close()` the connection pools of the remaining shards
+  are closed too, and `db.Close()` returns the joined error of all shard
+  closes. The shard reapers are stopped in a first pass that cannot block,
+  and the shard databases are then closed independently of each other, so one
+  shard whose `Database.Close` stalls cannot keep the other reapers running
+  or the other pools open. The new `(*DB).Stop()` stops the reapers without
+  closing any database.
+  Upgrade note: callers that closed a sharded DB but kept serving from its
+  other shards now get `sql: database is closed` from them. Closing a pool
+  marks it closed for new queries, closes its idle connections at once, and
+  closes a connection that is in use only when it is released: a query that
+  is already running completes normally, while a request still waiting for a
+  connection, and every later query against that shard, fails. Use
+  `(*DB).Stop()` to reclaim the reapers while keeping every pool open and
+  serving. Rolling this change back does not reopen pools that were already
+  closed, so it is not a way to undo such an interruption. No stored data and
+  no access policy are affected.
 - fix(db): `DB.On(shardid.ID)` now returns `(*Client, error)` instead of `*Client`.
   It returns the new exported `ErrInvalidShardID` when `id.DatabaseID` is out
   of range for the current sharded DB pool (negative or `>= len(dbs)`),
@@ -18,7 +39,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   generate IDs through `shardid.New(WithDatabase(N)).Next()` against an
   `Open(dbs...)` of size N see no behaviour change.
 
-### Fixed
+#### Fixed
+- fix(query): `NewQuery` captures a snapshot of the shard pool under
+  `DB.mu`. It used to read `DB.dbs` without the lock while `DB.Add` appended
+  to it, so building a query while the pool grew was a data race, and the
+  query could capture an inconsistent shard list.
+- fix(db): `DB.Close` and `DB.Stop` also release the embedded client when it
+  is not part of the shard pool. `DB` is exported, so a caller can build one
+  that carries a `Client` without any shard entry; that client owns a
+  database and a statement reaper, and both were left behind.
+- fix(db): guard the shard pool with a single lock. `DB.Add` wrote `db.dbs`
+  under the mutex promoted from the embedded `*Client`, while `DB.On` and
+  `DB.OnDHT` read it under `DB.mu`, so scaling out the pool while a shard was
+  being resolved was a data race. `Add`, `Stop` and `Close` now use `DB.mu`,
+  like the other accessors of the shard pool and the DHT rings.
+- fix(client): the background statement reaper started by `Open`/`DB.Add` can
+  now be stopped, instead of leaking one goroutine and one `time.Ticker` per
+  wrapped database for the lifetime of the process (#107). The reaper loop
+  only left through `<-delay.C`, so `defer delay.Stop()` was unreachable and
+  the `*Client` (and through it the closed `*sql.DB`) stayed reachable from a
+  background goroutine. `(*Client).Close()` now stops the reaper before
+  closing the underlying database, and the new `(*Client).Stop()` stops the
+  reaper only, leaving the connection pool usable. Both are idempotent. The
+  reaper exits asynchronously: it returns right after the signal, or after the
+  eviction pass it is in the middle of, so `Close` never waits on an in-flight
+  statement prepare. `(*DB).Close()`/`(*DB).Stop()` do the same for every
+  shard client the DB holds.
 - fix(migrate): add `WithTxOptions(*sql.TxOptions) Option` so callers can
   configure isolation level and read-only mode for the per-version and
   per-rotation transactions (#80). Previously `Migrator.startMigrate`

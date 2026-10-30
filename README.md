@@ -81,6 +81,12 @@ SQLE directly connects to a database by `sql.DB` instance.
     }
 ```
 
+`sqle.Open` starts a background worker per database that closes prepared
+statements that have been idle for too long. Call `db.Close()` when the
+database is no longer needed: it stops the worker and closes the underlying
+`*sql.DB`. Use `db.Stop()` if you only want to stop the worker and keep the
+connection pool usable.
+
 ### Create
 - create album by sql
 ```go
