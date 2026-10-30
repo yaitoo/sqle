@@ -13,8 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shards — and their reaper goroutines — were left running. This is
   observable: after `db.Close()` the connection pools of the remaining shards
   are closed too, and `db.Close()` returns the joined error of all shard
-  closes. The new `(*DB).Stop()` stops the reapers without closing any
-  database.
+  closes. The shard reapers are stopped in a first pass that cannot block,
+  and the shard databases are then closed independently of each other, so one
+  shard whose `Database.Close` stalls cannot keep the other reapers running
+  or the other pools open. The new `(*DB).Stop()` stops the reapers without
+  closing any database.
 - fix(db): `DB.On(shardid.ID)` now returns `(*Client, error)` instead of `*Client`.
   It returns the new exported `ErrInvalidShardID` when `id.DatabaseID` is out
   of range for the current sharded DB pool (negative or `>= len(dbs)`),
@@ -26,7 +29,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   generate IDs through `shardid.New(WithDatabase(N)).Next()` against an
   `Open(dbs...)` of size N see no behaviour change.
 
-### Fixed
+#### Fixed
+- fix(query): `NewQuery` captures a snapshot of the shard pool under
+  `DB.mu`. It used to read `DB.dbs` without the lock while `DB.Add` appended
+  to it, so building a query while the pool grew was a data race, and the
+  query could capture an inconsistent shard list.
+- fix(db): `DB.Close` and `DB.Stop` also release the embedded client when it
+  is not part of the shard pool. `DB` is exported, so a caller can build one
+  that carries a `Client` without any shard entry; that client owns a
+  database and a statement reaper, and both were left behind.
 - fix(db): guard the shard pool with a single lock. `DB.Add` wrote `db.dbs`
   under the mutex promoted from the embedded `*Client`, while `DB.On` and
   `DB.OnDHT` read it under `DB.mu`, so scaling out the pool while a shard was

@@ -234,6 +234,110 @@ func TestConcurrentAddAndOn(t *testing.T) {
 	}
 }
 
+// stalledCloseDB blocks in Close until it is released, simulating a
+// Database whose Close never finishes (e.g. an in-flight query that does not
+// complete).
+type stalledCloseDB struct {
+	*sql.DB
+	entered chan struct{}
+	release chan struct{}
+	once    sync.Once
+}
+
+func (s *stalledCloseDB) Close() error {
+	s.once.Do(func() { close(s.entered) })
+	<-s.release
+	return s.DB.Close()
+}
+
+// TestDBCloseStalledShardDoesNotStrandOthers verifies that a shard whose
+// Database.Close blocks does not keep the other shards from being cleaned
+// up: their reapers must stop and their pools must be closed even while the
+// stalled shard is still closing.
+func TestDBCloseStalledShardDoesNotStrandOthers(t *testing.T) {
+	stalled := &stalledCloseDB{
+		DB:      createSQLite3(),
+		entered: make(chan struct{}),
+		release: make(chan struct{}),
+	}
+	other := createSQLite3()
+
+	before := countReapers()
+
+	db := Open(stalled)
+	db.Add(other)
+
+	closed := make(chan error, 1)
+	go func() {
+		closed <- db.Close()
+	}()
+
+	// Wait until the stalled shard is inside its Close.
+	select {
+	case <-stalled.entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the stalled shard never reached Close")
+	}
+
+	// The other shard must not wait for the stalled one: its reaper is
+	// stopped and its pool is closed.
+	require.Eventually(t, func() bool {
+		return countReapers() == before
+	}, 5*time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool {
+		return other.Ping() != nil
+	}, 5*time.Second, 10*time.Millisecond)
+
+	// Let the stalled shard finish, so Close can return.
+	close(stalled.release)
+
+	select {
+	case err := <-closed:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Close did not return")
+	}
+}
+
+// TestConcurrentAddAndNewQuery verifies that building a query while the
+// shard pool grows is race free. NewQuery captures the shards it fans out
+// over, and used to read db.dbs without DB.mu while Add appended to it.
+func TestConcurrentAddAndNewQuery(t *testing.T) {
+	db := Open(createSQLite3())
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 20; i++ {
+			db.Add(createSQLite3())
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 20; i++ {
+			NewQuery[int64](db)
+		}
+	}()
+
+	wg.Wait()
+}
+
+// TestHandBuiltDBCloseClosesEmbeddedClient verifies that a DB built by hand,
+// with an embedded client but no shard entries, still releases that client's
+// database.
+func TestHandBuiltDBCloseClosesEmbeddedClient(t *testing.T) {
+	sqldb := createSQLite3()
+
+	db := &DB{Client: &Client{DB: sqldb}}
+
+	require.NoError(t, db.Close())
+
+	require.Error(t, sqldb.Ping())
+}
+
 func TestDHT(t *testing.T) {
 	db := Open(createSQLite3())
 
